@@ -634,6 +634,8 @@ InputDriverRec EVDEV = {
     0
 };
 
+#ifdef XFree86LOADER
+
 static void
 EvdevUnplug(pointer	p)
 {
@@ -669,3 +671,4 @@ XF86ModuleData evdevModuleData =
     EvdevPlug,
     EvdevUnplug
 };
+#endif /* XFree86LOADER */
