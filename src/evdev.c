@@ -67,6 +67,8 @@
 
 static int wheel_up_button = 4;
 static int wheel_down_button = 5;
+static int wheel_left_button = 6;
+static int wheel_right_button = 7;
 
 static void
 PostButtonClicks(InputInfoPtr pInfo, int button, int count)
@@ -118,6 +120,13 @@ EvdevReadInput(InputInfoPtr pInfo)
                 if (value < 0)
                     PostButtonClicks(pInfo, wheel_down_button, -value);
                 break;
+
+            case REL_HWHEEL:
+                if (value > 0)
+                    PostButtonClicks(pInfo, wheel_right_button, value);
+                if (value < 0)
+                    PostButtonClicks(pInfo, wheel_left_button, -value);
+                break;
             }
             break;
 
@@ -129,11 +138,15 @@ EvdevReadInput(InputInfoPtr pInfo)
             case BTN_LEFT:
             case BTN_RIGHT:
             case BTN_MIDDLE:
+                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 1,
+                                    value, 0, 0);
+                break;
+
             case BTN_SIDE:
             case BTN_EXTRA:
             case BTN_FORWARD:
             case BTN_BACK:
-                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 1,
+                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 5,
                                     value, 0, 0);
                 break;
 
