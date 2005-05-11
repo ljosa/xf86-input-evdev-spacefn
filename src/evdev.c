@@ -61,10 +61,6 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
-#ifndef EV_RST
-#define EV_RST EV_SYN
-#endif
-
 static int wheel_up_button = 4;
 static int wheel_down_button = 5;
 static int wheel_left_button = 6;
@@ -156,7 +152,7 @@ EvdevReadInput(InputInfoPtr pInfo)
             }
             break;
 
-        case EV_RST:
+        case EV_SYN:
             break;
         }
     }
@@ -490,11 +486,17 @@ EvdevProc(DeviceIntPtr device, int what)
 	return EvdevInit(device);
 
     case DEVICE_ON:
+        if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
+            xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
+                    strerror(errno));
         xf86AddEnabledDevice(pInfo);
 	device->public.on = TRUE;
 	break;
 	    
     case DEVICE_OFF:
+        if (ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+            xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
+                    strerror(errno));
         xf86RemoveEnabledDevice(pInfo);
 	device->public.on = FALSE;
 	break;
