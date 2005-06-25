@@ -639,7 +639,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     return pInfo;
 }
 
-InputDriverRec EVDEV = {
+_X_EXPORT InputDriverRec EVDEV = {
     1,
     "evdev",
     NULL,
@@ -680,7 +680,7 @@ static XF86ModuleVersionInfo EvdevVersionRec =
     {0, 0, 0, 0}
 };
 
-XF86ModuleData evdevModuleData =
+_X_EXPORT XF86ModuleData evdevModuleData =
 {
     &EvdevVersionRec,
     EvdevPlug,
