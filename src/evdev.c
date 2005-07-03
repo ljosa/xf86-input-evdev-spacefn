@@ -45,6 +45,16 @@
 
 #include <xf86Module.h>
 
+/* 2.4 compatibility */
+#ifndef EVIOCGRAB
+#define EVIOCGRAB _IOW('E', 0x90, int)
+#endif
+
+#ifndef EV_SYN
+#define EV_SYN EV_RST
+#endif
+/* end compat */
+
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
 #define MIN_KEYCODE 8
@@ -60,6 +70,10 @@
 #define SCROLLFLAG	4
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
+
+typedef struct {
+    int kernel24;
+} EvdevRec, *EvdevPtr;
 
 static int wheel_up_button = 4;
 static int wheel_down_button = 5;
@@ -477,8 +491,10 @@ static int
 EvdevProc(DeviceIntPtr device, int what)
 {
     InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
     switch (what)
     {
@@ -486,7 +502,7 @@ EvdevProc(DeviceIntPtr device, int what)
 	return EvdevInit(device);
 
     case DEVICE_ON:
-        if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
             xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
                     strerror(errno));
         xf86AddEnabledDevice(pInfo);
@@ -494,7 +510,7 @@ EvdevProc(DeviceIntPtr device, int what)
 	break;
 	    
     case DEVICE_OFF:
-        if (ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
             xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
                     strerror(errno));
         xf86RemoveEnabledDevice(pInfo);
@@ -522,23 +538,31 @@ EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
         return FALSE;
 }
 
-static void
+static int
 EvdevProbe(InputInfoPtr pInfo)
 {
     char key_bitmask[(KEY_MAX + 7) / 8];
     char rel_bitmask[(REL_MAX + 7) / 8];
     int i, has_axes, has_buttons, has_keys;
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1) && errno == EINVAL) {
+        /* keyboards are unsafe in 2.4 */
+        pEvdev->kernel24 = 1;
+    } else {
+        ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
+    }
 
     if (ioctl(pInfo->fd, 
               EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask) < 0) {
         xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return;
+        return 1;
     }
 
     if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
         xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return;
+        return 1;
     }
 
     has_axes = FALSE;
@@ -571,19 +595,25 @@ EvdevProbe(InputInfoPtr pInfo)
 	    XI86_CONFIGURED;
 	pInfo->type_name = XI_MOUSE;
     }
-    
+
     if (has_keys) {
-        xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
-	pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
-	pInfo->type_name = XI_KEYBOARD;
+        if (pEvdev->kernel24) {
+            xf86Msg(X_INFO, "%s: Kernel < 2.6 is too old, ignoring keyboard\n",
+                    pInfo->name);
+        } else {
+            xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
+            pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
+	    pInfo->type_name = XI_KEYBOARD;
+        }
     }
 
     if ((pInfo->flags & XI86_CONFIGURED) == 0) {
         xf86Msg(X_WARNING, "%s: Don't know how to use device\n",
 		pInfo->name);
+        return 1;
     }
 
-    return;
+    return 0;
 }
 
 static InputInfoPtr
@@ -592,6 +622,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     InputInfoPtr pInfo;
     MessageType deviceFrom = X_CONFIG;
     const char *device;
+    EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
 	return NULL;
@@ -614,12 +645,17 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->always_core_feedback = 0;
     pInfo->conf_idev = dev;
 
+    if (!(pEvdev = xcalloc(sizeof(*pEvdev), 1)))
+        return pInfo;
+    pInfo->private = pEvdev;
+
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options); 
 
     device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
         xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
+        xfree(pEvdev);
         return pInfo;
     }
 	
@@ -631,10 +667,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (pInfo->fd < 0) {
         xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
+        xfree(pEvdev);
         return pInfo;
     }
 
-    EvdevProbe(pInfo);
+    if (EvdevProbe(pInfo))
+        xfree(pEvdev);
 
     return pInfo;
 }
