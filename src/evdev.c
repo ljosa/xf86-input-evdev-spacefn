@@ -23,6 +23,10 @@
  * Author:  Kristian Høgsberg (krh@redhat.com)
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
