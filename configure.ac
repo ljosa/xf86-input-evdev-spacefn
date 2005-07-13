@@ -61,15 +61,20 @@ AH_TOP([#include "xorg-server.h"])
 #    AC_DEFINE(XKB,1,[Enable XKB support])
 #fi
 
+AC_ARG_WITH(xorg-module-dir,
+            AC_HELP_STRING([--with-xorg-module-dir=DIR],
+                           [Default xorg module directory [[default=$libdir/xorg/modules]]]),
+            [moduledir="$withval"],
+            [moduledir="$libdir/xorg/modules"])
+inputdir=${moduledir}/input
+AC_SUBST(inputdir)
+
 # Checks for pkg-config packages
 PKG_CHECK_MODULES(XORG, xorg-server xproto)
-inputdir=$(pkg-config --variable=moduledir xorg-server)/input
-AC_SUBST([inputdir])
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
 CFLAGS="$XORG_CFLAGS "' -I$(top_srcdir)/src'
 AC_SUBST([CFLAGS])
-AC_SUBST([INCLUDES])
 
 # Checks for libraries.
 
