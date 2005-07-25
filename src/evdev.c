@@ -160,6 +160,7 @@ EvdevReadInput(InputInfoPtr pInfo)
             case BTN_EXTRA:
             case BTN_FORWARD:
             case BTN_BACK:
+            case BTN_TASK:
                 xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 5,
                                     value, 0, 0);
                 break;
