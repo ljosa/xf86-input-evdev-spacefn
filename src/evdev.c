@@ -54,6 +54,10 @@
 #define EVIOCGRAB _IOW('E', 0x90, int)
 #endif
 
+#ifndef BTN_TASK
+#define BTN_TASK 0x117
+#endif
+
 #ifndef EV_SYN
 #define EV_SYN EV_RST
 #endif
