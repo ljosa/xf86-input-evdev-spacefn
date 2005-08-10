@@ -73,7 +73,7 @@ AC_SUBST(inputdir)
 PKG_CHECK_MODULES(XORG, xorg-server xproto)
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
-CFLAGS="$XORG_CFLAGS "' -I$(top_srcdir)/src'
+CFLAGS="$CFLAGS $XORG_CFLAGS "' -I$(top_srcdir)/src'
 AC_SUBST([CFLAGS])
 
 # Checks for libraries.
