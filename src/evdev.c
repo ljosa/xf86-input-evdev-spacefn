@@ -100,6 +100,22 @@ PostButtonClicks(InputInfoPtr pInfo, int button, int count)
 }
 
 static void
+PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
+{
+    /* filter repeat events for chording keys */
+    if (value == 2 &&
+        (ev->code == KEY_LEFTCTRL || ev->code == KEY_RIGHTCTRL ||
+         ev->code == KEY_LEFTSHIFT || ev->code == KEY_RIGHTSHIFT ||
+         ev->code == KEY_LEFTALT || ev->code == KEY_RIGHTALT ||
+         ev->code == KEY_LEFTMETA || ev->code == KEY_RIGHTMETA ||
+         ev->code == KEY_CAPSLOCK || ev->code == KEY_NUMLOCK ||
+         ev->code == KEY_SCROLLLOCK)) /* XXX windows keys? */
+        return;
+
+    xf86PostKeyboardEvent(pInfo->dev, ev->code + MIN_KEYCODE, value);
+}
+
+static void
 EvdevReadInput(InputInfoPtr pInfo)
 {
     struct input_event ev;
@@ -170,8 +186,7 @@ EvdevReadInput(InputInfoPtr pInfo)
                 break;
 
             default:
-                xf86PostKeyboardEvent(pInfo->dev,
-                                      ev.code + MIN_KEYCODE, value);
+                PostKbdEvent(pInfo, &ev, value);
             }
             break;
 
