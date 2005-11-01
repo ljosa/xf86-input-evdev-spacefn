@@ -69,8 +69,13 @@ AC_ARG_WITH(xorg-module-dir,
 inputdir=${moduledir}/input
 AC_SUBST(inputdir)
 
+# Checks for extensions
+XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
+XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
+
 # Checks for pkg-config packages
-PKG_CHECK_MODULES(XORG, xorg-server xproto)
+PKG_CHECK_MODULES(XORG, xorg-server xproto $REQUIRED_MODULES)
+AC_MSG_RESULT([yes])
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
 CFLAGS="$CFLAGS $XORG_CFLAGS "' -I$(top_srcdir)/src'
