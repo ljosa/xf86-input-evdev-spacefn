@@ -38,6 +38,7 @@ AC_SUBST([DRIVER_NAME])
 AM_CONFIG_HEADER([config.h])
 
 # Checks for programs.
+AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_CC
 
