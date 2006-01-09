@@ -1,3 +1,11 @@
+2006-01-09  David Nusinow,,,  <set EMAIL_ADDRESS environment variable>
+
+	* man/Makefile.am:
+	* man/evdev.man:
+	Bugzilla #968 <https://bugs.freedesktop.org/show_bug.cgi?id=968>
+	Patch #4301 <https://bugs.freedesktop.org/attachment.cgi?id=4301>
+	Add evdev manpage
+
 2005-12-20  Kevin E. Martin  <kem-at-freedesktop-dot-org>
 
 	* configure.ac:
