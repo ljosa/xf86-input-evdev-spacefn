@@ -1,3 +1,32 @@
+2006-02-14  Zephaniah E. Hull,,,  <set EMAIL_ADDRESS environment variable>
+
+	* configure.ac:
+	* man/evdev.man:
+	* src/Makefile.am:
+	* src/evdev.c: (EvdevReadInput), (EvdevSigioReadInput),
+	(EvdevProc), (EvdevSwitchMode), (EvdevNew), (EvdevCorePreInit):
+	* src/evdev.h:
+	* src/evdev_abs.c: (EvdevPtrCtrlProc), (EvdevConvert),
+	(EvdevAbsSyn), (EvdevAbsProcess), (EvdevAbsInit), (EvdevAbsOn),
+	(EvdevAbsOff), (EvdevAbsNew):
+	* src/evdev_brain.c: (glob_match), (evdevGetFDForDevice),
+	(evdevRescanDevices), (evdevReadInput), (evdevControl),
+	(evdevStart), (evdevNewDriver):
+	* src/evdev_btn.c: (EvdevBtnPostFakeClicks), (EvdevBtnInit),
+	(EvdevBtnOn), (EvdevBtnOff), (EvdevBtnCalcRemap), (EvdevBtnNew),
+	(EvdevBtnProcess):
+	* src/evdev_key.c: (EvdevKbdBell), (EvdevKbdCtrl), (EvdevKeyInit),
+	(SetXkbOption), (EvdevKeyNew), (EvdevKeyOn), (EvdevKeyOff),
+	(EvdevKeyProcess):
+	* src/evdev_rel.c: (EvdevPtrCtrlProc), (EvdevConvert),
+	(EvdevRelSyn), (EvdevRelProcess), (EvdevRelInit), (EvdevRelOn),
+	(EvdevRelOff), (EvdevRelNew):
+	Bugzilla #5696 <https://bugs.freedesktop.org/show_bug.cgi?id=5696>
+	Slightly updated version of the patch listed.
+	Basicly a rewrite of the driver, with a few pieces of the old.
+	XKB support, proper device matching, basic absolute pointer support.
+	Lots more, will require some user config changes.
+
 2006-01-09  David Nusinow,,,  <set EMAIL_ADDRESS environment variable>
 
 	* man/Makefile.am:

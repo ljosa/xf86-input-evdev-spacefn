@@ -37,17 +37,155 @@ Please refer to __xconfigfile__(__filemansuffix__) for general configuration
 details and for options that can be used with all input drivers.  This
 section only covers configuration details specific to this driver.
 .PP
+.SH GENERAL OPTIONS
 The following driver 
 .B Options
-are supported:
+control what devices are accepted, note that globbing is used in all cases:
 .TP 7
 .BI "Option \*qDevice\*q \*q" string \*q
-Specifies the device through which the device can be accessed.  This will 
-generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
-The mapping from device node to hardware is system-dependent.  This option is
-mandatory, and there is no default setting.
+Specifies the device note through which the device can be accessed.  This
+will generally be of the form \*q/dev/input/eventX\*q, where X is some
+integer.  The mapping from device node to hardware is system-dependent.
+.fi
+Please note that use of this option is discouraged.
+.TP 7
+.BI "Option \*qName\*q \*q" string \*q
+Specifies the device name for the device you wish to use.
+.fi
+The device name is generally the only consistent identifier for devices 
+that are commonly unplugged and plugged back into different ports.
+.fi
+A list of currently plugged in devices and associated device names can be 
+obtained by typing \*qcat /proc/bus/input/devices\*q, the \*qName\*q field 
+is the value you want for this option.
+.TP 7
+.BI "Option \*qPhys\*q \*q" string \*q
+Specifies the device phys string for the device you wish to use.
+.fi
+The phys string is generally consistant to the USB port a device is plugged 
+into.
+.fi
+A list of currently plugged in devices and associated device names can be 
+obtained by typing \*qcat /proc/bus/input/devices\*q, the \*qPhys\*q field 
+is the value you want for this option.
+.PP
+.SH RELATIVE AXIS CONFIGURATION
+The relative axis portion of this driver handle all reported relative axies.
+.fi
+The axies are named X, Y, Z, RX, RY, RZ, HWHEEL, DIAL, WHEEL, MISC, 10, 11,
+12, 13, 14, and 15.
+.fi
+The axies are reported to X as valuators, with the default mapping of axies
+to valuators being the first axies found to the first valuator, the second
+found to the second valuator, and so on, so that if you have axies X, Y,
+HWHEEL, and WHEEL, you would have X=0, Y=1, HWHEEL=2, WHEEL=3.
+.fi
+If the driver is reporting core events, valuators 0 and 1 are always mapped
+to x and y coordinates, respectively.
+.fi
+The following driver 
+.B Options
+control the relative axis portion of the driver:
+.TP 7
+.BI "Option \*q<axis>RelativeAxisMap\*q \*q" number \*q
+This remaps the axis specified to the specified valuator.
+.TP 7
+.BI "Option \*q<axis>RelativeAxisButtons\*q \*q" number " number\*q
+This remaps the axis specified to the specified buttons.
+.fi
+Note that the physical buttons are always remapped around 'fake' buttons 
+created by this option, so that if you have physical buttons 1 2 3 4 5,
+and map the Wheel axis to buttons 4 5, you get buttons 1 2 3
+.B 4 5
+6 7, with buttons 6 and 7 being physical buttons 4 and 5.
+.PP
+.SH ABSOLUTE AXIS CONFIGURATION
+The relative axis portion of this driver handle all reported relative axies.
+.fi
+The axies are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BREAK,
+<11-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
+TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29-39>, MISC, <41-62>.
+.fi
+The axies are reported to X as valuators, with the default mapping of axies
+to valuators being the first axies found to the first valuator, the second
+found to the second valuator, and so on, so that if you have axies X, Y,
+TILT_X, and TILT_Y, you would have X=0, Y=1, TILT_X=2, TILT_Y=3.
+.fi
+If the driver is reporting core events, valuators 0 and 1 are always mapped
+to x and y coordinates, respectively.
+.fi
+The following driver 
+.B Options
+control the relative axis portion of the driver:
+.TP 7
+.BI "Option \*q<axis>AbsoluteAxisMap\*q \*q" number \*q
+This remaps the axis specified to the specified valuator.
+.TP 7
+.BI "Option \*qAbsoluteScreen\*q \*q" number \*q
+This binds the device to a specific screen, scaling it to
+the coordinate space of that screen.
+.fi
+The number can either be -1, or a valid screen number.
+.fi
+If -1 or if in relative mode no scaling or screen fixing is done.
+.fi
+This is of most use for digitizers, where the screen and the input
+device are the same surface.
+.TP 7
+.BI "Option \*qMode\*q \*q" <mode>\*q
+This selects the default mode for the device.
+.fi
+Valid values are \*qabsolute\*q and \*qrelative\*q.
+.fi
+This can be set at run time per actual device with the xinput utility.
+.PP
+.SH BUTTON CONFIGURATION
+At the moment, the button portion of this driver only handles buttons
+reported as mouse buttons, that is from BTN_MOUSE to BTN_JOYSTICK - 1.
+.fi
+At this time there are no configuration options for buttens.
+.SH KEYBOARD CONFIGURATION
+The keyboard portion of this driver handles all keys reported and requires 
+XKB support.
+.fi
+The following driver 
+.B Options
+control the relative axis portion of the driver:
+.TP 7
+.BI "Option \*qXkbRules\*q \*q" rules \*q
+specifies which XKB rules file to use for interpreting the
+.BR XkbModel ,
+.BR XkbLayout ,
+.BR XkbVariant ,
+and
+.B XkbOptions
+settings.  Default: "xorg" for most platforms, but "xfree98" for the
+Japanese PC-98 platforms.
+.TP 7
+.BI "Option \*qXkbModel\*q \*q" modelname \*q
+specifies the XKB keyboard model name.  Default: "evdev".
+.TP 7
+.BI "Option \*qXkbLayout\*q \*q" layoutname \*q
+specifies the XKB keyboard layout name.  This is usually the country or
+language type of the keyboard.  Default: "us".
+.TP 7
+.BI "Option \*qXkbVariant\*q \*q" variants \*q
+specifies the XKB keyboard variant components.  These can be used to
+enhance the keyboard layout details.  Default: not set.
+.TP 7
+.BI "Option \*qXkbOptions\*q \*q" options \*q
+specifies the XKB keyboard option components.  These can be used to
+enhance the keyboard behaviour.  Default: not set.
+.PP
+Some other XKB-related options are available, but they are incompatible
+with the ones listed above and are not recommended, so they are not
+documented here.
+
+.TP 7
 .SH AUTHORS
 Kristian Høgsberg.
+.fi
+Zephaniah E. Hull.
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__),
 README.mouse.
