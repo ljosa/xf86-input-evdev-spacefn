@@ -167,7 +167,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	pEvdev->state.buttonMap[2] = base;
     }
 
-    for (j = 0; j < REL_MAX; j++) {
+    for (i = 0; i < REL_MAX; i++) {
 	if (pEvdev->state.relToBtnMap[i][0] > pEvdev->state.buttons)
 	    pEvdev->state.buttons = pEvdev->state.relToBtnMap[i][0];
 	if (pEvdev->state.relToBtnMap[i][1] > pEvdev->state.buttons)

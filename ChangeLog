@@ -1,4 +1,10 @@
-2006-02-14  Zephaniah E. Hull,,,  <set EMAIL_ADDRESS environment variable>
+2006-02-16  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/evdev_btn.c: (EvdevBtnCalcRemap):
+	Bugzilla #5914 <https://bugs.freedesktop.org/show_bug.cgi?id=5914>
+	Stupid little bug, properly handle wheels on 3 button mice.
+
+2006-02-14  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* configure.ac:
 	* man/evdev.man:
