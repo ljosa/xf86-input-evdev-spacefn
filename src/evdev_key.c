@@ -244,12 +244,14 @@ static KeySym map[] = {
 };
 
 /*
- * FIXME: We can't actually _do_ anything here.
- * Find a way around this.
+ * FIXME: We have no way of ringing the bell ourselves.
+ * So use the system bell for now.
  */
 static void
 EvdevKbdBell (int percent, DeviceIntPtr device, pointer ctrl, int unused)
 {
+    xf86SoundKbdBell(percent, ((KeybdCtrl*) ctrl)->bell_pitch,
+	    ((KeybdCtrl*) ctrl)->bell_duration);
 }
 
 static void

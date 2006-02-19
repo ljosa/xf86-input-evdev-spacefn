@@ -1,3 +1,8 @@
+2006-02-19  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/evdev_key.c: (EvdevKbdBell):
+	Add bell support.
+
 2006-02-16  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_btn.c: (EvdevBtnCalcRemap):
