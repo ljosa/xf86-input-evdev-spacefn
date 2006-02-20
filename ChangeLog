@@ -1,3 +1,11 @@
+2006-02-20  Zephaniah E. Hull,,,  <warp@aehallh.com>
+
+	* src/evdev_btn.c: (EvdevBtnInit):
+	Bugzilla #5950 <https://bugs.freedesktop.org/show_bug.cgi=5950>
+	Possible (maybe) fix for bug #5950.
+	Though, I'm not convinced and still don't see how this bug could
+	be happening, especially if this doesn't do it.
+
 2006-02-19  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_key.c: (EvdevKbdBell):

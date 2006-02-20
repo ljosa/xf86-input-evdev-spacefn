@@ -87,9 +87,9 @@ EvdevBtnInit (DeviceIntPtr device)
     if (!pEvdev->state.buttons)
 	return Success;
 
-    map = Xcalloc (sizeof (CARD8) * pEvdev->state.buttons);
+    map = Xcalloc (sizeof (CARD8) * (pEvdev->state.buttons + 1));
 
-    for (i = 0; i < pEvdev->state.buttons; i++)
+    for (i = 0; i <= pEvdev->state.buttons; i++)
         map[i] = i;
 
     xf86Msg(X_ERROR, "%s (%d): Registering %d buttons.\n", __FILE__, __LINE__,
