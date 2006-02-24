@@ -328,10 +328,11 @@ EvdevKeyInit (DeviceIntPtr device)
     keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
 
 
-    XkbSetRulesDflts (state->xkb_rules, state->xkb_model, state->xkb_layout,
-	    state->xkb_variant, state->xkb_options);
+    XkbSetRulesDflts (state->key->xkb_rules, state->key->xkb_model,
+	    state->key->xkb_layout, state->key->xkb_variant,
+	    state->key->xkb_options);
 
-    XkbInitKeyboardDeviceStruct (device, &state->xkbnames, &keySyms, modMap,
+    XkbInitKeyboardDeviceStruct (device, &state->key->xkbnames, &keySyms, modMap,
 	    EvdevKbdBell, EvdevKbdCtrl);
 
     return Success;
@@ -348,7 +349,6 @@ SetXkbOption(InputInfoPtr pInfo, char *name, char *value, char **option)
            *option = NULL;
        } else {
            *option = s;
-           xf86Msg(X_CONFIG, "%s: %s: \"%s\"\n", pInfo->name, name, s);
        }
     }
 }
@@ -358,44 +358,39 @@ EvdevKeyNew (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    long key_bitmask[NBITS(KEY_MAX)];
-    int i;
-
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return !Success;
-    }
+    int i, keys = 0;
 
     for (i = 0; i <= KEY_UNKNOWN; i++)
-	if (TestBit (i, key_bitmask)) {
-	    state->keys = 1;
+	if (TestBit (i, pEvdev->bits.key)) {
+	    keys = 1;
 	    break;
 	}
 
-    if (!state->keys)
+    if (!keys)
 	return !Success;
+
+    state->key = Xcalloc (sizeof (evdevKeyRec));
 
     pInfo->type_name = XI_KEYBOARD;
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
 
-    SetXkbOption (pInfo, "XkbKeymap", NULL, &state->xkbnames.keymap);
-    if (state->xkbnames.keymap) {
+    SetXkbOption (pInfo, "XkbKeymap", NULL, &state->key->xkbnames.keymap);
+    if (state->key->xkbnames.keymap) {
 	xf86Msg(X_CONFIG, "%s: XkbKeymap overrides all other XKB settings\n",
 		pInfo->name);
     } else {
-	SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__, &state->xkb_rules);
-	SetXkbOption (pInfo, "XkbModel", "evdev", &state->xkb_model);
-	SetXkbOption (pInfo, "XkbLayout", "us", &state->xkb_layout);
-	SetXkbOption (pInfo, "XkbVariant", NULL, &state->xkb_variant);
-	SetXkbOption (pInfo, "XkbOptions", NULL, &state->xkb_options);
+	SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__, &state->key->xkb_rules);
+	SetXkbOption (pInfo, "XkbModel", "evdev", &state->key->xkb_model);
+	SetXkbOption (pInfo, "XkbLayout", "us", &state->key->xkb_layout);
+	SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
+	SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
 
-	SetXkbOption (pInfo, "XkbKeycodes", NULL, &state->xkbnames.keycodes);
-	SetXkbOption (pInfo, "XkbTypes", NULL, &state->xkbnames.types);
-	SetXkbOption (pInfo, "XkbCompat", NULL, &state->xkbnames.compat);
-	SetXkbOption (pInfo, "XkbSymbols", NULL, &state->xkbnames.symbols);
-	SetXkbOption (pInfo, "XkbGeometry", NULL, &state->xkbnames.geometry);
+	SetXkbOption (pInfo, "XkbKeycodes", NULL, &state->key->xkbnames.keycodes);
+	SetXkbOption (pInfo, "XkbTypes", NULL, &state->key->xkbnames.types);
+	SetXkbOption (pInfo, "XkbCompat", NULL, &state->key->xkbnames.compat);
+	SetXkbOption (pInfo, "XkbSymbols", NULL, &state->key->xkbnames.symbols);
+	SetXkbOption (pInfo, "XkbGeometry", NULL, &state->key->xkbnames.geometry);
     }
 
     return Success;

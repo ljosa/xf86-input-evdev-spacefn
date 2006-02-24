@@ -106,75 +106,232 @@ evdevGetFDForDevice (evdevDevicePtr device)
     driver->devices = device;						\
 } while (0)
 
+typedef struct {
+    int			fd;
+    evdevBitsRec	bits;
+    char		name[256];
+    char		phys[256];
+    char		dev[256];
+    struct input_id	id;
+} evdevDevInfoRec, *evdevDevInfoPtr;
+
+static Bool
+MatchAll (long *dev, long *match, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++)
+	if ((dev[i] & match[i]) != match[i])
+	    return FALSE;
+
+    return TRUE;
+}
+
+static Bool
+MatchNot (long *dev, long *match, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++)
+	if ((dev[i] & match[i]))
+	    return FALSE;
+
+    return TRUE;
+}
+
+static Bool
+MatchAny (long *dev, long *match, int len)
+{
+    int i, found = 0;
+
+    for (i = 0; i < len; i++)
+	if (match[i]) {
+	    found = 1;
+	    if ((dev[i] & match[i]))
+		return TRUE;
+	}
+
+    if (found)
+	return FALSE;
+    else
+	return TRUE;
+}
+
+static Bool
+MatchDriver (evdevDriverPtr driver, evdevDevInfoPtr info)
+{
+    if (driver->name && glob_match(driver->name, info->name))
+	return FALSE;
+    if (driver->phys && glob_match(driver->phys, info->phys))
+	return FALSE;
+    if (driver->device && glob_match(driver->device, info->dev))
+	return FALSE;
+
+    if (driver->id.bustype && driver->id.bustype != info->id.bustype)
+	return FALSE;
+    if (driver->id.vendor && driver->id.vendor != info->id.vendor)
+	return FALSE;
+    if (driver->id.product && driver->id.product != info->id.product)
+	return FALSE;
+    if (driver->id.version && driver->id.version != info->id.version)
+	return FALSE;
+
+#define match(which)	\
+    if (!MatchAll(info->bits.which, driver->all_bits.which,	\
+		sizeof(driver->all_bits.which) /		\
+		sizeof(driver->all_bits.which[0])))		\
+	return FALSE;						\
+    if (!MatchNot(info->bits.which, driver->not_bits.which,	\
+		sizeof(driver->not_bits.which) /		\
+		sizeof(driver->not_bits.which[0])))		\
+	return FALSE;						\
+    if (!MatchAny(info->bits.which, driver->any_bits.which,	\
+		sizeof(driver->any_bits.which) /		\
+		sizeof(driver->any_bits.which[0])))		\
+	return FALSE;
+
+    match(ev)
+    match(key)
+    match(rel)
+    match(abs)
+    match(msc)
+    match(led)
+    match(snd)
+    match(ff)
+
+#undef match
+
+    return TRUE;
+}
+
+static Bool
+MatchDevice (evdevDevicePtr device, evdevDevInfoPtr info)
+{
+    int i, len;
+
+    if (device->id.bustype != info->id.bustype)
+	return FALSE;
+    if (device->id.vendor != info->id.vendor)
+	return FALSE;
+    if (device->id.product != info->id.product)
+	return FALSE;
+    if (device->id.version != info->id.version)
+	return FALSE;
+
+    if (strcmp(device->name, info->name))
+	return FALSE;
+
+    len = sizeof(info->bits.ev) / sizeof(info->bits.ev[0]);
+    for (i = 0; i < len; i++)
+	if (device->bits.ev[i] != info->bits.ev[i])
+	    return FALSE;
+
+    return TRUE;
+}
+
+static Bool
+evdevScanDevice (evdevDriverPtr driver, evdevDevInfoPtr info)
+{
+    evdevDevicePtr device;
+    int found;
+
+    if (!MatchDriver (driver, info))
+	return FALSE;
+
+    found = 0;
+    for (device = driver->devices; device; device = device->next) {
+	if (MatchDevice (device, info)) {
+	    if (device->seen != (evdev_seq - 1)) {
+		device->device = xstrdup(info->dev);
+		device->phys = xstrdup(info->phys);
+		device->callback(device->pInfo->dev, DEVICE_ON);
+	    }
+
+	    device->seen = evdev_seq;
+
+	    return TRUE;
+	}
+    }
+
+    device = Xcalloc (sizeof (evdevDeviceRec));
+
+    device->device = xstrdup(info->dev);
+    device->name = xstrdup(info->name);
+    device->phys = xstrdup(info->phys);
+    device->id.bustype = info->id.bustype;
+    device->id.vendor = info->id.vendor;
+    device->id.product = info->id.product;
+    device->id.version = info->id.version;
+    device->seen = evdev_seq;
+    device_add(driver, device);
+    driver->callback(driver, device);
+
+    return TRUE;
+}
+
+
+static Bool
+FillDevInfo (char *dev, evdevDevInfoPtr info)
+{
+    int fd;
+
+    SYSCALL(fd = open (dev, O_RDWR | O_NONBLOCK));
+    if (fd == -1)
+	return FALSE;
+
+    if (ioctl(fd, EVIOCGNAME(sizeof(info->name)), info->name) == -1)
+	info->name[0] = '\0';
+    if (ioctl(fd, EVIOCGPHYS(sizeof(info->phys)), info->phys) == -1)
+	info->phys[0] = '\0';
+    if (ioctl(fd, EVIOCGID, &info->id) == -1) {
+	close (fd);
+	return FALSE;
+    }
+    if (!evdevGetBits (fd, &info->bits)) {
+	close (fd);
+	return FALSE;
+    }
+
+    strncpy (info->dev, dev, sizeof(info->dev));
+    info->fd = fd;
+
+    return TRUE;
+}
+
 static void
 evdevRescanDevices (InputInfoPtr pInfo)
 {
     char dev[20];
-    char name[256], phys[256];
-    int fd, i;
-    int	old_seq = evdev_seq;
+    int i, j, found;
     evdevDriverPtr driver;
     evdevDevicePtr device;
-    Bool found;
+    evdevDevInfoRec info;
 
     evdev_seq++;
     xf86Msg(X_INFO, "%s: Rescanning devices (%d).\n", pInfo->name, evdev_seq);
 
     for (i = 0; i < 32; i++) {
 	snprintf(dev, sizeof(dev), "/dev/input/event%d", i);
-	SYSCALL(fd = open (dev, O_RDWR | O_NONBLOCK));
-	if (fd == -1)
+
+	if (!FillDevInfo (dev, &info))
 	    continue;
 
-	if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) == -1)
-	    name[0] = '\0';
-	if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) == -1)
-	    phys[0] = '\0';
+	found = 0;
 
-	for (driver = evdev_drivers; driver; driver = driver->next) {
-	    if (driver->name && glob_match(driver->name, name))
-		continue;
-	    if (driver->phys && glob_match(driver->phys, phys))
-		continue;
-	    if (driver->device && glob_match(driver->device, dev))
-		continue;
-
-	    found = 0;
-	    for (device = driver->devices; device; device = device->next) {
-		xf86Msg(X_INFO, "%s: %s %d -> %s %d.\n", pInfo->name, name, evdev_seq, device->name, device->seen);
-		if (!strcmp(device->name, name)) {
-		    if (device->seen != old_seq) {
-			device->device = xstrdup(dev);
-			device->phys = xstrdup(phys);
-			device->callback(device->pInfo->dev, DEVICE_ON);
-		    }
-
-		    device->seen = evdev_seq;
-		    found = 1;
+	for (j = 0; j <= 3 && !found; j++) {
+	    for (driver = evdev_drivers; driver && !found; driver = driver->next) {
+		if ((driver->pass == j) && (found = evdevScanDevice (driver, &info)))
 		    break;
-		}
 	    }
-
-	    if (!found) {
-		device = Xcalloc (sizeof (evdevDeviceRec));
-
-		device->device = xstrdup(dev);
-		device->name = xstrdup(name);
-		device->phys = xstrdup(phys);
-		device->seen = evdev_seq;
-		device_add(driver, device);
-		driver->callback(driver, device);
-	    }
-
-	    device->seen = evdev_seq;
-	    break;
 	}
-	close (fd);
+
+	if (!found)
+	    close (info.fd);
     }
 
     for (driver = evdev_drivers; driver; driver = driver->next)
 	for (device = driver->devices; device; device = device->next)
-	    if (device->seen == old_seq) {
+	    if (device->seen == (evdev_seq - 1)) {
 		device->callback(device->pInfo->dev, DEVICE_OFF);
 
 		if (device->device)
@@ -282,3 +439,27 @@ evdevNewDriver (evdevDriverPtr driver)
     driver->configured = TRUE;
     return TRUE;
 }
+
+Bool
+evdevGetBits (int fd, evdevBitsPtr bits)
+{
+#define get_bitmask(fd, which, where) \
+    if (ioctl(fd, EVIOCGBIT(which, sizeof (where)), where) < 0) {			\
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT %s failed: %s\n", #which, strerror(errno));	\
+        return FALSE;									\
+    }
+
+    get_bitmask (fd, 0, bits->ev);
+    get_bitmask (fd, EV_KEY, bits->key);
+    get_bitmask (fd, EV_REL, bits->rel);
+    get_bitmask (fd, EV_ABS, bits->abs);
+    get_bitmask (fd, EV_MSC, bits->msc);
+    get_bitmask (fd, EV_LED, bits->led);
+    get_bitmask (fd, EV_SND, bits->snd);
+    get_bitmask (fd, EV_FF, bits->ff);
+
+#undef get_bitmask
+
+    return TRUE;
+}
+

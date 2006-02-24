@@ -62,6 +62,7 @@
 
 #include <linux/input.h>
 #include <xf86Xinput.h>
+#include <errno.h>
 
 #define BITS_PER_LONG		(sizeof(long) * 8)
 #define NBITS(x)		((((x)-1)/BITS_PER_LONG)+1)
@@ -76,6 +77,7 @@
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <asm/types.h>
+#include <asm/bitops.h>
 
 #define EVIOCGSW(len)		_IOC(_IOC_READ, 'E', 0x1b, len)		/* get all switch states */
 
@@ -115,40 +117,64 @@
 
 #define EV_BUS_GSC		0x1A
 
-#define EVDEV_MAXBUTTONS	128
+#define EVDEV_MAXBUTTONS	96
 
-typedef struct _evdevState {
-    Bool	can_grab;
-    Bool	sync;
+typedef struct {
+    long	ev[NBITS(EV_MAX)];
+    long	key[NBITS(KEY_MAX)];
+    long	rel[NBITS(REL_MAX)];
+    long	abs[NBITS(ABS_MAX)];
+    long	msc[NBITS(MSC_MAX)];
+    long	led[NBITS(LED_MAX)];
+    long	snd[NBITS(SND_MAX)];
+    long	ff[NBITS(FF_MAX)];
+} evdevBitsRec, *evdevBitsPtr;
+
+typedef struct {
     int		real_buttons;
     int		buttons;
-    CARD8	buttonMap[EVDEV_MAXBUTTONS];
+    CARD8	map[EVDEV_MAXBUTTONS];
+    int		*state[EVDEV_MAXBUTTONS];
+} evdevBtnRec, *evdevBtnPtr;
 
-    int		mode;	/* Either Absolute or Relative. */
+typedef struct {
+    int		axes;
+    int		n; /* Which abs_v is current, and which is previous. */
+    int		v[2][ABS_MAX];
+    int		min[ABS_MAX];
+    int		max[ABS_MAX];
+    int		map[ABS_MAX];
+    Bool	scale;
+    int		scale_x;
+    int		scale_y;
+    int		screen; /* Screen number for this device. */
+} evdevAbsRec, *evdevAbsPtr;
 
-    int		abs_axes;
-    int		abs_n; /* Which abs_v is current, and which is previous. */
-    int		abs_v[2][ABS_MAX];
-    int		abs_min[ABS_MAX];
-    int		abs_max[ABS_MAX];
-    int		absMap[ABS_MAX];
-    Bool	abs_scale;
-    int		abs_scale_x;
-    int		abs_scale_y;
-    int		abs_screen; /* Screen number for this device. */
+typedef struct {
+    int		axes;
+    int		v[REL_MAX];
+    CARD8	btnMap[REL_MAX][2];
+    int		map[REL_MAX];
+} evdevRelRec, *evdevRelPtr;
 
-    int		rel_axes;
-    int		rel_v[REL_MAX];
-    CARD8	relToBtnMap[REL_MAX][2];
-    int		relMap[REL_MAX];
-
-    Bool	keys;
+typedef struct {
     char	*xkb_rules;
     char	*xkb_model;
     char	*xkb_layout;
     char	*xkb_variant;
     char	*xkb_options;
     XkbComponentNamesRec xkbnames;
+} evdevKeyRec, *evdevKeyPtr;
+
+typedef struct _evdevState {
+    Bool	can_grab;
+    Bool	sync;
+    int		mode;	/* Either Absolute or Relative. */
+
+    evdevBtnPtr	btn;
+    evdevAbsPtr	abs;
+    evdevRelPtr	rel;
+    evdevKeyPtr	key;
 } evdevStateRec, *evdevStatePtr;
 
 typedef struct _evdevDevice {
@@ -160,6 +186,9 @@ typedef struct _evdevDevice {
     InputInfoPtr	pInfo;
     int			(*callback)(DeviceIntPtr cb_data, int what);
 
+    evdevBitsRec	bits;
+    struct input_id	id;
+
     evdevStateRec	state;
 
     struct _evdevDevice *next;
@@ -169,6 +198,14 @@ typedef struct _evdevDriver {
     const char		*name;
     const char		*phys;
     const char		*device;
+
+    evdevBitsRec	all_bits;
+    evdevBitsRec	not_bits;
+    evdevBitsRec	any_bits;
+
+    struct input_id	id;
+
+    int			pass;
 
     InputDriverPtr	drv;
     IDevPtr		dev;
@@ -182,6 +219,7 @@ typedef struct _evdevDriver {
 int evdevGetFDForDevice (evdevDevicePtr driver);
 Bool evdevStart (InputDriverPtr drv);
 Bool evdevNewDriver (evdevDriverPtr driver);
+Bool evdevGetBits (int fd, evdevBitsPtr bits);
 
 int EvdevBtnInit (DeviceIntPtr device);
 int EvdevBtnOn (DeviceIntPtr device);

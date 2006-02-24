@@ -84,18 +84,18 @@ EvdevBtnInit (DeviceIntPtr device)
     CARD8 *map;
     int i;
 
-    if (!pEvdev->state.buttons)
+    if (!pEvdev->state.btn)
 	return Success;
 
-    map = Xcalloc (sizeof (CARD8) * (pEvdev->state.buttons + 1));
+    map = Xcalloc (sizeof (CARD8) * (pEvdev->state.btn->buttons + 1));
 
-    for (i = 0; i <= pEvdev->state.buttons; i++)
+    for (i = 0; i <= pEvdev->state.btn->buttons; i++)
         map[i] = i;
 
     xf86Msg(X_ERROR, "%s (%d): Registering %d buttons.\n", __FILE__, __LINE__,
-	    pEvdev->state.buttons);
-    if (!InitButtonClassDeviceStruct (device, pEvdev->state.buttons, map)) {
-	pEvdev->state.buttons = 0;
+	    pEvdev->state.btn->buttons);
+    if (!InitButtonClassDeviceStruct (device, pEvdev->state.btn->buttons, map)) {
+	pEvdev->state.btn->buttons = 0;
 
         return !Success;
     }
@@ -112,11 +112,11 @@ EvdevBtnOn (DeviceIntPtr device)
     evdevDevicePtr pEvdev = pInfo->private;
     int i, blocked;
 
-    if (!pEvdev->state.buttons)
+    if (!pEvdev->state.btn)
 	return Success;
 
     blocked = xf86BlockSIGIO ();
-    for (i = 1; i <= pEvdev->state.buttons; i++)
+    for (i = 1; i <= pEvdev->state.btn->buttons; i++)
 	xf86PostButtonEvent (device, 0, i, 0, 0, 0);
     xf86UnblockSIGIO (blocked);
 
@@ -136,42 +136,47 @@ static void
 EvdevBtnCalcRemap (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
     int i, j, base, clear, fake;
 
-    for (i = 0, base = 1, fake = 0; i < pEvdev->state.real_buttons; i++) {
-	do {
-	    clear = 1;
-	    for (j = 0; j < REL_MAX; j++) {
-		if (pEvdev->state.relToBtnMap[j][0] == (i + base)) {
-		    base++;
-		    clear = 0;
-		    break;
+    for (i = 0, base = 1, fake = 0; i < pEvdev->state.btn->real_buttons; i++) {
+	if (state->rel) {
+	    do {
+		clear = 1;
+		for (j = 0; j < REL_MAX; j++) {
+		    if (state->rel->btnMap[j][0] == (i + base)) {
+			base++;
+			clear = 0;
+			break;
+		    }
+		    if (state->rel->btnMap[j][1] == (i + base)) {
+			base++;
+			clear = 0;
+			break;
+		    }
 		}
-		if (pEvdev->state.relToBtnMap[j][1] == (i + base)) {
-		    base++;
-		    clear = 0;
-		    break;
-		}
-	    }
-	} while (!clear);
+	    } while (!clear);
+	}
 
 	if (!fake && base != 1)
 	    fake = i;
 
-	pEvdev->state.buttons = pEvdev->state.buttonMap[i] = i + base;
+	state->btn->buttons = state->btn->map[i] = i + base;
     }
 
-    if (pEvdev->state.real_buttons >= 3 && (!fake || fake >= 3)) {
-	base = pEvdev->state.buttonMap[1];
-	pEvdev->state.buttonMap[1] = pEvdev->state.buttonMap[2];
-	pEvdev->state.buttonMap[2] = base;
+    if (state->btn->real_buttons >= 3 && (!fake || fake >= 3)) {
+	base = state->btn->map[1];
+	state->btn->map[1] = state->btn->map[2];
+	state->btn->map[2] = base;
     }
 
-    for (i = 0; i < REL_MAX; i++) {
-	if (pEvdev->state.relToBtnMap[i][0] > pEvdev->state.buttons)
-	    pEvdev->state.buttons = pEvdev->state.relToBtnMap[i][0];
-	if (pEvdev->state.relToBtnMap[i][1] > pEvdev->state.buttons)
-	    pEvdev->state.buttons = pEvdev->state.relToBtnMap[i][1];
+    if (state->rel) {
+	for (i = 0; i < REL_MAX; i++) {
+	    if (state->rel->btnMap[i][0] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][0];
+	    if (state->rel->btnMap[i][1] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][1];
+	}
     }
 }
 
@@ -180,30 +185,41 @@ int
 EvdevBtnNew(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
-    long key_bitmask[NBITS(KEY_MAX)];
-    int i;
+    evdevStatePtr state = &pEvdev->state;
+    int i, bit;
 
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_KEY, KEY_MAX), key_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return !Success;
-    }
+    state->btn = Xcalloc (sizeof (evdevBtnRec));
 
-    for (i = 0; i < (BTN_JOYSTICK - BTN_MOUSE); i++)
-	if (TestBit (BTN_MOUSE + i, key_bitmask))
-	    pEvdev->state.real_buttons = i + 1;
+    for (i = BTN_MISC; i < (KEY_OK - 1); i++)
+	if (TestBit (i, pEvdev->bits.key)) {
+	    bit = i;
+	    if ((bit >= BTN_MOUSE) && (bit < BTN_JOYSTICK)) {
+		bit -= BTN_MOUSE - BTN_MISC;
+	    } else if ((bit >= BTN_MISC) && (bit < BTN_MOUSE)) {
+		bit += BTN_MOUSE - BTN_MISC;
+	    }
+	    bit -= BTN_MISC;
+	    state->btn->real_buttons = bit + 1;
+	}
 
-    if (pEvdev->state.real_buttons)
-        xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name, pEvdev->state.real_buttons);
+    if (state->btn->real_buttons)
+        xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name, state->btn->real_buttons);
 
     EvdevBtnCalcRemap (pInfo);
 
-    if (pEvdev->state.buttons)
-	xf86Msg(X_INFO, "%s: Configured %d mouse buttons\n", pInfo->name, pEvdev->state.buttons);
-    else
+    if (state->btn->buttons)
+	xf86Msg(X_INFO, "%s: Configured %d mouse buttons\n", pInfo->name, state->btn->buttons);
+    else {
+	Xfree (state->btn);
+	state->btn = NULL;
 	return !Success;
+    }
 
     pInfo->flags |= XI86_SEND_DRAG_EVENTS | XI86_CONFIGURED;
+    /*
+     * FIXME: Mouse may not be accurate.
+     * Check buttons to see if we're actually a joystick or something.
+     */
     pInfo->type_name = XI_MOUSE;
 
     return Success;
@@ -213,17 +229,23 @@ void
 EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
     int button;
 
-    if (!pEvdev->state.buttons)
+    if (!state->btn)
 	return;
 
-    if ((ev->code >= BTN_MOUSE) && (ev->code < BTN_JOYSTICK)) {
-	button = ev->code - BTN_MOUSE;
-	button = pEvdev->state.buttonMap[button];
+    button = ev->code - BTN_MISC;
 
-	xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
-    } else {
-	/* FIXME: Handle the non-mouse case. */
+    if ((ev->code >= BTN_MOUSE) && (ev->code < BTN_JOYSTICK)) {
+	button -= BTN_MOUSE - BTN_MISC;
+    } else if ((ev->code >= BTN_MISC) && (ev->code < BTN_MOUSE)) {
+	button += BTN_MOUSE - BTN_MISC;
     }
+
+    if (state->btn->state[button])
+	*state->btn->state[button] = ev->value;
+
+    button = state->btn->map[button];
+    xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
 }

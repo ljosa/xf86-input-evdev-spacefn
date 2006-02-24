@@ -160,40 +160,42 @@ EvdevAbsSyn (InputInfoPtr pInfo)
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     int i;
-    int n = state->abs_n & 1;
+    int n;
 
-    if (!state->abs_axes)
+    if (!state->abs)
 	return;
 
+    n = state->abs->n & 1;
+
     if (state->mode == Absolute) {
-	if ((state->abs_screen >= 0) && state->abs_axes >= 2) {
+	if ((state->abs->screen >= 0) && state->abs->axes >= 2) {
 	    int conv_x, conv_y;
 
 	    for (i = 0; i < 2; i++)
-		state->abs_v[n][i] = xf86ScaleAxis (state->abs_v[n][i], 0,
-			state->abs_scale_x,
-			state->abs_min[i], state->abs_max[i]);
+		state->abs->v[n][i] = xf86ScaleAxis (state->abs->v[n][i], 0,
+			state->abs->scale_x,
+			state->abs->min[i], state->abs->max[i]);
 
 
-	    EvdevConvert (pInfo, 0, 2, state->abs_v[n][0], state->abs_v[n][1],
+	    EvdevConvert (pInfo, 0, 2, state->abs->v[n][0], state->abs->v[n][1],
 		    0, 0, 0, 0, &conv_x, &conv_y);
-	    xf86XInputSetScreen (pInfo, state->abs_screen, conv_x, conv_y);
+	    xf86XInputSetScreen (pInfo, state->abs->screen, conv_x, conv_y);
 	}
 
 
-	xf86PostMotionEvent(pInfo->dev, 1, 0, state->abs_axes,
-	    state->abs_v[n][0],
-	    state->abs_v[n][1], state->abs_v[n][2], state->abs_v[n][3],
-	    state->abs_v[n][4], state->abs_v[n][5], state->abs_v[n][6],
-	    state->abs_v[n][7], state->abs_v[n][8], state->abs_v[n][9],
-	    state->abs_v[n][10], state->abs_v[n][11], state->abs_v[n][12],
-	    state->abs_v[n][13], state->abs_v[n][14], state->abs_v[n][15]);
+	xf86PostMotionEvent(pInfo->dev, 1, 0, state->abs->axes,
+	    state->abs->v[n][0],
+	    state->abs->v[n][1], state->abs->v[n][2], state->abs->v[n][3],
+	    state->abs->v[n][4], state->abs->v[n][5], state->abs->v[n][6],
+	    state->abs->v[n][7], state->abs->v[n][8], state->abs->v[n][9],
+	    state->abs->v[n][10], state->abs->v[n][11], state->abs->v[n][12],
+	    state->abs->v[n][13], state->abs->v[n][14], state->abs->v[n][15]);
     } else {
 	for (i = 0; i < 2; i++)
-	    state->rel_v[i] = state->abs_v[n][i] - state->abs_v[!n][i];
+	    state->rel->v[i] = state->abs->v[n][i] - state->abs->v[!n][i];
     }
 
-    state->abs_n++;
+    state->abs->n++;
 }
 
 void
@@ -201,17 +203,17 @@ EvdevAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int n = state->abs_n & 1;
+    int n = state->abs->n & 1;
     int map;
 
     if (ev->code >= ABS_MAX)
 	return;
 
-    map = pEvdev->state.absMap[ev->code];
+    map = pEvdev->state.abs->map[ev->code];
     if (map >= 0)
-	pEvdev->state.abs_v[n][map] += ev->value;
+	pEvdev->state.abs->v[n][map] += ev->value;
     else
-	pEvdev->state.abs_v[n][-map] -= ev->value;
+	pEvdev->state.abs->v[n][-map] -= ev->value;
 
     if (!pEvdev->state.sync)
 	EvdevAbsSyn (pInfo);
@@ -224,12 +226,12 @@ EvdevAbsInit (DeviceIntPtr device)
     evdevDevicePtr pEvdev = pInfo->private;
     int i;
 
-    if (!InitValuatorClassDeviceStruct(device, pEvdev->state.abs_axes,
+    if (!InitValuatorClassDeviceStruct(device, pEvdev->state.abs->axes,
                                        miPointerGetMotionEvents,
                                        miPointerGetMotionBufferSize(), 0))
         return !Success;
 
-    for (i = 0; i < pEvdev->state.abs_axes; i++) {
+    for (i = 0; i < pEvdev->state.abs->axes; i++) {
 	xf86InitValuatorAxisStruct(device, i, 0, 0, 0, 0, 1);
 	xf86InitValuatorDefaults(device, i);
     }
@@ -257,24 +259,19 @@ EvdevAbsNew(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    long abs_bitmask[NBITS(KEY_MAX)];
     struct input_absinfo absinfo;
     char *s, option[64];
     int i, j, k = 0, real_axes;
 
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_ABS, ABS_MAX), abs_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return !Success;
-    }
-
     real_axes = 0;
     for (i = 0; i < ABS_MAX; i++)
-	if (TestBit (i, abs_bitmask))
+	if (TestBit (i, pEvdev->bits.abs))
 	    real_axes++;
 
     if (!real_axes)
 	return !Success;
+
+    state->abs = Xcalloc (sizeof (evdevAbsRec));
 
     xf86Msg(X_INFO, "%s: Found %d absolute axes.\n", pInfo->name, real_axes);
     xf86Msg(X_INFO, "%s: Configuring as pointer.\n", pInfo->name);
@@ -284,15 +281,15 @@ EvdevAbsNew(InputInfoPtr pInfo)
     pInfo->conversion_proc = EvdevConvert;
 
     for (i = 0, j = 0; i < ABS_MAX; i++) {
-	if (!TestBit (i, abs_bitmask))
+	if (!TestBit (i, pEvdev->bits.abs))
 	    continue;
 
 	snprintf(option, sizeof(option), "%sAbsoluteAxisMap", axis_names[i]);
 	k = xf86SetIntOption(pInfo->options, option, -1);
 	if (k != -1)
-	    state->absMap[i] = k;
+	    state->abs->map[i] = k;
 	else
-	    state->absMap[i] = j;
+	    state->abs->map[i] = j;
 
 	if (k != -1)
 	    xf86Msg(X_CONFIG, "%s: %s: %d.\n", pInfo->name, option, k);
@@ -301,21 +298,21 @@ EvdevAbsNew(InputInfoPtr pInfo)
 	    xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
 	    return !Success;
 	}
-	state->abs_min[state->absMap[i]] = absinfo.minimum;
-	state->abs_max[state->absMap[i]] = absinfo.maximum;
+	state->abs->min[state->abs->map[i]] = absinfo.minimum;
+	state->abs->max[state->abs->map[i]] = absinfo.maximum;
 
 	j++;
     }
 
-    state->abs_axes = real_axes;
+    state->abs->axes = real_axes;
     for (i = 0; i < ABS_MAX; i++) {
-	if (state->absMap[i] > state->abs_axes)
-	    state->abs_axes = state->absMap[i];
+	if (state->abs->map[i] > state->abs->axes)
+	    state->abs->axes = state->abs->map[i];
     }
 
-    if (state->abs_axes != real_axes)
+    if (state->abs->axes != real_axes)
 	xf86Msg(X_CONFIG, "%s: Configuring %d absolute axes.\n", pInfo->name,
-		state->abs_axes);
+		state->abs->axes);
 
     s = xf86SetStrOption(pInfo->options, "Mode", "Absolute");
     if (!strcasecmp(s, "Absolute")) {
@@ -329,20 +326,20 @@ EvdevAbsNew(InputInfoPtr pInfo)
 	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
     }
 
-    if (TestBit (ABS_X, abs_bitmask) && TestBit (ABS_Y, abs_bitmask))
+    if (TestBit (ABS_X, pEvdev->bits.abs) && TestBit (ABS_Y, pEvdev->bits.abs))
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", 0);
     else
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", -1);
     if (k < screenInfo.numScreens) {
-	state->abs_screen = k;
+	state->abs->screen = k;
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d.\n", pInfo->name, k);
     } else {
-	state->abs_screen = 0;
+	state->abs->screen = 0;
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
     }
 
-    state->abs_scale_x = screenInfo.screens[state->abs_screen]->width;
-    state->abs_scale_y = screenInfo.screens[state->abs_screen]->height;
+    state->abs->scale_x = screenInfo.screens[state->abs->screen]->width;
+    state->abs->scale_y = screenInfo.screens[state->abs->screen]->height;
 
     return Success;
 }

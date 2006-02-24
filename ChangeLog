@@ -1,4 +1,87 @@
-2006-02-20  Zephaniah E. Hull,,,  <warp@aehallh.com>
+2006-02-24  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/Makefile.am:
+	Compile with -Wall now.
+	Add evdev.h to the sources so that make distcheck gets it.
+
+	* src/evdev.h:
+	Bugzilla #5943 <https://bugs.freedesktop.org/show_bug.cgi=5943>
+	Make sure we include errno.h.
+
+	Reduce EVDEV_MAXBUTTONS to 96.
+
+	Split up evdevStateRec into a struct with pointers to new structs
+	for btn, abs, rel, and key.
+
+	New structure type for handling the device capability bitmaps.
+
+	Add device bits and struct input_id to evdevDeviceRec.
+
+	Add matching device bits, struct input_id, and pass number to
+	evdevDriverRec.
+
+	Prototype for evdevGetBits from evdev_brain.c.
+
+	* src/evdev.c: (EvdevProc), (EvdevSwitchMode), (EvdevNew),
+	(EvdevParseBits), (EvdevParseBitOption), (EvdevCorePreInit):
+	Conversion for the evdevStateRec split.
+
+	Remove the errno.h include, it's in evdev.h for now.
+
+	Move the bit getting from the drivers to here, into evdevDeviceRec.
+
+	Fix a rare case of fd leakage.
+
+	Add several new (and somewhat ugly) device matching options:
+	<map>Bits: Where map is one of ev, key, rel, abs, msc, led, snd, or
+	ff.
+	In the format of '+0 +3 -1-2 ~5-10', requires bits 0 and 3 be set,
+	bits 1 and 2 to not be set, and at least one bit in the range of 5 to
+	10 be set.
+	bustype, vendor, product, and version: Simple integer options for
+	matching the struct device_id fields, must be 0 (the default) or the
+	exact value you wish to match against.
+	pass: Bounded to 0-3, devices are matched to the first matching entry
+	found, order for multiple matching entries in the same pass is
+	undefined, but it starts with pass 0 and goes to pass 3.
+
+	* src/evdev_abs.c: (EvdevAbsSyn), (EvdevAbsProcess),
+	(EvdevAbsInit), (EvdevAbsNew):
+	Adaptation for the evdevStateRec split and the change in capability
+	bitmap handling.
+
+	* src/evdev_brain.c: (MatchAll), (MatchNot), (MatchAny),
+	(MatchDriver), (MatchDevice), (evdevScanDevice), (FillDevInfo),
+	(evdevRescanDevices), (evdevGetBits):
+	Add evdevGetBits to fill the new evdevBitsRec struct type.
+
+	Lots of somewhat ugly code for matching by capability bits.
+
+	Split out of evdevRescanDevices to smaller handling functions.
+	The new design should be better if I decide to handle arbitrary Device
+	fields again.
+
+	* src/evdev_btn.c: (EvdevBtnInit), (EvdevBtnOn),
+	(EvdevBtnCalcRemap), (EvdevBtnNew), (EvdevBtnProcess):
+	Adaptation for the evdevStateRec split and the change in capability
+	bitmap handling.
+
+	Handle all buttons, no button compression at this time, however we
+	reorder things so that BTN_MOUSE comes before BTN_MISC, somewhat
+	evily.
+
+	Support for the new btn->state[] array of int pointers.
+
+	* src/evdev_key.c: (EvdevKeyInit), (SetXkbOption), (EvdevKeyNew):
+	Adaptation for the evdevStateRec split and the change in capability
+	bitmap handling.
+
+	* src/evdev_rel.c: (EvdevRelSyn), (EvdevRelProcess),
+	(EvdevRelInit), (EvdevRelNew):
+	Adaptation for the evdevStateRec split and the change in capability
+	bitmap handling.
+
+2006-02-20  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_btn.c: (EvdevBtnInit):
 	Bugzilla #5950 <https://bugs.freedesktop.org/show_bug.cgi=5950>

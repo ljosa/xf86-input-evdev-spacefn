@@ -62,7 +62,6 @@
 #include <X11/extensions/XIproto.h>
 
 #include <string.h>
-#include <errno.h>
 
 /* The libc wrapper just blows... linux/input.h must be included
  * before xf86_ansic.h and xf86_libc.h so we avoid defining ioctl
@@ -141,16 +140,19 @@ EvdevProc(DeviceIntPtr device, int what)
     InputInfoPtr pInfo = device->public.devicePrivate;
     evdevDevicePtr pEvdev = pInfo->private;
 
+    if (!pEvdev->device)
+	return BadRequest;
+
     switch (what)
     {
     case DEVICE_INIT:
-	if (pEvdev->state.abs_axes)
+	if (pEvdev->state.abs)
 	    EvdevAbsInit (device);
-	if (pEvdev->state.rel_axes)
+	if (pEvdev->state.rel)
 	    EvdevRelInit (device);
-	if (pEvdev->state.buttons)
+	if (pEvdev->state.btn)
 	    EvdevBtnInit (device);
-	if (pEvdev->state.keys)
+	if (pEvdev->state.key)
 	    EvdevKeyInit (device);
 	xf86Msg(X_INFO, "%s: Init\n", pInfo->name);
 	break;
@@ -184,13 +186,13 @@ EvdevProc(DeviceIntPtr device, int what)
 
 	device->public.on = TRUE;
 
-	if (pEvdev->state.abs_axes)
+	if (pEvdev->state.abs)
 	    EvdevAbsOn (device);
-	if (pEvdev->state.rel_axes)
+	if (pEvdev->state.rel)
 	    EvdevRelOn (device);
-	if (pEvdev->state.buttons)
+	if (pEvdev->state.btn)
 	    EvdevBtnOn (device);
-	if (pEvdev->state.keys)
+	if (pEvdev->state.key)
 	    EvdevKeyOn (device);
 	break;
 
@@ -205,13 +207,13 @@ EvdevProc(DeviceIntPtr device, int what)
 	    xf86RemoveSIGIOHandler (pInfo->fd);
 	    close (pInfo->fd);
 
-	    if (pEvdev->state.abs_axes)
+	    if (pEvdev->state.abs)
 		EvdevAbsOff (device);
-	    if (pEvdev->state.rel_axes)
+	    if (pEvdev->state.rel)
 		EvdevRelOff (device);
-	    if (pEvdev->state.buttons)
+	    if (pEvdev->state.btn)
 		EvdevBtnOff (device);
-	    if (pEvdev->state.keys)
+	    if (pEvdev->state.key)
 		EvdevKeyOff (device);
 	}
 
@@ -233,7 +235,7 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
     {
 	case Absolute:
 	case Relative:
-	    if (state->abs_axes)
+	    if (state->abs)
 		state->mode = mode;
 	    else
 		return !Success;
@@ -286,6 +288,14 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 	return 0;
     }
 
+    if (!evdevGetBits (pInfo->fd, &device->bits)) {
+	xf86Msg(X_ERROR, "%s: cannot load bits\n", pInfo->name);
+	pInfo->private = NULL;
+	close (pInfo->fd);
+	xf86DeleteInput (pInfo, 0);
+	return 0;
+    }
+
     if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
 	xf86Msg(X_INFO, "%s: Unable to grab device (%s).  Cowardly refusing to check use as keyboard.\n", pInfo->name, strerror(errno));
 	device->state.can_grab = 0;
@@ -293,6 +303,7 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 	device->state.can_grab = 1;
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
+
 
     /* XXX: Note, the order of these is important. */
     EvdevAbsNew (pInfo);
@@ -308,6 +319,7 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
     if (!(pInfo->flags & XI86_CONFIGURED)) {
         xf86Msg(X_ERROR, "%s: Don't know how to use device.\n", pInfo->name);
 	pInfo->private = NULL;
+	close (pInfo->fd);
 	xf86DeleteInput (pInfo, 0);
         return 0;
     }
@@ -322,10 +334,59 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
     return 1;
 }
 
+static void
+EvdevParseBits (char *in, long *out, int len)
+{
+    unsigned long v[2];
+    int n, i, max_bits = len * BITS_PER_LONG;
+
+    n = sscanf (in, "%lu-%lu", &v[0], &v[1]);
+    if (!n)
+	return;
+
+    if (v[0] >= max_bits)
+	return;
+
+    if (n == 2) {
+	if (v[1] >= max_bits)
+	    v[1] = max_bits - 1;
+
+	for (i = v[0]; i <= v[1]; i++)
+	    set_bit (i, out);
+    } else
+	set_bit (v[0], out);
+}
+
+static void
+EvdevParseBitOption (char *opt, long *all, long *not, long *any, int len)
+{
+    char *cur, *next;
+
+    next = opt - 1;
+    while (next) {
+	cur = next + 1;
+	if ((next = strchr(cur, ' ')))
+	    *next = '\0';
+
+	switch (cur[0]) {
+	    case '+':
+		EvdevParseBits (cur + 1, all, len);
+		break;
+	    case '-':
+		EvdevParseBits (cur + 1, not, len);
+		break;
+	    case '~':
+		EvdevParseBits (cur + 1, any, len);
+		break;
+	}
+    }
+}
+
 static InputInfoPtr
 EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     evdevDriverPtr pEvdev;
+    char *opt, *tmp;
 
     if (!(pEvdev = Xcalloc(sizeof(*pEvdev))))
         return NULL;
@@ -333,19 +394,47 @@ EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pEvdev->name = xf86CheckStrOption(dev->commonOptions, "Name", NULL);
     pEvdev->phys = xf86CheckStrOption(dev->commonOptions, "Phys", NULL);
     pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
-    xf86Msg(X_ERROR, "%s: name: %s, phys: %s, device: %s.\n", dev->identifier,
-	    pEvdev->name, pEvdev->phys, pEvdev->device);
+
+#define bitoption(field)							\
+    opt = xf86CheckStrOption(dev->commonOptions, #field "Bits", NULL);		\
+    if (opt) {									\
+	tmp = strdup(opt);							\
+	EvdevParseBitOption (tmp, pEvdev->all_bits.field,			\
+		pEvdev->not_bits.field,					\
+		pEvdev->any_bits.field,					\
+		sizeof(pEvdev->not_bits.field) / sizeof (long));		\
+	free (tmp);								\
+    }
+    bitoption(ev);
+    bitoption(key);
+    bitoption(rel);
+    bitoption(abs);
+    bitoption(msc);
+    bitoption(led);
+    bitoption(snd);
+    bitoption(ff);
+#undef bitoption
+
+    pEvdev->id.bustype = xf86CheckIntOption(dev->commonOptions, "bustype", 0);
+    pEvdev->id.vendor = xf86CheckIntOption(dev->commonOptions, "vendor", 0);
+    pEvdev->id.product = xf86CheckIntOption(dev->commonOptions, "product", 0);
+    pEvdev->id.version = xf86CheckIntOption(dev->commonOptions, "version", 0);
+
+    pEvdev->pass = xf86CheckIntOption(dev->commonOptions, "Pass", 0);
+    if (pEvdev->pass > 3)
+	pEvdev->pass = 3;
+    else if (pEvdev->pass < 0)
+	pEvdev->pass = 0;
+
+
+    xf86Msg(X_CONFIG, "%s: name: %s, phys: %s, device: %s, pass: %d.\n",
+	    dev->identifier, pEvdev->name, pEvdev->phys, pEvdev->device,
+	    pEvdev->pass);
 
     pEvdev->callback = EvdevNew;
 
     pEvdev->dev = dev;
     pEvdev->drv = drv;
-
-    if (!pEvdev->name && !pEvdev->phys && !pEvdev->device) {
-        xf86Msg(X_ERROR, "%s: No device identifiers specified.\n", dev->identifier);
-        xfree(pEvdev);
-        return NULL;
-    }
 
     if (!evdevStart (drv)) {
 	xf86Msg(X_ERROR, "%s: cannot start evdev brain.\n", dev->identifier);

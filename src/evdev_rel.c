@@ -114,24 +114,24 @@ EvdevRelSyn (InputInfoPtr pInfo)
     evdevStatePtr state = &pEvdev->state;
     int i, btn;
 
-    if (!state->rel_axes || state->mode != Relative)
+    if (!state->rel || state->mode != Relative)
 	return;
 
-    for (i = 0; i < state->rel_axes; i++) {
-	if ((state->rel_v[i] > 0) && (btn = state->relToBtnMap[i][0]))
-	    EvdevBtnPostFakeClicks (pInfo, btn, state->rel_v[i]);
-	else if ((state->rel_v[i] < 0) && (btn = state->relToBtnMap[i][1]))
-	    EvdevBtnPostFakeClicks (pInfo, btn, -state->rel_v[i]);
+    for (i = 0; i < state->rel->axes; i++) {
+	if ((state->rel->v[i] > 0) && (btn = state->rel->btnMap[i][0]))
+	    EvdevBtnPostFakeClicks (pInfo, btn, state->rel->v[i]);
+	else if ((state->rel->v[i] < 0) && (btn = state->rel->btnMap[i][1]))
+	    EvdevBtnPostFakeClicks (pInfo, btn, -state->rel->v[i]);
     }
 
-    xf86PostMotionEvent(pInfo->dev, 0, 0, state->rel_axes,
-	state->rel_v[0],  state->rel_v[1],  state->rel_v[2],  state->rel_v[3],
-	state->rel_v[4],  state->rel_v[5],  state->rel_v[6],  state->rel_v[7],
-	state->rel_v[8],  state->rel_v[9],  state->rel_v[10], state->rel_v[11],
-	state->rel_v[12], state->rel_v[13], state->rel_v[14], state->rel_v[15]);
+    xf86PostMotionEvent(pInfo->dev, 0, 0, state->rel->axes,
+	state->rel->v[0],  state->rel->v[1],  state->rel->v[2],  state->rel->v[3],
+	state->rel->v[4],  state->rel->v[5],  state->rel->v[6],  state->rel->v[7],
+	state->rel->v[8],  state->rel->v[9],  state->rel->v[10], state->rel->v[11],
+	state->rel->v[12], state->rel->v[13], state->rel->v[14], state->rel->v[15]);
 
     for (i = 0; i < REL_MAX; i++)
-	state->rel_v[i] = 0;
+	state->rel->v[i] = 0;
 }
 
 void
@@ -143,11 +143,11 @@ EvdevRelProcess (InputInfoPtr pInfo, struct input_event *ev)
     if (ev->code >= REL_MAX)
 	return;
 
-    map = pEvdev->state.relMap[ev->code];
+    map = pEvdev->state.rel->map[ev->code];
     if (map >= 0)
-	pEvdev->state.rel_v[map] += ev->value;
+	pEvdev->state.rel->v[map] += ev->value;
     else
-	pEvdev->state.rel_v[-map] -= ev->value;
+	pEvdev->state.rel->v[-map] -= ev->value;
 
     if (!pEvdev->state.sync)
 	EvdevRelSyn (pInfo);
@@ -160,12 +160,12 @@ EvdevRelInit (DeviceIntPtr device)
     evdevDevicePtr pEvdev = pInfo->private;
     int i;
 
-    if (!InitValuatorClassDeviceStruct(device, pEvdev->state.rel_axes,
+    if (!InitValuatorClassDeviceStruct(device, pEvdev->state.rel->axes,
                                        miPointerGetMotionEvents,
                                        miPointerGetMotionBufferSize(), 0))
         return !Success;
 
-    for (i = 0; i < pEvdev->state.rel_axes; i++) {
+    for (i = 0; i < pEvdev->state.rel->axes; i++) {
 	xf86InitValuatorAxisStruct(device, i, 0, 0, 0, 0, 1);
 	xf86InitValuatorDefaults(device, i);
     }
@@ -193,23 +193,18 @@ EvdevRelNew(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    long rel_bitmask[NBITS(KEY_MAX)];
     char *s, option[64];
     int i, j, k = 0, real_axes;
 
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_REL, REL_MAX), rel_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return !Success;
-    }
-
     real_axes = 0;
     for (i = 0; i < REL_MAX; i++)
-	if (TestBit (i, rel_bitmask))
+	if (TestBit (i, pEvdev->bits.rel))
 	    real_axes++;
 
-    if (!real_axes && (state->abs_axes < 2))
+    if (!real_axes && (!state->abs || state->abs->axes < 2))
 	return !Success;
+
+    state->rel = Xcalloc (sizeof (evdevRelRec));
 
     xf86Msg(X_INFO, "%s: Found %d relative axes.\n", pInfo->name,
 	    real_axes);
@@ -220,15 +215,15 @@ EvdevRelNew(InputInfoPtr pInfo)
     pInfo->conversion_proc = EvdevConvert;
 
     for (i = 0, j = 0; i < REL_MAX; i++) {
-	if (!TestBit (i, rel_bitmask))
+	if (!TestBit (i, pEvdev->bits.rel))
 	    continue;
 
 	snprintf(option, sizeof(option), "%sRelativeAxisMap", axis_names[i]);
 	s = xf86SetStrOption(pInfo->options, option, "0");
 	if (s && (k = strtol(s, NULL, 0)))
-	    state->relMap[i] = k;
+	    state->rel->map[i] = k;
 	else
-	    state->relMap[i] = j;
+	    state->rel->map[i] = j;
 
 	if (s && k)
 	    xf86Msg(X_CONFIG, "%s: %s: %d.\n", pInfo->name, option, k);
@@ -242,30 +237,30 @@ EvdevRelNew(InputInfoPtr pInfo)
 	else
 	    s = xf86SetStrOption(pInfo->options, option, "0 0");
 
-	k = state->relMap[i];
+	k = state->rel->map[i];
 
-	if (!s || (sscanf(s, "%d %d", &state->relToBtnMap[k][0],
-			&state->relToBtnMap[k][1]) != 2))
-	    state->relToBtnMap[k][0] = state->relToBtnMap[k][1] = 0;
+	if (!s || (sscanf(s, "%d %d", &state->rel->btnMap[k][0],
+			&state->rel->btnMap[k][1]) != 2))
+	    state->rel->btnMap[k][0] = state->rel->btnMap[k][1] = 0;
 
-	if (state->relToBtnMap[k][0] || state->relToBtnMap[k][1])
+	if (state->rel->btnMap[k][0] || state->rel->btnMap[k][1])
 	    xf86Msg(X_CONFIG, "%s: %s: %d %d.\n", pInfo->name, option,
-		    state->relToBtnMap[k][0], state->relToBtnMap[k][1]);
+		    state->rel->btnMap[k][0], state->rel->btnMap[k][1]);
 
 	j++;
     }
 
-    state->rel_axes = real_axes;
+    state->rel->axes = real_axes;
     for (i = 0; i < REL_MAX; i++)
-	if (state->relMap[i] > state->rel_axes)
-	    state->rel_axes = state->relMap[i];
+	if (state->rel->map[i] > state->rel->axes)
+	    state->rel->axes = state->rel->map[i];
 
-    if ((state->abs_axes >= 2) && (state->rel_axes < 2))
-	state->rel_axes = 2;
+    if (state->abs && (state->abs->axes >= 2) && (state->rel->axes < 2))
+	state->rel->axes = 2;
 
-    if (state->rel_axes != real_axes)
+    if (state->rel->axes != real_axes)
 	xf86Msg(X_CONFIG, "%s: Configuring %d relative axes.\n", pInfo->name,
-		state->rel_axes);
+		state->rel->axes);
 
     return Success;
 }
