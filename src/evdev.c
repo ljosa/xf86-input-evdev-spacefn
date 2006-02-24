@@ -62,6 +62,7 @@
 #include <X11/extensions/XIproto.h>
 
 #include <string.h>
+#include <errno.h>
 
 /* The libc wrapper just blows... linux/input.h must be included
  * before xf86_ansic.h and xf86_libc.h so we avoid defining ioctl
