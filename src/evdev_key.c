@@ -405,6 +405,35 @@ EvdevKeyOn (DeviceIntPtr device)
 int
 EvdevKeyOff (DeviceIntPtr device)
 {
+    unsigned int    i;
+    KeyClassRec     *keyc = device->key;
+    KeySym          *map = keyc->curKeySyms.map;
+
+    /*
+     * A bit of a hack, vaguely stolen from xf86-input-keyboard.
+     *
+     * Don't leave any keys in the down state if we are getting turned
+     * off, as they are likely to be released before we are turned back
+     * on.
+     * (For example, if the user switches VTs, or if we are unplugged.)
+     */
+    for (i = keyc->curKeySyms.minKeyCode, map = keyc->curKeySyms.map;
+	    i < keyc->curKeySyms.maxKeyCode;
+	    i++, map += keyc->curKeySyms.mapWidth)
+	if ((keyc->down[i >> 3] & (1 << (i & 7))))
+	{
+	    switch (*map) {
+		/* Don't release the lock keys */
+		case XK_Caps_Lock:
+		case XK_Shift_Lock:
+		case XK_Num_Lock:
+		case XK_Scroll_Lock:
+		case XK_Kana_Lock:
+		    break;
+		default:
+		    xf86PostKeyboardEvent(device, i, 0);
+	    }
+	}
     return Success;
 }
 

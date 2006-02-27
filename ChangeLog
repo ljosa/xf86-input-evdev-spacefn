@@ -1,4 +1,10 @@
-2006-02-27  Zephaniah E. Hull,,,  <warp@aehallh.com>
+2006-02-27  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/evdev_key.c: (EvdevKeyOff):
+	Don't leave keys in the down state when we get turned off.
+	(VT switching, getting unplugged, that sort of stuff.)
+
+2006-02-27  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev.c: (EvdevReadInput):
 	Better error reporting if the read fails.
