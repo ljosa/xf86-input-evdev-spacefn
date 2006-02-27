@@ -427,8 +427,11 @@ evdevNewDriver (evdevDriverPtr driver)
 {
     if (!evdev_alive)
 	return FALSE;
+    /* FIXME: Make this check valid given all the ways to look. */
+#if 0
     if (!(driver->name || driver->phys || driver->device))
 	return FALSE;
+#endif
     if (!driver->callback)
 	return FALSE;
 

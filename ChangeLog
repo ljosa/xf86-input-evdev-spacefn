@@ -1,3 +1,11 @@
+2006-02-27  Zephaniah E. Hull,,,  <warp@aehallh.com>
+
+	* src/evdev.c: (EvdevReadInput):
+	Better error reporting if the read fails.
+
+	* src/evdev_brain.c: (evdevNewDriver):
+	Work properly if we're defining entirely by capability maps.
+
 2006-02-24  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/Makefile.am:
