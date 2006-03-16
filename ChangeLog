@@ -1,3 +1,8 @@
+2006-03-16  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* man/evdev.man:
+	Update to include all the new device matching options.
+
 2006-02-27  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_key.c: (EvdevKeyOff):
