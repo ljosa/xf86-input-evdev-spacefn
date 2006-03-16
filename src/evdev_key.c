@@ -365,6 +365,12 @@ EvdevKeyNew (InputInfoPtr pInfo)
 	    keys = 1;
 	    break;
 	}
+    if (!keys)
+	for (i = KEY_OK; i <= KEY_MAX; i++)
+	    if (TestBit (i, pEvdev->bits.key)) {
+		keys = 1;
+		break;
+	    }
 
     if (!keys)
 	return !Success;
@@ -375,23 +381,17 @@ EvdevKeyNew (InputInfoPtr pInfo)
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
 
-    SetXkbOption (pInfo, "XkbKeymap", NULL, &state->key->xkbnames.keymap);
-    if (state->key->xkbnames.keymap) {
-	xf86Msg(X_CONFIG, "%s: XkbKeymap overrides all other XKB settings\n",
-		pInfo->name);
-    } else {
-	SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__, &state->key->xkb_rules);
-	SetXkbOption (pInfo, "XkbModel", "evdev", &state->key->xkb_model);
-	SetXkbOption (pInfo, "XkbLayout", "us", &state->key->xkb_layout);
-	SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
-	SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
+    SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__, &state->key->xkb_rules);
+    SetXkbOption (pInfo, "XkbModel", "evdev", &state->key->xkb_model);
+    SetXkbOption (pInfo, "XkbLayout", "us", &state->key->xkb_layout);
+    SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
+    SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
 
-	SetXkbOption (pInfo, "XkbKeycodes", NULL, &state->key->xkbnames.keycodes);
-	SetXkbOption (pInfo, "XkbTypes", NULL, &state->key->xkbnames.types);
-	SetXkbOption (pInfo, "XkbCompat", NULL, &state->key->xkbnames.compat);
-	SetXkbOption (pInfo, "XkbSymbols", NULL, &state->key->xkbnames.symbols);
-	SetXkbOption (pInfo, "XkbGeometry", NULL, &state->key->xkbnames.geometry);
-    }
+    SetXkbOption (pInfo, "XkbKeycodes", NULL, &state->key->xkbnames.keycodes);
+    SetXkbOption (pInfo, "XkbTypes", NULL, &state->key->xkbnames.types);
+    SetXkbOption (pInfo, "XkbCompat", NULL, &state->key->xkbnames.compat);
+    SetXkbOption (pInfo, "XkbSymbols", NULL, &state->key->xkbnames.symbols);
+    SetXkbOption (pInfo, "XkbGeometry", NULL, &state->key->xkbnames.geometry);
 
     return Success;
 }

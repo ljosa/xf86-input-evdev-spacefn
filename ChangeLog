@@ -1,3 +1,13 @@
+2006-03-16  Zephaniah E. Hull,,,  <warp@aehallh.com>
+
+	* src/evdev_brain.c: (MatchDriver):
+	Switch from my own globbing function to fnmatch.
+
+	* src/evdev_key.c: (EvdevKeyNew):
+	Detect keys numbered higher then buttons.
+	Remove the (depreciated since long before xkb support was added to
+	evdev) XkbKeymap option.
+
 2006-03-16  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* man/evdev.man:

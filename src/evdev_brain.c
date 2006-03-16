@@ -39,6 +39,7 @@
 #include "evdev.h"
 
 #include <xf86.h>
+#include <fnmatch.h>
 
 #ifndef SYSCALL
 #define SYSCALL(call) while(((call) == -1) && (errno == EINTR))
@@ -48,40 +49,6 @@ static Bool evdev_alive = FALSE;
 static InputInfoPtr evdev_pInfo = NULL;
 static evdevDriverPtr evdev_drivers = NULL;
 static int evdev_seq;
-
-static int
-glob_match(const char *pattern, const char *matchp)
-{
-    int i, j = 0, ret = 0;
-    if (!(pattern && matchp))
-	return (strlen(pattern) == strlen(matchp));
-
-    for (i = 0; matchp[i]; i++) {
-	if (pattern[j] == '\\')
-	    j++;
-	else if (pattern[j] == '*') {
-	    if (pattern[j + 1]) {
-		if (!glob_match(pattern+j+1,matchp+i))
-		    return 0;
-	    } else
-		return 0;
-	    continue;
-	} else if (pattern[j] == '?') {
-	    j++;
-	    continue;
-	}
-
-	if ((ret = (pattern[j] - matchp[i])))
-	    return ret;
-
-	j++;
-    }
-    if (!pattern[j] || ((pattern[j] == '*') && !pattern[j + 1]))
-	return 0;
-    else
-	return 1;
-}
-
 
 int
 evdevGetFDForDevice (evdevDevicePtr device)
@@ -160,11 +127,11 @@ MatchAny (long *dev, long *match, int len)
 static Bool
 MatchDriver (evdevDriverPtr driver, evdevDevInfoPtr info)
 {
-    if (driver->name && glob_match(driver->name, info->name))
+    if (driver->name && fnmatch(driver->name, info->name, 0))
 	return FALSE;
-    if (driver->phys && glob_match(driver->phys, info->phys))
+    if (driver->phys && fnmatch(driver->phys, info->phys, 0))
 	return FALSE;
-    if (driver->device && glob_match(driver->device, info->dev))
+    if (driver->device && fnmatch(driver->device, info->dev, 0))
 	return FALSE;
 
     if (driver->id.bustype && driver->id.bustype != info->id.bustype)
