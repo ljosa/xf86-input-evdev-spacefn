@@ -387,11 +387,13 @@ EvdevKeyNew (InputInfoPtr pInfo)
     SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
     SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
 
+    /*
     SetXkbOption (pInfo, "XkbKeycodes", NULL, &state->key->xkbnames.keycodes);
     SetXkbOption (pInfo, "XkbTypes", NULL, &state->key->xkbnames.types);
     SetXkbOption (pInfo, "XkbCompat", NULL, &state->key->xkbnames.compat);
     SetXkbOption (pInfo, "XkbSymbols", NULL, &state->key->xkbnames.symbols);
     SetXkbOption (pInfo, "XkbGeometry", NULL, &state->key->xkbnames.geometry);
+    */
 
     return Success;
 }

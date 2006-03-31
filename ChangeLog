@@ -1,4 +1,12 @@
-2006-03-16  Zephaniah E. Hull,,,  <warp@aehallh.com>
+2006-03-31  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/evdev_brain.c: (FillDevInfo), (evdevRescanDevices):
+	Fix the fd pointer leak reported by primer.  (Not the same patch.)
+	* src/evdev_key.c: (EvdevKeyNew):
+	Disable the undocumented xkb guts options in the key driver.
+	(Requested by Daniel Stone.)
+
+2006-03-16  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_brain.c: (MatchDriver):
 	Switch from my own globbing function to fnmatch.

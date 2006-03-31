@@ -74,7 +74,6 @@ evdevGetFDForDevice (evdevDevicePtr device)
 } while (0)
 
 typedef struct {
-    int			fd;
     evdevBitsRec	bits;
     char		name[256];
     char		phys[256];
@@ -260,7 +259,7 @@ FillDevInfo (char *dev, evdevDevInfoPtr info)
     }
 
     strncpy (info->dev, dev, sizeof(info->dev));
-    info->fd = fd;
+    close (fd);
 
     return TRUE;
 }
@@ -291,9 +290,6 @@ evdevRescanDevices (InputInfoPtr pInfo)
 		    break;
 	    }
 	}
-
-	if (!found)
-	    close (info.fd);
     }
 
     for (driver = evdev_drivers; driver; driver = driver->next)
