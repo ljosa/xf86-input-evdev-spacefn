@@ -1,3 +1,14 @@
+2006-04-06  Adam Jackson  <ajax@freedesktop.org>
+
+	* configure.ac:
+	* src/evdev.c:
+	* src/evdev.h:
+	* src/evdev_abs.c:
+	* src/evdev_btn.c:
+	* src/evdev_key.c:
+	* src/evdev_rel.c:
+	Unlibcwrap.  Bump server version requirement.  Bump to 1.1.0.
+
 2006-03-31  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev_brain.c: (FillDevInfo), (evdevRescanDevices):

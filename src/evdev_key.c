@@ -61,18 +61,12 @@
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
 
-/* The libc wrapper just blows... linux/input.h must be included
- * before xf86_ansic.h and xf86_libc.h so we avoid defining ioctl
- * twice. */
-
 #include <linux/input.h>
 
 #include <misc.h>
 #include <xf86.h>
 #include <xf86str.h>
 #include <xf86_OSproc.h>
-#include <xf86_ansic.h>
-#include <xf86_libc.h>
 #include <xf86Xinput.h>
 #include <exevents.h>
 #include <mipointer.h>

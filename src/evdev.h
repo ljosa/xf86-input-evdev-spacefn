@@ -63,6 +63,10 @@
 #include <linux/input.h>
 #include <xf86Xinput.h>
 #include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define BITS_PER_LONG		(sizeof(long) * 8)
 #define NBITS(x)		((((x)-1)/BITS_PER_LONG)+1)

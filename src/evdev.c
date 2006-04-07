@@ -63,9 +63,6 @@
 
 #include <string.h>
 
-/* The libc wrapper just blows... linux/input.h must be included
- * before xf86_ansic.h and xf86_libc.h so we avoid defining ioctl
- * twice. */
 #include "evdev.h"
 
 #include <xf86.h>
@@ -485,7 +482,7 @@ static XF86ModuleVersionInfo EvdevVersionRec =
     MODINFOSTRING1,
     MODINFOSTRING2,
     0, /* Missing from SDK: XORG_VERSION_CURRENT, */
-    1, 0, 0,
+    1, 1, 0,
     ABI_CLASS_XINPUT,
     ABI_XINPUT_VERSION,
     MOD_CLASS_XINPUT,
