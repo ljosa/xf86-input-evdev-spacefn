@@ -33,10 +33,9 @@
 #include "config.h"
 #endif
 
-#define HAVE_WRAPPER_DECLS
-#include "xf86_OSlib.h"
-
 #include "evdev.h"
+
+#include "xf86_OSlib.h"
 
 #include <xf86.h>
 #include <fnmatch.h>

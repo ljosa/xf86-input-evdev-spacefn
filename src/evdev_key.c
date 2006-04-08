@@ -57,6 +57,8 @@
 #include "config.h"
 #endif
 
+#include "evdev.h"
+
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
@@ -77,7 +79,6 @@
 #include <X11/extensions/XKBstr.h>
 #include <X11/extensions/XKBsrv.h>
 
-#include "evdev.h"
 
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 #define BITS_PER_LONG (sizeof(long) * 8)

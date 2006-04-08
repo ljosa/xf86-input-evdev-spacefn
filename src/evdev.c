@@ -68,6 +68,7 @@
 #include <xf86.h>
 
 #include <xf86Module.h>
+#include <mipointer.h>
 
 
 #include <xf86_OSproc.h>
@@ -83,7 +84,7 @@ static void
 EvdevReadInput(InputInfoPtr pInfo)
 {
     struct input_event ev;
-    int len, value;
+    int len;
 
     while (xf86WaitForInput (pInfo->fd, 0) > 0) {
         len = read(pInfo->fd, &ev, sizeof(ev));
@@ -95,16 +96,13 @@ EvdevReadInput(InputInfoPtr pInfo)
             break;
         }
 
-        /* Get the signed value, earlier kernels had this as unsigned */
-        value = ev.value;
-
         switch (ev.type) {
         case EV_REL:
-	    EvdevRelProcess (pInfo, &ev);
+	    EvdevAxesRelProcess (pInfo, &ev);
 	    break;
 
         case EV_ABS:
-	    EvdevAbsProcess (pInfo, &ev);
+	    EvdevAxesAbsProcess (pInfo, &ev);
             break;
 
         case EV_KEY:
@@ -116,8 +114,7 @@ EvdevReadInput(InputInfoPtr pInfo)
 
         case EV_SYN:
 	    if (ev.code == SYN_REPORT) {
-		EvdevRelSyn (pInfo);
-		EvdevAbsSyn (pInfo);
+		EvdevAxesSyn (pInfo);
 		/* EvdevBtnSyn (pInfo); */
 		/* EvdevKeySyn (pInfo); */
 	    }
@@ -144,10 +141,8 @@ EvdevProc(DeviceIntPtr device, int what)
     switch (what)
     {
     case DEVICE_INIT:
-	if (pEvdev->state.abs)
-	    EvdevAbsInit (device);
-	if (pEvdev->state.rel)
-	    EvdevRelInit (device);
+	if (pEvdev->state.axes)
+	    EvdevAxesInit (device);
 	if (pEvdev->state.btn)
 	    EvdevBtnInit (device);
 	if (pEvdev->state.key)
@@ -184,10 +179,8 @@ EvdevProc(DeviceIntPtr device, int what)
 
 	device->public.on = TRUE;
 
-	if (pEvdev->state.abs)
-	    EvdevAbsOn (device);
-	if (pEvdev->state.rel)
-	    EvdevRelOn (device);
+	if (pEvdev->state.axes)
+	    EvdevAxesOn (device);
 	if (pEvdev->state.btn)
 	    EvdevBtnOn (device);
 	if (pEvdev->state.key)
@@ -205,10 +198,8 @@ EvdevProc(DeviceIntPtr device, int what)
 	    xf86RemoveSIGIOHandler (pInfo->fd);
 	    close (pInfo->fd);
 
-	    if (pEvdev->state.abs)
-		EvdevAbsOff (device);
-	    if (pEvdev->state.rel)
-		EvdevRelOff (device);
+	    if (pEvdev->state.axes)
+		EvdevAxesOff (device);
 	    if (pEvdev->state.btn)
 		EvdevBtnOff (device);
 	    if (pEvdev->state.key)
@@ -304,8 +295,7 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 
 
     /* XXX: Note, the order of these is important. */
-    EvdevAbsNew (pInfo);
-    EvdevRelNew (pInfo);
+    EvdevAxesNew (pInfo);
     EvdevBtnNew (pInfo);
     if (device->state.can_grab)
 	EvdevKeyNew (pInfo);
@@ -447,6 +437,8 @@ EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     return NULL;
 }
+
+
 
 _X_EXPORT InputDriverRec EVDEV = {
     1,

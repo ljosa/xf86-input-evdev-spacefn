@@ -56,17 +56,21 @@
 #ifndef EVDEV_BRAIN_H_
 #define EVDEV_BRAIN_H_
 
+#define _XF86_ANSIC_H
+#define XF86_LIBC_H
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include <linux/input.h>
-#include <xf86Xinput.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <xf86Xinput.h>
 
 #define BITS_PER_LONG		(sizeof(long) * 8)
 #define NBITS(x)		((((x)-1)/BITS_PER_LONG)+1)
@@ -145,6 +149,7 @@ typedef struct {
     int		axes;
     int		n; /* Which abs_v is current, and which is previous. */
     int		v[2][ABS_MAX];
+    int		count;
     int		min[ABS_MAX];
     int		max[ABS_MAX];
     int		map[ABS_MAX];
@@ -157,9 +162,15 @@ typedef struct {
 typedef struct {
     int		axes;
     int		v[REL_MAX];
-    CARD8	btnMap[REL_MAX][2];
+    int		count;
     int		map[REL_MAX];
 } evdevRelRec, *evdevRelPtr;
+
+typedef struct {
+    int		axes;
+    int		v[ABS_MAX];
+    CARD8	btnMap[ABS_MAX][2];
+} evdevAxesRec, *evdevAxesPtr;
 
 typedef struct {
     char	*xkb_rules;
@@ -179,6 +190,7 @@ typedef struct _evdevState {
     evdevAbsPtr	abs;
     evdevRelPtr	rel;
     evdevKeyPtr	key;
+    evdevAxesPtr axes;
 } evdevStateRec, *evdevStatePtr;
 
 typedef struct _evdevDevice {
@@ -232,19 +244,13 @@ int EvdevBtnNew(InputInfoPtr pInfo);
 void EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev);
 void EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count);
 
-int EvdevAbsInit (DeviceIntPtr device);
-int EvdevAbsOn (DeviceIntPtr device);
-int EvdevAbsOff (DeviceIntPtr device);
-int EvdevAbsNew(InputInfoPtr pInfo);
-void EvdevAbsProcess (InputInfoPtr pInfo, struct input_event *ev);
-void EvdevAbsSyn (InputInfoPtr pInfo);
-
-int EvdevRelInit (DeviceIntPtr device);
-int EvdevRelOn (DeviceIntPtr device);
-int EvdevRelOff (DeviceIntPtr device);
-int EvdevRelNew(InputInfoPtr pInfo);
-void EvdevRelProcess (InputInfoPtr pInfo, struct input_event *ev);
-void EvdevRelSyn (InputInfoPtr pInfo);
+int EvdevAxesInit (DeviceIntPtr device);
+int EvdevAxesOn (DeviceIntPtr device);
+int EvdevAxesOff (DeviceIntPtr device);
+int EvdevAxesNew(InputInfoPtr pInfo);
+void EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev);
+void EvdevAxesRelProcess (InputInfoPtr pInfo, struct input_event *ev);
+void EvdevAxesSyn (InputInfoPtr pInfo);
 
 int EvdevKeyInit (DeviceIntPtr device);
 int EvdevKeyNew (InputInfoPtr pInfo);

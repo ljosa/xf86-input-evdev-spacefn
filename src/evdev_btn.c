@@ -33,6 +33,8 @@
 #include "config.h"
 #endif
 
+#include "evdev.h"
+
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
@@ -49,7 +51,6 @@
 
 #include <xf86Module.h>
 
-#include "evdev.h"
 
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
@@ -138,12 +139,12 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	    do {
 		clear = 1;
 		for (j = 0; j < REL_MAX; j++) {
-		    if (state->rel->btnMap[j][0] == (i + base)) {
+		    if (state->axes->btnMap[j][0] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
 		    }
-		    if (state->rel->btnMap[j][1] == (i + base)) {
+		    if (state->axes->btnMap[j][1] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
@@ -166,10 +167,10 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 
     if (state->rel) {
 	for (i = 0; i < REL_MAX; i++) {
-	    if (state->rel->btnMap[i][0] > state->btn->buttons)
-		state->btn->buttons = state->rel->btnMap[i][0];
-	    if (state->rel->btnMap[i][1] > state->btn->buttons)
-		state->btn->buttons = state->rel->btnMap[i][1];
+	    if (state->axes->btnMap[i][0] > state->btn->buttons)
+		state->btn->buttons = state->axes->btnMap[i][0];
+	    if (state->axes->btnMap[i][1] > state->btn->buttons)
+		state->btn->buttons = state->axes->btnMap[i][1];
 	}
     }
 }

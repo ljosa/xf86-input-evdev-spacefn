@@ -1,3 +1,41 @@
+2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/Makefile.am:
+	Remove evdev_abs.c and evdev_rel.c.
+	Added evdev_axes.c.
+	* src/evdev.c: (EvdevReadInput), (EvdevProc), (EvdevNew),
+	(EvdevPtrCtrlProc):
+	Change the calls to refer to EvdevAxes instead of Abs and Rel.
+	Include mipointer.h. (Fixes a compile error.)
+	Remove an unused variable from EvdevReadInput.
+	* src/evdev.h:
+	Removed evdev_abs.c and evdev_rel.c, added evdev_axes.c.
+	Added count to rel and abs.
+	Moved btnMap from rel to the new axes.
+	Shuffle some includes, and include stdarg.h.
+	* src/evdev_abs.c:
+	Removed.
+	* src/evdev_axes.c: (EvdevConvert), (EvdevAxesRealSyn),
+	(EvdevAxesAbsSyn), (EvdevAxesRelSyn), (EvdevAxesSyn),
+	(EvdevAxesAbsProcess), (EvdevAxesRelProcess), (EvdevAxesOn),
+	(EvdevAxesOff), (EvdevAxisAbsNew), (EvdevAxisRelNew),
+	(EvdevAxesNew), (EvdevPtrCtrlProc), (EvdevAxesInit):
+	New, a mix of rel and abs that should actually work in the
+	rel case.
+	* src/evdev_btn.c: (EvdevBtnCalcRemap):
+	Rearrange include order.
+	btnMap was moved from being part of rel to being part of axes.
+	* src/evdev_rel.c:
+	Removed.
+	* src/evdev_brain.c:
+	Rearrange include order.
+	* src/evdev_key.c:
+	Rearrange include order.
+
+	NOTE: This commit has been compile tested, not run tested.
+
+	I have some other changes to make before I can do more heavy testing.
+
 2006-04-06  Adam Jackson  <ajax@freedesktop.org>
 
 	* configure.ac:
