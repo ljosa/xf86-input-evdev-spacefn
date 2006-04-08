@@ -40,6 +40,9 @@
 #include <xf86.h>
 #include <fnmatch.h>
 
+#include "inotify.h"
+#include "inotify-syscalls.h"
+
 #ifndef SYSCALL
 #define SYSCALL(call) while(((call) == -1) && (errno == EINTR))
 #endif
@@ -48,6 +51,7 @@ static Bool evdev_alive = FALSE;
 static InputInfoPtr evdev_pInfo = NULL;
 static evdevDriverPtr evdev_drivers = NULL;
 static int evdev_seq;
+static int evdev_inotify;
 
 int
 evdevGetFDForDevice (evdevDevicePtr device)
@@ -309,18 +313,41 @@ evdevRescanDevices (InputInfoPtr pInfo)
 static void
 evdevReadInput (InputInfoPtr pInfo)
 {
-    /*
-     * XXX: Freezing the server for a moment is not really friendly.
-     * But we need to wait until udev has actually created the device.
-     */
-    usleep (500000);
-    evdevRescanDevices (pInfo);
+    int scan = 0, i, len;
+    char buf[4096];
+    struct inotify_event *event;
+
+    if (evdev_inotify) {
+	while ((len = read (pInfo->fd, buf, sizeof(buf))) >= 0) {
+	    for (i = 0; i < len; i += sizeof (struct inotify_event) + event->len) {
+		event = (struct inotify_event *) &buf[i];
+		if (!event->len)
+		    continue;
+		if (event->mask & IN_ISDIR)
+		    continue;
+		if (strncmp("event", event->name, 5))
+		    continue;
+		scan = 1;
+	    }
+	}
+
+	if (scan)
+	    evdevRescanDevices (pInfo);
+    } else {
+	/*
+	 * XXX: Freezing the server for a moment is not really friendly.
+	 * But we need to wait until udev has actually created the device.
+	 */
+	usleep (500000);
+	evdevRescanDevices (pInfo);
+    }
 }
 
 static int
 evdevControl(DeviceIntPtr pPointer, int what)
 {
     InputInfoPtr pInfo;
+    int i;
 
     pInfo = pPointer->public.devicePrivate;
 
@@ -336,10 +363,26 @@ evdevControl(DeviceIntPtr pPointer, int what)
 	 * And because the latter is useless to poll/select against.
 	 * FIXME: Get a patch in the kernel which fixes the latter.
 	 */
-	pInfo->fd = open ("/proc/bus/usb/devices", O_RDONLY);
-	if (pInfo->fd == -1) {
-	    xf86Msg(X_ERROR, "%s: cannot open /proc/bus/usb/devices.\n", pInfo->name);
-	    return BadRequest;
+	evdev_inotify = 1;
+	SYSCALL(pInfo->fd = inotify_init());
+	if (pInfo->fd < 0) {
+	    xf86Msg(X_ERROR, "%s: Unable to initialize inotify, using fallback. (errno: %d)\n", pInfo->name, errno);
+	    evdev_inotify = 0;
+	}
+	SYSCALL (i = inotify_add_watch (pInfo->fd, "/dev/input/", IN_CREATE | IN_DELETE));
+	if (i < 0) {
+	    xf86Msg(X_ERROR, "%s: Unable to initialize inotify, using fallback. (errno: %d)\n", pInfo->name, errno);
+	    evdev_inotify = 0;
+	    SYSCALL (close (pInfo->fd));
+	    pInfo->fd = -1;
+	}
+
+	if (!evdev_inotify) {
+	    SYSCALL (pInfo->fd = open ("/proc/bus/usb/devices", O_RDONLY));
+	    if (pInfo->fd < 0) {
+		xf86Msg(X_ERROR, "%s: cannot open /proc/bus/usb/devices.\n", pInfo->name);
+		return BadRequest;
+	    }
 	}
 	xf86FlushInput(pInfo->fd);
 	AddEnabledDevice(pInfo->fd);
@@ -351,7 +394,7 @@ evdevControl(DeviceIntPtr pPointer, int what)
     case DEVICE_CLOSE:
 	if (pInfo->fd != -1) {
 	    RemoveEnabledDevice(pInfo->fd);
-	    close (pInfo->fd);
+	    SYSCALL (close (pInfo->fd));
 	    pInfo->fd = -1;
 	}
 	pPointer->public.on = FALSE;

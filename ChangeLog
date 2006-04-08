@@ -1,5 +1,19 @@
 2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
 
+	* configure.ac:
+	Dropped the xorg-xserver 1.0.99.901 requirement.
+	(Things were tweaked to mostly work for older servers again.)
+	* src/evdev.c: (EvdevReadInput):
+	Close the device properly on read errer.
+	* src/evdev_brain.c: (evdevReadInput), (evdevControl):
+	Minimal inotify support, not ideal yet, but...
+	* src/inotify-syscalls.h:
+	Minimal inotify support, not ideal yet, but...
+	* src/inotify.h:
+	Minimal inotify support, not ideal yet, but...
+
+2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
+
 	* src/Makefile.am:
 	Remove evdev_abs.c and evdev_rel.c.
 	Added evdev_axes.c.

@@ -93,6 +93,11 @@ EvdevReadInput(InputInfoPtr pInfo)
              * event, so len != sizeof ev is an error. */
             xf86Msg(X_ERROR, "Read error: %s (%d, %d != %ld)\n",
 		    strerror(errno), errno, len, sizeof (ev));
+	    if (len < 0) {
+		evdevDevicePtr pEvdev = pInfo->private;
+		pEvdev->callback(pEvdev->pInfo->dev, DEVICE_OFF);
+		pEvdev->seen--;
+	    }
             break;
         }
 
