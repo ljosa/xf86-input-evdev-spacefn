@@ -1,5 +1,14 @@
 2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
 
+	* src/evdev.c: (EvdevCorePreInit):
+	Remove a debugging message.
+	* src/evdev_axes.c: (EvdevAxesNew), (EvdevAxesInit):
+	Actually, well, _work_.
+	Note, abs support still segfaults, I'll debug it after I've slept.
+	But I should get it tomorrow.
+
+2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
+
 	* configure.ac:
 	Dropped the xorg-xserver 1.0.99.901 requirement.
 	(Things were tweaked to mostly work for older servers again.)

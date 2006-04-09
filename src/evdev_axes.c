@@ -485,11 +485,19 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
 int
 EvdevAxesNew (InputInfoPtr pInfo)
 {
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
     int ret = Success;
+
+    state->axes = Xcalloc (sizeof (evdevAxesRec));
     if (EvdevAxisAbsNew(pInfo) != Success)
 	ret = !Success;
     if (EvdevAxisRelNew(pInfo) != Success)
 	ret = !Success;
+    if (!state->abs && !state->rel) {
+	Xfree (state->axes);
+	state->axes = NULL;
+    }
 
     return ret;
 }
@@ -511,9 +519,13 @@ EvdevAxesInit (DeviceIntPtr device)
 
     if (state->abs && state->abs->axes > axes)
 	axes = state->abs->axes;
-    if (state->abs && state->rel->axes > axes)
+    if (state->rel && state->rel->axes > axes)
 	axes = state->rel->axes;
 
+    state->axes->axes = axes;
+
+    xf86Msg(X_CONFIG, "%s: %d valuators.\n", pInfo->name,
+	    axes);
     if (!axes)
 	return Success;
 

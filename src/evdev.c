@@ -420,10 +420,6 @@ EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	pEvdev->pass = 0;
 
 
-    xf86Msg(X_CONFIG, "%s: name: %s, phys: %s, device: %s, pass: %d.\n",
-	    dev->identifier, pEvdev->name, pEvdev->phys, pEvdev->device,
-	    pEvdev->pass);
-
     pEvdev->callback = EvdevNew;
 
     pEvdev->dev = dev;
