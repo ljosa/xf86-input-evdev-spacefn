@@ -87,7 +87,7 @@ EvdevBtnInit (DeviceIntPtr device)
     for (i = 0; i <= pEvdev->state.btn->buttons; i++)
         map[i] = i;
 
-    xf86Msg(X_ERROR, "%s (%d): Registering %d buttons.\n", __FILE__, __LINE__,
+    xf86Msg(X_CONFIG, "%s (%d): Registering %d buttons.\n", __FILE__, __LINE__,
 	    pEvdev->state.btn->buttons);
     if (!InitButtonClassDeviceStruct (device, pEvdev->state.btn->buttons, map)) {
 	pEvdev->state.btn->buttons = 0;

@@ -153,9 +153,7 @@ typedef struct {
     int		min[ABS_MAX];
     int		max[ABS_MAX];
     int		map[ABS_MAX];
-    Bool	scale;
-    int		scale_x;
-    int		scale_y;
+    int		scale[2];
     int		screen; /* Screen number for this device. */
 } evdevAbsRec, *evdevAbsPtr;
 
@@ -169,7 +167,7 @@ typedef struct {
 typedef struct {
     int		axes;
     int		v[ABS_MAX];
-    CARD8	btnMap[ABS_MAX][2];
+    int		btnMap[ABS_MAX][2];
 } evdevAxesRec, *evdevAxesPtr;
 
 typedef struct {

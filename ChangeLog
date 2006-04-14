@@ -1,3 +1,20 @@
+2006-04-14  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* src/evdev.h:
+	evdevAbsRec: Remove the scale bool, rename scale_x and scale_y
+	to scale[2].
+	evdevAxesRec: Make btnMap an int array instead of a Card8 array.
+	* src/evdev_axes.c: (EvdevAxesAbsSyn), (EvdevAxesAbsProcess),
+	(EvdevAxisAbsNew), (EvdevAxesInit):
+	Make abs support and non-core stuff actually work.
+
+	Relative emulation for abs mode is still a bit broken, but that's far
+	less critical.
+
+	* src/evdev_btn.c: (EvdevBtnInit):
+	How many buttons we've registered is configuration information, not an
+	error message.
+
 2006-04-08  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* src/evdev.c: (EvdevCorePreInit):

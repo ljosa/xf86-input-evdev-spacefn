@@ -205,6 +205,7 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 	return;
 
     n = state->abs->n & 1;
+    state->abs->n++;
     i = 0;
 
     if (state->mode == Relative && state->abs->axes >= 2) {
@@ -215,8 +216,8 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 	int conv_x, conv_y;
 
 	for (i = 0; i < 2; i++)
-	    state->abs->v[n][i] = xf86ScaleAxis (state->abs->v[n][i], 0,
-		    state->abs->scale_x,
+	    state->axes->v[i] = xf86ScaleAxis (state->abs->v[n][i],
+		    0, state->abs->scale[i],
 		    state->abs->min[i], state->abs->max[i]);
 
 
@@ -269,11 +270,12 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
     if (ev->code >= ABS_MAX)
 	return;
 
+    /* FIXME: Handle inverted axes properly. */
     map = state->abs->map[ev->code];
     if (map >= 0)
-	state->abs->v[n][map] += ev->value;
+	state->abs->v[n][map] = ev->value;
     else
-	state->abs->v[n][-map] -= ev->value;
+	state->abs->v[n][-map] = ev->value;
 
     state->abs->count++;
 
@@ -399,8 +401,8 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
     }
 
-    state->abs->scale_x = screenInfo.screens[state->abs->screen]->width;
-    state->abs->scale_y = screenInfo.screens[state->abs->screen]->height;
+    state->abs->scale[0] = screenInfo.screens[state->abs->screen]->width;
+    state->abs->scale[1] = screenInfo.screens[state->abs->screen]->height;
 
     return Success;
 }
@@ -541,6 +543,8 @@ EvdevAxesInit (DeviceIntPtr device)
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
+
+    xf86MotionHistoryAllocate (pInfo);
 
     return Success;
 }
