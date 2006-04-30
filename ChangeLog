@@ -1,3 +1,12 @@
+2006-04-30  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* configure.ac:
+	xf86-input-evdev v1.1.2
+	* src/evdev_brain.c: (evdevControl):
+	Bugzilla #6734 <https://bugs.freedesktop.org/show_bug.cgi=6734>
+	Apply patch from Philip Langdale which causes us to make sure that
+	O_NONBLOCK is set on the inotify device.
+
 2006-04-15  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* configure.ac:

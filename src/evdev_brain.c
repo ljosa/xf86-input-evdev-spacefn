@@ -39,6 +39,7 @@
 
 #include <xf86.h>
 #include <fnmatch.h>
+#include <sys/poll.h>
 
 #include "inotify.h"
 #include "inotify-syscalls.h"
@@ -347,7 +348,7 @@ static int
 evdevControl(DeviceIntPtr pPointer, int what)
 {
     InputInfoPtr pInfo;
-    int i;
+    int i, flags;
 
     pInfo = pPointer->public.devicePrivate;
 
@@ -372,6 +373,19 @@ evdevControl(DeviceIntPtr pPointer, int what)
 	SYSCALL (i = inotify_add_watch (pInfo->fd, "/dev/input/", IN_CREATE | IN_DELETE));
 	if (i < 0) {
 	    xf86Msg(X_ERROR, "%s: Unable to initialize inotify, using fallback. (errno: %d)\n", pInfo->name, errno);
+	    evdev_inotify = 0;
+	    SYSCALL (close (pInfo->fd));
+	    pInfo->fd = -1;
+	}
+	if ((flags = fcntl(pInfo->fd, F_GETFL)) < 0) {
+	    xf86Msg(X_ERROR, "%s: Unable to NONBLOCK inotify, using fallback. "
+		    "(errno: %d)\n", pInfo->name, errno);
+	    evdev_inotify = 0;
+	    SYSCALL (close (pInfo->fd));
+	    pInfo->fd = -1;
+	} else if (fcntl(pInfo->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+	    xf86Msg(X_ERROR, "%s: Unable to NONBLOCK inotify, using fallback. "
+		    "(errno: %d)\n", pInfo->name, errno);
 	    evdev_inotify = 0;
 	    SYSCALL (close (pInfo->fd));
 	    pInfo->fd = -1;
