@@ -1,3 +1,37 @@
+2006-05-14  Zephaniah E. Hull  <warp@aehallh.com>
+
+	* man/evdev.man:
+	Tweak credits and references.
+	* src/evdev.c: (EvdevParseBits), (EvdevParseBitOption),
+	(EvdevCorePreInit):
+	Change the longs to unsigned longs in the bitfields.
+
+	Cleanup our includes.
+	* src/evdev.h:
+	Stop pulling in asm/types.h and asm/bitops.h.
+
+	Conditionally define the stuff that used to come from
+	the above, including our own test_bit, set_bit and clear_bit.
+
+	Change the longs to unsigned longs in the bitfields.
+	* src/evdev_axes.c: (EvdevAxisAbsNew), (EvdevAxisRelNew):
+	Change the longs to unsigned longs in the bitfields.
+
+	Use the bitop defines in evdev.h properly.
+	* src/evdev_brain.c: (MatchAll), (MatchNot), (MatchAny):
+	Change the longs to unsigned longs in the bitfields.
+	* src/evdev_btn.c: (EvdevBtnNew):
+	Change the longs to unsigned longs in the bitfields.
+
+	Use the bitop defines in evdev.h properly.
+	* src/evdev_key.c: (EvdevKeyNew):
+	Change the longs to unsigned longs in the bitfields.
+
+	Use the bitop defines in evdev.h properly.
+	* src/inotify-syscalls.h:
+	Add HPPA/HPPA64 entries. (Thanks to Fabio M. Di Nitto
+	<fabbione@ubuntu.com>)
+
 2006-04-30  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* configure.ac:

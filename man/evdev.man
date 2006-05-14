@@ -312,16 +312,11 @@ enhance the keyboard layout details.  Default: not set.
 .BI "Option \*qXkbOptions\*q \*q" options \*q
 specifies the XKB keyboard option components.  These can be used to
 enhance the keyboard behaviour.  Default: not set.
-.PP
-Some other XKB-related options are available, but they are incompatible
-with the ones listed above and are not recommended, so they are not
-documented here.
 
-.TP 7
+.PP
 .SH AUTHORS
-Kristian Høgsberg.
-.fi
 Zephaniah E. Hull.
+.fi
+Kristian Høgsberg.
 .SH "SEE ALSO"
-__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__),
-README.mouse.
+__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__).

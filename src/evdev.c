@@ -61,8 +61,6 @@
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
 
-#include <string.h>
-
 #include "evdev.h"
 
 #include <xf86.h>
@@ -328,7 +326,7 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 }
 
 static void
-EvdevParseBits (char *in, long *out, int len)
+EvdevParseBits (char *in, unsigned long *out, int len)
 {
     unsigned long v[2];
     int n, i, max_bits = len * BITS_PER_LONG;
@@ -351,7 +349,7 @@ EvdevParseBits (char *in, long *out, int len)
 }
 
 static void
-EvdevParseBitOption (char *opt, long *all, long *not, long *any, int len)
+EvdevParseBitOption (char *opt, unsigned long *all, unsigned long *not, unsigned long *any, int len)
 {
     char *cur, *next;
 
@@ -395,7 +393,7 @@ EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	EvdevParseBitOption (tmp, pEvdev->all_bits.field,			\
 		pEvdev->not_bits.field,					\
 		pEvdev->any_bits.field,					\
-		sizeof(pEvdev->not_bits.field) / sizeof (long));		\
+		sizeof(pEvdev->not_bits.field) / sizeof (unsigned long));	\
 	free (tmp);								\
     }
     bitoption(ev);

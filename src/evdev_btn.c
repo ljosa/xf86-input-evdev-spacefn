@@ -51,15 +51,6 @@
 
 #include <xf86Module.h>
 
-
-#define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
-
-#define BITS_PER_LONG (sizeof(long) * 8)
-#define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
-#define OFF(x)  ((x)%BITS_PER_LONG)
-#define LONG(x) ((x)/BITS_PER_LONG)
-#define TestBit(bit, array)    ((array[LONG(bit)] >> OFF(bit)) & 1)
-
 void
 EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count)
 {
@@ -186,7 +177,7 @@ EvdevBtnNew(InputInfoPtr pInfo)
     state->btn = Xcalloc (sizeof (evdevBtnRec));
 
     for (i = BTN_MISC; i < (KEY_OK - 1); i++)
-	if (TestBit (i, pEvdev->bits.key)) {
+	if (test_bit (i, pEvdev->bits.key)) {
 	    bit = i;
 	    if ((bit >= BTN_MOUSE) && (bit < BTN_JOYSTICK)) {
 		bit -= BTN_MOUSE - BTN_MISC;

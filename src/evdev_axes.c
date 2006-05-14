@@ -49,14 +49,6 @@
 
 #include <xf86_OSproc.h>
 
-#define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
-
-#define BITS_PER_LONG (sizeof(long) * 8)
-#define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
-#define OFF(x)  ((x)%BITS_PER_LONG)
-#define LONG(x) ((x)/BITS_PER_LONG)
-#define TestBit(bit, array)    ((array[LONG(bit)] >> OFF(bit)) & 1)
-
 static char *rel_axis_names[] = {
     "X",
     "Y",
@@ -328,7 +320,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 
     real_axes = 0;
     for (i = 0; i < ABS_MAX; i++)
-	if (TestBit (i, pEvdev->bits.abs))
+	if (test_bit (i, pEvdev->bits.abs))
 	    real_axes++;
 
     if (!real_axes)
@@ -344,7 +336,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
     pInfo->conversion_proc = EvdevConvert;
 
     for (i = 0, j = 0; i < ABS_MAX; i++) {
-	if (!TestBit (i, pEvdev->bits.abs))
+	if (!test_bit (i, pEvdev->bits.abs))
 	    continue;
 
 	snprintf(option, sizeof(option), "%sAbsoluteAxisMap", abs_axis_names[i]);
@@ -389,7 +381,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
     }
 
-    if (TestBit (ABS_X, pEvdev->bits.abs) && TestBit (ABS_Y, pEvdev->bits.abs))
+    if (test_bit (ABS_X, pEvdev->bits.abs) && test_bit (ABS_Y, pEvdev->bits.abs))
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", 0);
     else
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", -1);
@@ -417,7 +409,7 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
 
     real_axes = 0;
     for (i = 0; i < REL_MAX; i++)
-	if (TestBit (i, pEvdev->bits.rel))
+	if (test_bit (i, pEvdev->bits.rel))
 	    real_axes++;
 
     if (!real_axes && (!state->abs || state->abs->axes < 2))
@@ -434,7 +426,7 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
     pInfo->conversion_proc = EvdevConvert;
 
     for (i = 0, j = 0; i < REL_MAX; i++) {
-	if (!TestBit (i, pEvdev->bits.rel))
+	if (!test_bit (i, pEvdev->bits.rel))
 	    continue;
 
 	snprintf(option, sizeof(option), "%sRelativeAxisMap", rel_axis_names[i]);

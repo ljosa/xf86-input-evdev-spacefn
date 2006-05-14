@@ -86,7 +86,7 @@ typedef struct {
 } evdevDevInfoRec, *evdevDevInfoPtr;
 
 static Bool
-MatchAll (long *dev, long *match, int len)
+MatchAll (unsigned long *dev, unsigned long *match, int len)
 {
     int i;
 
@@ -98,7 +98,7 @@ MatchAll (long *dev, long *match, int len)
 }
 
 static Bool
-MatchNot (long *dev, long *match, int len)
+MatchNot (unsigned long *dev, unsigned long *match, int len)
 {
     int i;
 
@@ -110,7 +110,7 @@ MatchNot (long *dev, long *match, int len)
 }
 
 static Bool
-MatchAny (long *dev, long *match, int len)
+MatchAny (unsigned long *dev, unsigned long *match, int len)
 {
     int i, found = 0;
 

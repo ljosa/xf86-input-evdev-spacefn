@@ -72,20 +72,29 @@
 #include <stdarg.h>
 #include <xf86Xinput.h>
 
+#ifndef BITS_PER_LONG
 #define BITS_PER_LONG		(sizeof(long) * 8)
+#endif
+
 #define NBITS(x)		((((x)-1)/BITS_PER_LONG)+1)
-#define OFF(x) 			((x)%BITS_PER_LONG)
-#define LONG(x)			((x)/BITS_PER_LONG)
-#define BIT(x)			(1UL<<((x)%BITS_PER_LONG))
-#define test_bit(bit, array)    ((array[LONG(bit)] >> OFF(bit)) & 1)
+#define LONG(x)			((x) >> (sizeof(unsigned long) + 1))
+#define MASK(x)			(1 << ((x) & (sizeof (unsigned long) * 8 - 1)))
+
+#ifndef test_bit
+#define test_bit(bit, array)	(array[LONG(bit)] & MASK(bit))
+#endif
+#ifndef set_bit
+#define set_bit(bit, array)	(array[LONG(bit)] |= MASK(bit))
+#endif
+#ifndef clear_bit
+#define clear_bit(bit, array)	(array[LONG(bit)] &= ~MASK(bit))
+#endif
 
 /* 2.4 compatibility */
 #ifndef EVIOCGSW
 
 #include <sys/time.h>
 #include <sys/ioctl.h>
-#include <asm/types.h>
-#include <asm/bitops.h>
 
 #define EVIOCGSW(len)		_IOC(_IOC_READ, 'E', 0x1b, len)		/* get all switch states */
 
@@ -128,14 +137,14 @@
 #define EVDEV_MAXBUTTONS	96
 
 typedef struct {
-    long	ev[NBITS(EV_MAX)];
-    long	key[NBITS(KEY_MAX)];
-    long	rel[NBITS(REL_MAX)];
-    long	abs[NBITS(ABS_MAX)];
-    long	msc[NBITS(MSC_MAX)];
-    long	led[NBITS(LED_MAX)];
-    long	snd[NBITS(SND_MAX)];
-    long	ff[NBITS(FF_MAX)];
+    unsigned long	ev[NBITS(EV_MAX)];
+    unsigned long	key[NBITS(KEY_MAX)];
+    unsigned long	rel[NBITS(REL_MAX)];
+    unsigned long	abs[NBITS(ABS_MAX)];
+    unsigned long	msc[NBITS(MSC_MAX)];
+    unsigned long	led[NBITS(LED_MAX)];
+    unsigned long	snd[NBITS(SND_MAX)];
+    unsigned long	ff[NBITS(FF_MAX)];
 } evdevBitsRec, *evdevBitsPtr;
 
 typedef struct {
