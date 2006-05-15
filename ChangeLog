@@ -1,3 +1,8 @@
+2006-05-15  Zephaniah E. Hull,,,  <warp@aehallh.com>
+
+	* src/evdev.h:
+	Hopefully fix the bitops stuff to actually _work_.
+
 2006-05-14  Zephaniah E. Hull  <warp@aehallh.com>
 
 	* man/evdev.man:

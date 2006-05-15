@@ -73,15 +73,15 @@
 #include <xf86Xinput.h>
 
 #ifndef BITS_PER_LONG
-#define BITS_PER_LONG		(sizeof(long) * 8)
+#define BITS_PER_LONG		(sizeof(unsigned long) * 8)
 #endif
 
 #define NBITS(x)		((((x)-1)/BITS_PER_LONG)+1)
-#define LONG(x)			((x) >> (sizeof(unsigned long) + 1))
-#define MASK(x)			(1 << ((x) & (sizeof (unsigned long) * 8 - 1)))
+#define LONG(x)			((x)/BITS_PER_LONG)
+#define MASK(x)			(1UL << ((x) & (BITS_PER_LONG - 1)))
 
 #ifndef test_bit
-#define test_bit(bit, array)	(array[LONG(bit)] & MASK(bit))
+#define test_bit(bit, array)	(!!(array[LONG(bit)] & MASK(bit)))
 #endif
 #ifndef set_bit
 #define set_bit(bit, array)	(array[LONG(bit)] |= MASK(bit))
