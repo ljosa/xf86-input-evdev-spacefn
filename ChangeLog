@@ -1,3 +1,8 @@
+2006-06-02  Adam Jackson  <ajax@freedesktop.org>
+
+	* src/evdev_axes.c:
+	Fix an obvious bogon to avoid crashing on absolute axis setup.
+
 2006-05-15  Zephaniah E. Hull,,,  <warp@aehallh.com>
 
 	* src/evdev.h:

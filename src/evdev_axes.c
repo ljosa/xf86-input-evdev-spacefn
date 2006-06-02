@@ -385,7 +385,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", 0);
     else
 	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", -1);
-    if (k < screenInfo.numScreens) {
+    if (k < screenInfo.numScreens && k >= 0) {
 	state->abs->screen = k;
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d.\n", pInfo->name, k);
     } else {
