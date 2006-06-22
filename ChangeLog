@@ -1,3 +1,8 @@
+2006-06-22  Adam Jackson  <ajax@freedesktop.org>
+
+	* src/inotify-syscalls.h:
+	MIPS support.  (Joshua Kinard)
+
 2006-06-02  Adam Jackson  <ajax@freedesktop.org>
 
 	* src/evdev_axes.c:
