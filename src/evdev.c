@@ -200,6 +200,7 @@ EvdevProc(DeviceIntPtr device, int what)
 	    RemoveEnabledDevice (pInfo->fd);
 	    xf86RemoveSIGIOHandler (pInfo->fd);
 	    close (pInfo->fd);
+	    pInfo->fd = -1;
 
 	    if (pEvdev->state.axes)
 		EvdevAxesOff (device);
