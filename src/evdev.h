@@ -151,7 +151,7 @@ typedef struct {
     int		real_buttons;
     int		buttons;
     CARD8	map[EVDEV_MAXBUTTONS];
-    int		*state[EVDEV_MAXBUTTONS];
+    void	(*callback[EVDEV_MAXBUTTONS])(InputInfoPtr pInfo, int button, int value);
 } evdevBtnRec, *evdevBtnPtr;
 
 typedef struct {
@@ -164,6 +164,9 @@ typedef struct {
     int		map[ABS_MAX];
     int		scale[2];
     int		screen; /* Screen number for this device. */
+    Bool	use_touch;
+    Bool	touch;
+    Bool	reset;
 } evdevAbsRec, *evdevAbsPtr;
 
 typedef struct {
@@ -247,14 +250,18 @@ Bool evdevGetBits (int fd, evdevBitsPtr bits);
 int EvdevBtnInit (DeviceIntPtr device);
 int EvdevBtnOn (DeviceIntPtr device);
 int EvdevBtnOff (DeviceIntPtr device);
-int EvdevBtnNew(InputInfoPtr pInfo);
+int EvdevBtnNew0(InputInfoPtr pInfo);
+int EvdevBtnNew1(InputInfoPtr pInfo);
 void EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev);
 void EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count);
+int EvdevBtnFind (InputInfoPtr pInfo, const char *button);
+int EvdevBtnExists (InputInfoPtr pInfo, int button);
 
 int EvdevAxesInit (DeviceIntPtr device);
 int EvdevAxesOn (DeviceIntPtr device);
 int EvdevAxesOff (DeviceIntPtr device);
-int EvdevAxesNew(InputInfoPtr pInfo);
+int EvdevAxesNew0(InputInfoPtr pInfo);
+int EvdevAxesNew1(InputInfoPtr pInfo);
 void EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev);
 void EvdevAxesRelProcess (InputInfoPtr pInfo, struct input_event *ev);
 void EvdevAxesSyn (InputInfoPtr pInfo);

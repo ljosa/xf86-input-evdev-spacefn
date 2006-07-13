@@ -136,6 +136,8 @@ static char *abs_axis_names[] = {
     NULL
 };
 
+static void EvdevAxesTouchCallback (InputInfoPtr pInfo, int button, int value);
+
 static Bool
 EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
 	     int v3, int v4, int v5, int *x, int *y)
@@ -149,7 +151,7 @@ EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
 }
 
 static void
-EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute)
+EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute, int skip_xy)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -163,27 +165,60 @@ EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute)
 	    EvdevBtnPostFakeClicks (pInfo, btn, -state->axes->v[i]);
     }
 
-    xf86PostMotionEvent(pInfo->dev, absolute, 0,
-	state->axes->axes,
-	axes->v[0x00], axes->v[0x01], axes->v[0x02], axes->v[0x03],
-	axes->v[0x04], axes->v[0x05], axes->v[0x06], axes->v[0x07],
-	axes->v[0x08], axes->v[0x09], axes->v[0x0a], axes->v[0x0b],
-	axes->v[0x0c], axes->v[0x0d], axes->v[0x0e], axes->v[0x0f],
-	axes->v[0x10], axes->v[0x11], axes->v[0x12], axes->v[0x13],
-	axes->v[0x14], axes->v[0x15], axes->v[0x16], axes->v[0x17],
-	axes->v[0x18], axes->v[0x19], axes->v[0x1a], axes->v[0x1b],
-	axes->v[0x1c], axes->v[0x1d], axes->v[0x1e], axes->v[0x1f],
-	axes->v[0x20], axes->v[0x21], axes->v[0x22], axes->v[0x23],
-	axes->v[0x24], axes->v[0x25], axes->v[0x26], axes->v[0x27],
-	axes->v[0x28], axes->v[0x29], axes->v[0x2a], axes->v[0x2b],
-	axes->v[0x2c], axes->v[0x2d], axes->v[0x2e], axes->v[0x2f],
-	axes->v[0x30], axes->v[0x31], axes->v[0x32], axes->v[0x33],
-	axes->v[0x34], axes->v[0x35], axes->v[0x36], axes->v[0x37],
-	axes->v[0x38], axes->v[0x39], axes->v[0x3a], axes->v[0x3b],
-	axes->v[0x3c], axes->v[0x3d], axes->v[0x3e], axes->v[0x3f]);
+    /*
+    if (skip_xy && (axes->v[0] || axes->v[1]))
+	xf86Msg(X_INFO, "%s: skip_xy: %d, x: %d, y: %d.\n", pInfo->name, skip_xy, axes->v[0], axes->v[1]);
+	*/
 
-    for (i = 0; i < ABS_MAX; i++)
-	state->axes->v[i] = 0;
+    /* FIXME: This is a truly evil kluge. */
+    if (skip_xy == 1 && state->axes->axes >= 2)
+	xf86PostMotionEvent(pInfo->dev, absolute, 2,
+	    state->axes->axes - 2,
+	    axes->v[0x02], axes->v[0x03],
+	    axes->v[0x04], axes->v[0x05], axes->v[0x06], axes->v[0x07],
+	    axes->v[0x08], axes->v[0x09], axes->v[0x0a], axes->v[0x0b],
+	    axes->v[0x0c], axes->v[0x0d], axes->v[0x0e], axes->v[0x0f],
+	    axes->v[0x10], axes->v[0x11], axes->v[0x12], axes->v[0x13],
+	    axes->v[0x14], axes->v[0x15], axes->v[0x16], axes->v[0x17],
+	    axes->v[0x18], axes->v[0x19], axes->v[0x1a], axes->v[0x1b],
+	    axes->v[0x1c], axes->v[0x1d], axes->v[0x1e], axes->v[0x1f],
+	    axes->v[0x20], axes->v[0x21], axes->v[0x22], axes->v[0x23],
+	    axes->v[0x24], axes->v[0x25], axes->v[0x26], axes->v[0x27],
+	    axes->v[0x28], axes->v[0x29], axes->v[0x2a], axes->v[0x2b],
+	    axes->v[0x2c], axes->v[0x2d], axes->v[0x2e], axes->v[0x2f],
+	    axes->v[0x30], axes->v[0x31], axes->v[0x32], axes->v[0x33],
+	    axes->v[0x34], axes->v[0x35], axes->v[0x36], axes->v[0x37],
+	    axes->v[0x38], axes->v[0x39], axes->v[0x3a], axes->v[0x3b],
+	    axes->v[0x3c], axes->v[0x3d], axes->v[0x3e], axes->v[0x3f]);
+    else
+	xf86PostMotionEvent(pInfo->dev, absolute, 0,
+	    state->axes->axes,
+	    axes->v[0x00], axes->v[0x01], axes->v[0x02], axes->v[0x03],
+	    axes->v[0x04], axes->v[0x05], axes->v[0x06], axes->v[0x07],
+	    axes->v[0x08], axes->v[0x09], axes->v[0x0a], axes->v[0x0b],
+	    axes->v[0x0c], axes->v[0x0d], axes->v[0x0e], axes->v[0x0f],
+	    axes->v[0x10], axes->v[0x11], axes->v[0x12], axes->v[0x13],
+	    axes->v[0x14], axes->v[0x15], axes->v[0x16], axes->v[0x17],
+	    axes->v[0x18], axes->v[0x19], axes->v[0x1a], axes->v[0x1b],
+	    axes->v[0x1c], axes->v[0x1d], axes->v[0x1e], axes->v[0x1f],
+	    axes->v[0x20], axes->v[0x21], axes->v[0x22], axes->v[0x23],
+	    axes->v[0x24], axes->v[0x25], axes->v[0x26], axes->v[0x27],
+	    axes->v[0x28], axes->v[0x29], axes->v[0x2a], axes->v[0x2b],
+	    axes->v[0x2c], axes->v[0x2d], axes->v[0x2e], axes->v[0x2f],
+	    axes->v[0x30], axes->v[0x31], axes->v[0x32], axes->v[0x33],
+	    axes->v[0x34], axes->v[0x35], axes->v[0x36], axes->v[0x37],
+	    axes->v[0x38], axes->v[0x39], axes->v[0x3a], axes->v[0x3b],
+	    axes->v[0x3c], axes->v[0x3d], axes->v[0x3e], axes->v[0x3f]);
+
+    if (!skip_xy)
+	for (i = 0; i < ABS_MAX; i++)
+	    state->axes->v[i] = 0;
+    else if (skip_xy == 1)
+	for (i = 2; i < ABS_MAX; i++)
+	    state->axes->v[i] = 0;
+    else if (skip_xy == 2)
+	for (i = 0; i < 2; i++)
+	    state->axes->v[i] = 0;
 }
 
 static void
@@ -192,6 +227,7 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     int i, n;
+    Bool skip_xy = 0;
 
     if (!state->axes || !state->abs || !state->abs->count)
 	return;
@@ -201,10 +237,21 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
     i = 0;
 
     if (state->mode == Relative && state->abs->axes >= 2) {
-	for (i = 0; i < 2; i++)
-	    state->axes->v[i] = state->abs->v[n][i] - state->abs->v[!n][i];
-	EvdevAxesRealSyn (pInfo, 0);
-    } else if (state->mode == Absolute && state->abs->screen >= 0 && state->abs->axes >= 2) {
+	if (!state->abs->use_touch || state->abs->touch) {
+	    if (state->abs->reset) {
+		for (i = 0; i < 2; i++)
+		    state->axes->v[i] = 0;
+		xf86Msg(X_INFO, "%s: Resetting.\n", pInfo->name);
+		state->abs->reset = 0;
+	    } else
+		for (i = 0; i < 2; i++) {
+		    state->axes->v[i] = state->abs->v[n][i] - state->abs->v[!n][i];
+		    state->axes->v[i] /= 4;
+		}
+	    EvdevAxesRealSyn (pInfo, 0, 2);
+	}
+	skip_xy = 1;
+    } else if (state->mode == Absolute && state->abs->screen != -1 && state->abs->axes >= 2) {
 	int conv_x, conv_y;
 
 	for (i = 0; i < 2; i++)
@@ -221,7 +268,7 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
     for (; i < ABS_MAX; i++)
 	state->axes->v[i] = state->abs->v[n][i];
 
-    EvdevAxesRealSyn (pInfo, 1);
+    EvdevAxesRealSyn (pInfo, 1, skip_xy);
     state->abs->count = 0;
 }
 
@@ -240,7 +287,7 @@ EvdevAxesRelSyn (InputInfoPtr pInfo)
 	state->rel->v[i] = 0;
     }
 
-    EvdevAxesRealSyn (pInfo, 0);
+    EvdevAxesRealSyn (pInfo, 0, 0);
     state->rel->count = 0;
 }
 
@@ -310,12 +357,12 @@ EvdevAxesOff (DeviceIntPtr device)
 }
 
 static int
-EvdevAxisAbsNew(InputInfoPtr pInfo)
+EvdevAxisAbsNew0(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     struct input_absinfo absinfo;
-    char *s, option[64];
+    char option[64];
     int i, j, k = 0, real_axes;
 
     real_axes = 0;
@@ -365,9 +412,41 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 	    state->abs->axes = state->abs->map[i];
     }
 
-    if (state->abs->axes != real_axes)
-	xf86Msg(X_CONFIG, "%s: Configuring %d absolute axes.\n", pInfo->name,
-		state->abs->axes);
+    return Success;
+}
+
+static int
+EvdevAxisAbsNew1(InputInfoPtr pInfo)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    char *s;
+    int k = 0;
+
+    if (!state->abs)
+	return !Success;
+
+    xf86Msg(X_CONFIG, "%s: Configuring %d absolute axes.\n", pInfo->name,
+	    state->abs->axes);
+
+    {
+	int btn;
+
+	s = xf86SetStrOption(pInfo->options, "AbsoluteTouch", "DIGI_Touch");
+	btn = EvdevBtnFind (pInfo, s);
+	if (btn != -1) {
+	    if (EvdevBtnExists (pInfo, btn)) {
+		state->abs->use_touch = 1;
+		xf86Msg(X_ERROR, "%s: Button: %d.\n", pInfo->name, btn);
+		xf86Msg(X_ERROR, "%s: state->btn: %p.\n", pInfo->name, state->btn);
+		state->btn->callback[btn] = &EvdevAxesTouchCallback;
+	    } else {
+		xf86Msg(X_ERROR, "%s: AbsoluteTouch: '%s' does not exist.\n", pInfo->name, s);
+	    }
+	} else {
+	    xf86Msg(X_ERROR, "%s: AbsoluteTouch: '%s' is not a valid button name.\n", pInfo->name, s);
+	}
+    }
 
     s = xf86SetStrOption(pInfo->options, "Mode", "Absolute");
     if (!strcasecmp(s, "Absolute")) {
@@ -388,19 +467,20 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
     if (k < screenInfo.numScreens && k >= 0) {
 	state->abs->screen = k;
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d.\n", pInfo->name, k);
-    } else {
-	state->abs->screen = 0;
-	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
-    }
 
-    state->abs->scale[0] = screenInfo.screens[state->abs->screen]->width;
-    state->abs->scale[1] = screenInfo.screens[state->abs->screen]->height;
+	state->abs->scale[0] = screenInfo.screens[state->abs->screen]->width;
+	state->abs->scale[1] = screenInfo.screens[state->abs->screen]->height;
+    } else {
+	if (k != -1)
+	    xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
+	state->abs->screen = -1;
+    }
 
     return Success;
 }
 
 static int
-EvdevAxisRelNew(InputInfoPtr pInfo)
+EvdevAxisRelNew0(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -467,26 +547,57 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
 	    state->rel->axes = state->rel->map[i];
 
     if (state->abs && (state->abs->axes >= 2) && (state->rel->axes < 2))
-	state->rel->axes = 2;
+	state->rel->axes += 2;
 
-    if (state->rel->axes != real_axes)
-	xf86Msg(X_CONFIG, "%s: Configuring %d relative axes.\n", pInfo->name,
-		state->rel->axes);
+    return Success;
+}
+
+static int
+EvdevAxisRelNew1(InputInfoPtr pInfo)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+
+    if (!state->rel)
+	return !Success;
+
+    xf86Msg(X_CONFIG, "%s: Configuring %d relative axes.\n", pInfo->name,
+	    state->rel->axes);
 
     return Success;
 }
 
 int
-EvdevAxesNew (InputInfoPtr pInfo)
+EvdevAxesNew0 (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     int ret = Success;
 
     state->axes = Xcalloc (sizeof (evdevAxesRec));
-    if (EvdevAxisAbsNew(pInfo) != Success)
+    if (EvdevAxisAbsNew0(pInfo) != Success)
 	ret = !Success;
-    if (EvdevAxisRelNew(pInfo) != Success)
+    if (EvdevAxisRelNew0(pInfo) != Success)
+	ret = !Success;
+    if (!state->abs && !state->rel) {
+	Xfree (state->axes);
+	state->axes = NULL;
+    }
+
+    return ret;
+}
+
+int
+EvdevAxesNew1 (InputInfoPtr pInfo)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    int ret = Success;
+
+    state->axes = Xcalloc (sizeof (evdevAxesRec));
+    if (EvdevAxisAbsNew1(pInfo) != Success)
+	ret = !Success;
+    if (EvdevAxisRelNew1(pInfo) != Success)
 	ret = !Success;
     if (!state->abs && !state->rel) {
 	Xfree (state->axes);
@@ -541,3 +652,16 @@ EvdevAxesInit (DeviceIntPtr device)
     return Success;
 }
 
+static void
+EvdevAxesTouchCallback (InputInfoPtr pInfo, int button, int value)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+
+    xf86Msg(X_INFO, "%s: Touch callback; %d.\n", pInfo->name, value);
+    if (state->abs->use_touch) {
+	state->abs->touch = !!value;
+	if (value)
+	    state->abs->reset = 1;
+    }
+}
