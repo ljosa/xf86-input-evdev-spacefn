@@ -530,7 +530,7 @@ EvdevAxesInit (DeviceIntPtr device)
         return !Success;
 
     for (i = 0; i < axes; i++) {
-	xf86InitValuatorAxisStruct(device, i, 0, 0, 0, 0, 1);
+	xf86InitValuatorAxisStruct(device, i, 0, -1, 0, 0, 1);
 	xf86InitValuatorDefaults(device, i);
     }
 
