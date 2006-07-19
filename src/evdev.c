@@ -209,6 +209,9 @@ EvdevProc(DeviceIntPtr device, int what)
 		EvdevKeyOff (device);
 	}
 
+        if (what == DEVICE_CLOSE)
+            evdevRemoveDevice(pEvdev);
+
 	device->public.on = FALSE;
 	break;
     }
@@ -232,10 +235,12 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
 	    else
 		return !Success;
 	    break;
+#if 0
 	case SendCoreEvents:
 	case DontSendCoreEvents:
 	    xf86XInputSetSendCoreEvents (pInfo, (mode == SendCoreEvents));
 	    break;
+#endif
 	default:
 	    return !Success;
     }
