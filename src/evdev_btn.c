@@ -215,12 +215,12 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	    do {
 		clear = 1;
 		for (j = 0; j < REL_MAX; j++) {
-		    if (state->axes->btnMap[j][0] == (i + base)) {
+		    if (state->rel->btnMap[j][0] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
 		    }
-		    if (state->axes->btnMap[j][1] == (i + base)) {
+		    if (state->rel->btnMap[j][1] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
@@ -243,10 +243,10 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 
     if (state->rel) {
 	for (i = 0; i < REL_MAX; i++) {
-	    if (state->axes->btnMap[i][0] > state->btn->buttons)
-		state->btn->buttons = state->axes->btnMap[i][0];
-	    if (state->axes->btnMap[i][1] > state->btn->buttons)
-		state->btn->buttons = state->axes->btnMap[i][1];
+	    if (state->rel->btnMap[i][0] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][0];
+	    if (state->rel->btnMap[i][1] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][1];
 	}
     }
 }

@@ -174,12 +174,12 @@ typedef struct {
     int		v[REL_MAX];
     int		count;
     int		map[REL_MAX];
+    int		btnMap[REL_MAX][2];
 } evdevRelRec, *evdevRelPtr;
 
 typedef struct {
     int		axes;
     int		v[ABS_MAX];
-    int		btnMap[ABS_MAX][2];
 } evdevAxesRec, *evdevAxesPtr;
 
 typedef struct {

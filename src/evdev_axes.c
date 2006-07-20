@@ -156,14 +156,7 @@ EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute, int skip_xy)
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     evdevAxesPtr axes = state->axes;
-    int i, btn;
-
-    for (i = 0; i < state->axes->axes; i++) {
-	if ((state->axes->v[i] > 0) && (btn = state->axes->btnMap[i][0]))
-	    EvdevBtnPostFakeClicks (pInfo, btn, state->axes->v[i]);
-	else if ((state->axes->v[i] < 0) && (btn = state->axes->btnMap[i][1]))
-	    EvdevBtnPostFakeClicks (pInfo, btn, -state->axes->v[i]);
-    }
+    int i;
 
     /*
     if (skip_xy && (axes->v[0] || axes->v[1]))
@@ -226,15 +219,11 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i, n;
+    int i = 0, n = state->abs->n++ & 1;
     Bool skip_xy = 0;
 
     if (!state->axes || !state->abs || !state->abs->count)
 	return;
-
-    n = state->abs->n & 1;
-    state->abs->n++;
-    i = 0;
 
     if (state->mode == Relative && state->abs->axes >= 2) {
 	if (!state->abs->use_touch || state->abs->touch) {
@@ -277,18 +266,26 @@ EvdevAxesRelSyn (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i;
+    evdevRelPtr rel = state->rel;
+    int i, btn;
 
     if (!state->axes || !state->rel || !state->rel->count)
 	return;
 
     for (i = 0; i < REL_MAX; i++) {
-	state->axes->v[i] = state->rel->v[i];
-	state->rel->v[i] = 0;
+	if (rel->btnMap[i][0] || rel->btnMap[i][1]) {
+	    if ((rel->v[i] > 0) && (btn = rel->btnMap[i][0]))
+		EvdevBtnPostFakeClicks (pInfo, btn, rel->v[i]);
+	    else if ((rel->v[i] < 0) && (btn = rel->btnMap[i][1]))
+		EvdevBtnPostFakeClicks (pInfo, btn, -rel->v[i]);
+	}
+
+	state->axes->v[i] = rel->v[i];
+	rel->v[i] = 0;
     }
 
     EvdevAxesRealSyn (pInfo, 0, 0);
-    state->rel->count = 0;
+    rel->count = 0;
 }
 
 void
@@ -530,13 +527,13 @@ EvdevAxisRelNew0(InputInfoPtr pInfo)
 
 	k = state->rel->map[i];
 
-	if (!s || (sscanf(s, "%d %d", &state->axes->btnMap[k][0],
-			&state->axes->btnMap[k][1]) != 2))
-	    state->axes->btnMap[k][0] = state->axes->btnMap[k][1] = 0;
+	if (!s || (sscanf(s, "%d %d", &state->rel->btnMap[k][0],
+			&state->rel->btnMap[k][1]) != 2))
+	    state->rel->btnMap[k][0] = state->rel->btnMap[k][1] = 0;
 
-	if (state->axes->btnMap[k][0] || state->axes->btnMap[k][1])
+	if (state->rel->btnMap[k][0] || state->rel->btnMap[k][1])
 	    xf86Msg(X_CONFIG, "%s: %s: %d %d.\n", pInfo->name, option,
-		    state->axes->btnMap[k][0], state->axes->btnMap[k][1]);
+		    state->rel->btnMap[k][0], state->rel->btnMap[k][1]);
 
 	j++;
     }
