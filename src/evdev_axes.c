@@ -525,8 +525,7 @@ EvdevAxesInit (DeviceIntPtr device)
 
     if (!InitValuatorClassDeviceStruct(device, axes,
                                        miPointerGetMotionEvents,
-                                       miPointerGetMotionBufferSize(), 0,
-                                       axes))
+                                       miPointerGetMotionBufferSize(), 0))
         return !Success;
 
     for (i = 0; i < axes; i++) {
