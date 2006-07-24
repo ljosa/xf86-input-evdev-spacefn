@@ -156,8 +156,8 @@ typedef struct {
 
 typedef struct {
     int		axes;
-    int		n; /* Which abs_v is current, and which is previous. */
-    int		v[2][ABS_MAX];
+    int		v[ABS_MAX];
+    int		old_x, old_y;
     int		count;
     int		min[ABS_MAX];
     int		max[ABS_MAX];

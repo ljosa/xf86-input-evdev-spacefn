@@ -219,7 +219,7 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i = 0, n = state->abs->n++ & 1;
+    int i = 0;
     Bool skip_xy = 0;
 
     if (!state->axes || !state->abs || !state->abs->count)
@@ -232,11 +232,12 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 		    state->axes->v[i] = 0;
 		xf86Msg(X_INFO, "%s: Resetting.\n", pInfo->name);
 		state->abs->reset = 0;
-	    } else
-		for (i = 0; i < 2; i++) {
-		    state->axes->v[i] = state->abs->v[n][i] - state->abs->v[!n][i];
-		    state->axes->v[i] /= 4;
-		}
+	    } else {
+		state->axes->v[0] = state->abs->v[0] - state->abs->old_x;
+		state->axes->v[1] = state->abs->v[1] - state->abs->old_y;
+	    }
+	    state->abs->old_x = state->abs->v[0];
+	    state->abs->old_y = state->abs->v[1];
 	    EvdevAxesRealSyn (pInfo, 0, 2);
 	}
 	skip_xy = 1;
@@ -244,18 +245,18 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 	int conv_x, conv_y;
 
 	for (i = 0; i < 2; i++)
-	    state->axes->v[i] = xf86ScaleAxis (state->abs->v[n][i],
+	    state->axes->v[i] = xf86ScaleAxis (state->abs->v[i],
 		    0, state->abs->scale[i],
 		    state->abs->min[i], state->abs->max[i]);
 
 
-	EvdevConvert (pInfo, 0, 2, state->abs->v[n][0], state->abs->v[n][1],
+	EvdevConvert (pInfo, 0, 2, state->abs->v[0], state->abs->v[1],
 		0, 0, 0, 0, &conv_x, &conv_y);
 	xf86XInputSetScreen (pInfo, state->abs->screen, conv_x, conv_y);
     }
 
     for (; i < ABS_MAX; i++)
-	state->axes->v[i] = state->abs->v[n][i];
+	state->axes->v[i] = state->abs->v[i];
 
     EvdevAxesRealSyn (pInfo, 1, skip_xy);
     state->abs->count = 0;
@@ -300,7 +301,6 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int n = state->abs->n & 1;
     int map;
 
     if (ev->code >= ABS_MAX)
@@ -309,9 +309,9 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
     /* FIXME: Handle inverted axes properly. */
     map = state->abs->map[ev->code];
     if (map >= 0)
-	state->abs->v[n][map] = ev->value;
+	state->abs->v[map] = ev->value;
     else
-	state->abs->v[n][-map] = ev->value;
+	state->abs->v[-map] = ev->value;
 
     state->abs->count++;
 
