@@ -200,6 +200,7 @@ EvdevProc(DeviceIntPtr device, int what)
 	    RemoveEnabledDevice (pInfo->fd);
 	    xf86RemoveSIGIOHandler (pInfo->fd);
 	    close (pInfo->fd);
+	    pInfo->fd = -1;
 
 	    if (pEvdev->state.axes)
 		EvdevAxesOff (device);
@@ -230,6 +231,7 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
     {
 	case Absolute:
 	case Relative:
+	    xf86Msg(X_INFO, "%s: Switching mode to %d.\n", pInfo->name, mode);
 	    if (state->abs)
 		state->mode = mode;
 	    else
@@ -302,9 +304,13 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
     }
 
 
-    /* XXX: Note, the order of these is important. */
-    EvdevAxesNew (pInfo);
-    EvdevBtnNew (pInfo);
+    /* XXX: Note, the order of these is (maybe) still important. */
+    EvdevAxesNew0 (pInfo);
+    EvdevBtnNew0 (pInfo);
+
+    EvdevAxesNew1 (pInfo);
+    EvdevBtnNew1 (pInfo);
+
     if (device->state.can_grab)
 	EvdevKeyNew (pInfo);
 
