@@ -117,6 +117,12 @@
 #include <X11/extensions/XKB.h>
 #include <X11/extensions/XKBstr.h>
 
+/* XInput 1.4+ compatability. */
+#ifndef SendCoreEvents
+#define SendCoreEvents		59
+#define DontSendCoreEvents	60
+#endif
+
 
 /*
  * Switch events
@@ -264,7 +270,8 @@ int EvdevAxesNew0(InputInfoPtr pInfo);
 int EvdevAxesNew1(InputInfoPtr pInfo);
 void EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev);
 void EvdevAxesRelProcess (InputInfoPtr pInfo, struct input_event *ev);
-void EvdevAxesSyn (InputInfoPtr pInfo);
+void EvdevAxesSynRep (InputInfoPtr pInfo);
+void EvdevAxesSynCfg (InputInfoPtr pInfo);
 
 int EvdevKeyInit (DeviceIntPtr device);
 int EvdevKeyNew (InputInfoPtr pInfo);

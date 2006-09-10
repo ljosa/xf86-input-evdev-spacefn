@@ -117,9 +117,13 @@ EvdevReadInput(InputInfoPtr pInfo)
 
         case EV_SYN:
 	    if (ev.code == SYN_REPORT) {
-		EvdevAxesSyn (pInfo);
-		/* EvdevBtnSyn (pInfo); */
-		/* EvdevKeySyn (pInfo); */
+		EvdevAxesSynRep (pInfo);
+		/* EvdevBtnSynRep (pInfo); */
+		/* EvdevKeySynRep (pInfo); */
+	    } else if (ev.code == SYN_CONFIG) {
+		EvdevAxesSynCfg (pInfo);
+		/* EvdevBtnSynCfg (pInfo); */
+		/* EvdevKeySynCfg (pInfo); */
 	    }
             break;
         }

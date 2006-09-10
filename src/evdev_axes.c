@@ -215,7 +215,29 @@ EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute, int skip_xy)
 }
 
 static void
-EvdevAxesAbsSyn (InputInfoPtr pInfo)
+EvdevAxesAbsSynCfg (InputInfoPtr pInfo)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    struct input_absinfo absinfo;
+    int i;
+
+    for (i = 0; i < ABS_MAX; i++) {
+	if (!test_bit (i, pEvdev->bits.abs))
+	    continue;
+
+	if (ioctl (pInfo->fd, EVIOCGABS(i), &absinfo) < 0) {
+	    xf86Msg(X_ERROR, "ioctl EVIOCGABS (%d) failed: %s\n", i, strerror(errno));
+	    continue;
+	}
+	state->abs->min[state->abs->map[i]] = absinfo.minimum;
+	state->abs->max[state->abs->map[i]] = absinfo.maximum;
+    }
+
+}
+
+static void
+EvdevAxesAbsSynRep (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -263,7 +285,7 @@ EvdevAxesAbsSyn (InputInfoPtr pInfo)
 }
 
 static void
-EvdevAxesRelSyn (InputInfoPtr pInfo)
+EvdevAxesRelSynRep (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -290,10 +312,17 @@ EvdevAxesRelSyn (InputInfoPtr pInfo)
 }
 
 void
-EvdevAxesSyn (InputInfoPtr pInfo)
+EvdevAxesSynRep (InputInfoPtr pInfo)
 {
-    EvdevAxesAbsSyn (pInfo);
-    EvdevAxesRelSyn (pInfo);
+    EvdevAxesAbsSynRep (pInfo);
+    EvdevAxesRelSynRep (pInfo);
+}
+
+void
+EvdevAxesSynCfg (InputInfoPtr pInfo)
+{
+    EvdevAxesAbsSynCfg (pInfo);
+/*    EvdevAxesRelSynCfg (pInfo);*/
 }
 
 void
@@ -316,7 +345,7 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
     state->abs->count++;
 
     if (!state->sync)
-	EvdevAxesAbsSyn (pInfo);
+	EvdevAxesAbsSynRep (pInfo);
 }
 
 void
@@ -338,7 +367,7 @@ EvdevAxesRelProcess (InputInfoPtr pInfo, struct input_event *ev)
     state->rel->count++;
 
     if (!state->sync)
-	EvdevAxesRelSyn (pInfo);
+	EvdevAxesRelSynRep (pInfo);
 }
 
 int
@@ -637,7 +666,7 @@ EvdevAxesInit (DeviceIntPtr device)
         return !Success;
 
     for (i = 0; i < axes; i++) {
-	xf86InitValuatorAxisStruct(device, i, 0, 0, 0, 0, 1);
+	xf86InitValuatorAxisStruct(device, i, 0, -1, 0, 0, 1);
 	xf86InitValuatorDefaults(device, i);
     }
 
