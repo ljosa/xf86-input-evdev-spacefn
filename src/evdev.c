@@ -482,7 +482,7 @@ static XF86ModuleVersionInfo EvdevVersionRec =
     MODULEVENDORSTRING,
     MODINFOSTRING1,
     MODINFOSTRING2,
-    0, /* Missing from SDK: XORG_VERSION_CURRENT, */
+    XORG_VERSION_CURRENT,
     1, 1, 0,
     ABI_CLASS_XINPUT,
     ABI_XINPUT_VERSION,
