@@ -49,6 +49,8 @@
 
 #include <xf86_OSproc.h>
 
+#undef DEBUG
+
 static char *rel_axis_names[] = {
     "X",
     "Y",
@@ -158,10 +160,10 @@ EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute, int skip_xy)
     evdevAxesPtr axes = state->axes;
     int i;
 
-    /*
-    if (skip_xy && (axes->v[0] || axes->v[1]))
+#if DEBUG
+    if (skip_xy == 2 && (axes->v[0] || axes->v[1]))
 	xf86Msg(X_INFO, "%s: skip_xy: %d, x: %d, y: %d.\n", pInfo->name, skip_xy, axes->v[0], axes->v[1]);
-	*/
+#endif
 
     /* FIXME: This is a truly evil kluge. */
     if (skip_xy == 1 && state->axes->axes >= 2)
@@ -249,15 +251,24 @@ EvdevAxesAbsSynRep (InputInfoPtr pInfo)
 
     if (state->mode == Relative && state->abs->axes >= 2) {
 	if (!state->abs->use_touch || state->abs->touch) {
-	    if (state->abs->reset) {
-		for (i = 0; i < 2; i++)
-		    state->axes->v[i] = 0;
-		xf86Msg(X_INFO, "%s: Resetting.\n", pInfo->name);
-		state->abs->reset = 0;
-	    } else {
+	    if (state->abs->reset_x && state->abs->v[0] != state->abs->old_x) {
+		state->axes->v[0] = 0;
+		state->abs->reset_x = 0;
+#if DEBUG
+		xf86Msg(X_INFO, "%s: Resetting X.\n", pInfo->name);
+#endif
+	    } else
 		state->axes->v[0] = state->abs->v[0] - state->abs->old_x;
+
+	    if (state->abs->reset_y && state->abs->v[1] != state->abs->old_y) {
+		state->axes->v[1] = 0;
+		state->abs->reset_y = 0;
+#if DEBUG
+		xf86Msg(X_INFO, "%s: Resetting Y.\n", pInfo->name);
+#endif
+	    } else
 		state->axes->v[1] = state->abs->v[1] - state->abs->old_y;
-	    }
+
 	    state->abs->old_x = state->abs->v[0];
 	    state->abs->old_y = state->abs->v[1];
 	    EvdevAxesRealSyn (pInfo, 0, 2);
@@ -684,10 +695,12 @@ EvdevAxesTouchCallback (InputInfoPtr pInfo, int button, int value)
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
 
+#if DEBUG
     xf86Msg(X_INFO, "%s: Touch callback; %d.\n", pInfo->name, value);
+#endif
     if (state->abs->use_touch) {
 	state->abs->touch = !!value;
 	if (value)
-	    state->abs->reset = 1;
+	    state->abs->reset_x = state->abs->reset_y = 1;
     }
 }

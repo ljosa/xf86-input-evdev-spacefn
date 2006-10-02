@@ -172,7 +172,7 @@ typedef struct {
     int		screen; /* Screen number for this device. */
     Bool	use_touch;
     Bool	touch;
-    Bool	reset;
+    Bool	reset_x, reset_y;
 } evdevAbsRec, *evdevAbsPtr;
 
 typedef struct {
