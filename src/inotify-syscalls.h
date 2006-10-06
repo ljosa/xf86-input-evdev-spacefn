@@ -57,6 +57,10 @@
 #  define __NR_inotify_add_watch	5244
 #  define __NR_inotify_rm_watch		5245
 # endif
+#elif defined (__mc68000__)
+# define __NR_inotify_init		284
+# define __NR_inotify_add_watch		285
+# define __NR_inotify_rm_watch		286
 #else
 # error "Unsupported architecture!"
 #endif
