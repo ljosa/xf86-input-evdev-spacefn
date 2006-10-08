@@ -240,8 +240,11 @@ static KeySym map[] = {
 static void
 EvdevKbdBell (int percent, DeviceIntPtr device, pointer ctrl, int unused)
 {
+/* OS keyboard layer has been removed. */
+#if 0
     xf86SoundKbdBell(percent, ((KeybdCtrl*) ctrl)->bell_pitch,
 	    ((KeybdCtrl*) ctrl)->bell_duration);
+#endif
 }
 
 static void
