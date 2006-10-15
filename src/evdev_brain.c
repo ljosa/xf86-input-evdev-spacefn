@@ -472,6 +472,7 @@ evdevRemoveDevice (evdevDevicePtr pEvdev)
         for (device = &driver->devices; *device; device = &(*device)->next) {
             if (*device == pEvdev) {
                 *device = pEvdev->next;
+                xf86DeleteInput(pEvdev->pInfo, 0);
                 pEvdev->next = NULL;
                 return;
             }
