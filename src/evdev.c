@@ -273,7 +273,9 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
     pInfo->device_control = EvdevProc;
     pInfo->read_input = EvdevReadInput;
     pInfo->switch_mode = EvdevSwitchMode;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
     pInfo->motion_history_proc = xf86GetMotionEvents;
+#endif
     pInfo->conf_idev = driver->dev;
 
     pInfo->private = device;
