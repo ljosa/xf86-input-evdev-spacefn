@@ -51,6 +51,91 @@
 
 #include <xf86Module.h>
 
+static char *button_names[] = {
+    "MISC_0",
+    "MISC_1",
+    "MISC_2",
+    "MISC_3",
+    "MISC_4",
+    "MISC_5",
+    "MISC_6",
+    "MISC_7",
+    "MISC_8",
+    "MISC_9",
+    "MISC_10",
+    "MISC_11",
+    "MISC_12",
+    "MISC_13",
+    "MISC_14",
+    "MISC_15",
+    "MOUSE_LEFT",
+    "MOUSE_RIGHT",
+    "MOUSE_MIDDLE",
+    "MOUSE_SIDE",
+    "MOUSE_EXTRA",
+    "MOUSE_FORWARD",
+    "MOUSE_BACK",
+    "MOUSE_TASK",
+    "MOUSE_8",
+    "MOUSE_9",
+    "MOUSE_10",
+    "MOUSE_12",
+    "MOUSE_13",
+    "MOUSE_14",
+    "MOUSE_15",
+    "JOY_TRIGGER",
+    "JOY_THUMB",
+    "JOY_THUMB2",
+    "JOY_TOP",
+    "JOY_TOP2",
+    "JOY_PINKIE",
+    "JOY_BASE",
+    "JOY_BASE2",
+    "JOY_BASE3",
+    "JOY_BASE4",
+    "JOY_BASE5",
+    "JOY_BASE6",
+    "JOY_12",
+    "JOY_13",
+    "JOY_14",
+    "JOY_DEAD",
+    "GAME_A",
+    "GAME_B",
+    "GAME_C",
+    "GAME_X",
+    "GAME_Y",
+    "GAME_Z",
+    "GAME_TL",
+    "GAME_TR",
+    "GAME_TL2",
+    "GAME_TR2",
+    "GAME_SELECT",
+    "GAME_START",
+    "GAME_MODE",
+    "GAME_THUMBL",
+    "GAME_THUMBR",
+    "GAME_15",
+    "DIGI_TOOL_PEN",
+    "DIGI_TOOL_RUBBER",
+    "DIGI_TOOL_BRUSH",
+    "DIGI_TOOL_PENCIL",
+    "DIGI_TOOL_AIRBRUSH",
+    "DIGI_TOOL_FINGER",
+    "DIGI_TOOL_MOUSE",
+    "DIGI_TOOL_LENS",
+    "DIGI_8",
+    "DIGI_9",
+    "DIGI_TOUCH",
+    "DIGI_STYLUS",
+    "DIGI_STYLUS2",
+    "DIGI_TOOL_DOUBLETAP",
+    "DIGI_TOOL_TRIPLETAP",
+    "DIGI_15",
+    "WHEEL_GEAR_UP",
+    "WHEEL_GEAR_DOWN",
+    NULL
+};
+
 void
 EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count)
 {
@@ -130,12 +215,12 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	    do {
 		clear = 1;
 		for (j = 0; j < REL_MAX; j++) {
-		    if (state->axes->btnMap[j][0] == (i + base)) {
+		    if (state->rel->btnMap[j][0] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
 		    }
-		    if (state->axes->btnMap[j][1] == (i + base)) {
+		    if (state->rel->btnMap[j][1] == (i + base)) {
 			base++;
 			clear = 0;
 			break;
@@ -158,17 +243,17 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 
     if (state->rel) {
 	for (i = 0; i < REL_MAX; i++) {
-	    if (state->axes->btnMap[i][0] > state->btn->buttons)
-		state->btn->buttons = state->axes->btnMap[i][0];
-	    if (state->axes->btnMap[i][1] > state->btn->buttons)
-		state->btn->buttons = state->axes->btnMap[i][1];
+	    if (state->rel->btnMap[i][0] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][0];
+	    if (state->rel->btnMap[i][1] > state->btn->buttons)
+		state->btn->buttons = state->rel->btnMap[i][1];
 	}
     }
 }
 
 
 int
-EvdevBtnNew(InputInfoPtr pInfo)
+EvdevBtnNew0(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -190,6 +275,18 @@ EvdevBtnNew(InputInfoPtr pInfo)
 
     if (state->btn->real_buttons)
         xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name, state->btn->real_buttons);
+
+    return Success;
+}
+
+int
+EvdevBtnNew1(InputInfoPtr pInfo)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+
+    if (!state->btn)
+	return !Success;
 
     EvdevBtnCalcRemap (pInfo);
 
@@ -221,7 +318,7 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
     if (!state->btn)
 	return;
 
-    button = ev->code - BTN_MISC;
+    button = ev->code;
 
     if ((ev->code >= BTN_MOUSE) && (ev->code < BTN_JOYSTICK)) {
 	button -= BTN_MOUSE - BTN_MISC;
@@ -229,9 +326,42 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
 	button += BTN_MOUSE - BTN_MISC;
     }
 
-    if (state->btn->state[button])
-	*state->btn->state[button] = ev->value;
+    button -= BTN_MISC;
+
+    if (state->btn->callback[button])
+	state->btn->callback[button](pInfo, button, ev->value);
 
     button = state->btn->map[button];
     xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
+}
+
+int
+EvdevBtnFind (InputInfoPtr pInfo, const char *button)
+{
+    int i;
+
+    for (i = 0; button_names[i]; i++)
+	if (!strcasecmp(button, button_names[i]))
+	    return i + 1;
+
+    return -1;
+}
+
+int
+EvdevBtnExists (InputInfoPtr pInfo, int button)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+
+    button += BTN_MISC;
+
+    xf86Msg(X_INFO, "%s: Checking button %s (%d)\n", pInfo->name, button_names[button - BTN_MISC], button);
+
+    if ((button >= BTN_MOUSE) && (button < BTN_JOYSTICK)) {
+	button -= BTN_MOUSE - BTN_MISC;
+    } else if ((button >= BTN_MISC) && (button < BTN_MOUSE)) {
+	button += BTN_MOUSE - BTN_MISC;
+    }
+
+    xf86Msg(X_INFO, "%s: Checking bit %d\n", pInfo->name, button);
+    return test_bit(button, pEvdev->bits.key);
 }
