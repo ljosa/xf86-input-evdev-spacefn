@@ -214,6 +214,9 @@ EvdevProc(DeviceIntPtr device, int what)
 		EvdevKeyOff (device);
 	}
 
+        if (what == DEVICE_CLOSE)
+            evdevRemoveDevice(pEvdev);
+
 	device->public.on = FALSE;
 	break;
     }
@@ -238,10 +241,12 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
 	    else
 		return !Success;
 	    break;
+#if 0
 	case SendCoreEvents:
 	case DontSendCoreEvents:
 	    xf86XInputSetSendCoreEvents (pInfo, (mode == SendCoreEvents));
 	    break;
+#endif
 	default:
 	    return !Success;
     }
@@ -268,7 +273,9 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
     pInfo->device_control = EvdevProc;
     pInfo->read_input = EvdevReadInput;
     pInfo->switch_mode = EvdevSwitchMode;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
     pInfo->motion_history_proc = xf86GetMotionEvents;
+#endif
     pInfo->conf_idev = driver->dev;
 
     pInfo->private = device;

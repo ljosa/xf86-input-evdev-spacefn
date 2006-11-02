@@ -672,8 +672,14 @@ EvdevAxesInit (DeviceIntPtr device)
 	return Success;
 
     if (!InitValuatorClassDeviceStruct(device, axes,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 1
+                                       GetMotionHistory,
+                                       GetMotionHistorySize(),
+#else
                                        miPointerGetMotionEvents,
-                                       miPointerGetMotionBufferSize(), 0))
+                                       miPointerGetMotionBufferSize(),
+#endif
+                                       0))
         return !Success;
 
     for (i = 0; i < axes; i++) {
@@ -684,7 +690,9 @@ EvdevAxesInit (DeviceIntPtr device)
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
     xf86MotionHistoryAllocate (pInfo);
+#endif
 
     return Success;
 }

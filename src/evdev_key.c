@@ -238,10 +238,11 @@ static KeySym map[] = {
  * So use the system bell for now.
  */
 static void
-EvdevKbdBell (int percent, DeviceIntPtr device, pointer ctrl, int unused)
+EvdevKbdBell (int percent, DeviceIntPtr device, pointer arg, int unused)
 {
-    xf86SoundKbdBell(percent, ((KeybdCtrl*) ctrl)->bell_pitch,
-	    ((KeybdCtrl*) ctrl)->bell_duration);
+    KeybdCtrl *ctrl = arg;
+
+    xf86OSRingBell(percent, ctrl->bell_pitch, ctrl->bell_duration);
 }
 
 static void

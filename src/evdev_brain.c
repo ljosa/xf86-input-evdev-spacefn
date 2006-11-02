@@ -462,6 +462,24 @@ evdevNewDriver (evdevDriverPtr driver)
     return TRUE;
 }
 
+void
+evdevRemoveDevice (evdevDevicePtr pEvdev)
+{
+    evdevDriverPtr driver;
+    evdevDevicePtr *device;
+
+    for (driver = evdev_drivers; driver; driver = driver->next) {
+        for (device = &driver->devices; *device; device = &(*device)->next) {
+            if (*device == pEvdev) {
+                *device = pEvdev->next;
+                xf86DeleteInput(pEvdev->pInfo, 0);
+                pEvdev->next = NULL;
+                return;
+            }
+        }
+    }
+}
+
 Bool
 evdevGetBits (int fd, evdevBitsPtr bits)
 {
