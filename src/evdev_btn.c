@@ -133,6 +133,20 @@ static char *button_names[] = {
     "DIGI_15",
     "WHEEL_GEAR_UP",
     "WHEEL_GEAR_DOWN",
+    "WHEEL_2",
+    "WHEEL_3",
+    "WHEEL_4",
+    "WHEEL_5",
+    "WHEEL_6",
+    "WHEEL_7",
+    "WHEEL_8",
+    "WHEEL_9",
+    "WHEEL_10",
+    "WHEEL_11",
+    "WHEEL_12",
+    "WHEEL_13",
+    "WHEEL_14",
+    "WHEEL_15",
     NULL
 };
 
@@ -163,7 +177,7 @@ EvdevBtnInit (DeviceIntPtr device)
     for (i = 0; i <= pEvdev->state.btn->buttons; i++)
         map[i] = i;
 
-    xf86Msg(X_CONFIG, "%s (%d): Registering %d buttons.\n", __FILE__, __LINE__,
+    xf86Msg(X_CONFIG, "%s: Registering %d buttons.\n", pInfo->name,
 	    pEvdev->state.btn->buttons);
     if (!InitButtonClassDeviceStruct (device, pEvdev->state.btn->buttons, map)) {
 	pEvdev->state.btn->buttons = 0;
@@ -208,7 +222,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i, j, base, clear, fake;
+    int i, j, base, clear, fake, bit;
 
     for (i = 0, base = 1, fake = 0; i < pEvdev->state.btn->real_buttons; i++) {
 	if (state->rel) {
@@ -231,6 +245,25 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 
 	if (!fake && base != 1)
 	    fake = i;
+
+	/*
+	 * See if the button is ignored for mapping purposes.
+	 */
+	if (state->btn->ignore[i] & EV_BTN_IGNORE_MAP)
+	    continue;
+
+	/*
+	 * See if the button actually exists, otherwise don't bother.
+	 */
+	bit = i;
+	bit += BTN_MISC;
+	if ((bit >= BTN_MOUSE) && (bit < BTN_JOYSTICK)) {
+	    bit -= BTN_MOUSE - BTN_MISC;
+	} else if ((bit >= BTN_MISC) && (bit < BTN_MOUSE)) {
+	    bit += BTN_MOUSE - BTN_MISC;
+	}
+	if (!test_bit (bit, pEvdev->bits.key))
+	    continue;
 
 	state->btn->buttons = state->btn->map[i] = i + base;
     }
@@ -257,21 +290,38 @@ EvdevBtnNew0(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i, bit;
+    char option[64];
+    int i, j, btn;
 
     state->btn = Xcalloc (sizeof (evdevBtnRec));
 
-    for (i = BTN_MISC; i < (KEY_OK - 1); i++)
-	if (test_bit (i, pEvdev->bits.key)) {
-	    bit = i;
-	    if ((bit >= BTN_MOUSE) && (bit < BTN_JOYSTICK)) {
-		bit -= BTN_MOUSE - BTN_MISC;
-	    } else if ((bit >= BTN_MISC) && (bit < BTN_MOUSE)) {
-		bit += BTN_MOUSE - BTN_MISC;
-	    }
-	    bit -= BTN_MISC;
-	    state->btn->real_buttons = bit + 1;
+    for (i = BTN_MISC; i < (KEY_OK - 1); i++) {
+	btn = i;
+	if ((btn >= BTN_MOUSE) && (btn < BTN_JOYSTICK)) {
+	    btn -= BTN_MOUSE - BTN_MISC;
+	} else if ((btn >= BTN_MISC) && (btn < BTN_MOUSE)) {
+	    btn += BTN_MOUSE - BTN_MISC;
 	}
+	btn -= BTN_MISC;
+
+	snprintf(option, sizeof(option), "%sIgnoreX", button_names[btn]);
+	if (i >= BTN_DIGI && i < BTN_WHEEL)
+	    j = xf86SetIntOption(pInfo->options, option, 1);
+	else
+	    j = xf86SetIntOption(pInfo->options, option, 0);
+	if (j)
+	    state->btn->ignore[btn] |= EV_BTN_IGNORE_X;
+
+	snprintf(option, sizeof(option), "%sIgnoreEvdev", button_names[btn]);
+	j = xf86SetIntOption(pInfo->options, option, 0);
+	if (j) {
+	    state->btn->ignore[btn] |= EV_BTN_IGNORE_EVDEV;
+	    continue;
+	}
+
+	if (test_bit (i, pEvdev->bits.key))
+	    state->btn->real_buttons = btn + 1;
+    }
 
     if (state->btn->real_buttons)
         xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name, state->btn->real_buttons);
@@ -328,8 +378,14 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
 
     button -= BTN_MISC;
 
+    if (state->btn->ignore[button] & EV_BTN_IGNORE_EVDEV)
+	return;
+
     if (state->btn->callback[button])
 	state->btn->callback[button](pInfo, button, ev->value);
+
+    if (state->btn->ignore[button] & EV_BTN_IGNORE_X)
+	return;
 
     button = state->btn->map[button];
     xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);

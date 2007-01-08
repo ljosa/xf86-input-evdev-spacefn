@@ -153,9 +153,13 @@ typedef struct {
     unsigned long	ff[NBITS(FF_MAX)];
 } evdevBitsRec, *evdevBitsPtr;
 
+#define EV_BTN_IGNORE_X   	1
+#define EV_BTN_IGNORE_EVDEV   	2
+#define EV_BTN_IGNORE_MAP	(EV_BTN_IGNORE_X | EV_BTN_IGNORE_EVDEV)
 typedef struct {
     int		real_buttons;
     int		buttons;
+    CARD8	ignore[EVDEV_MAXBUTTONS];
     CARD8	map[EVDEV_MAXBUTTONS];
     void	(*callback[EVDEV_MAXBUTTONS])(InputInfoPtr pInfo, int button, int value);
 } evdevBtnRec, *evdevBtnPtr;
