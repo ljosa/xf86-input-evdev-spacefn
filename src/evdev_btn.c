@@ -222,6 +222,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
+    evdevBtnPtr btn = state->btn;
     int i, j, base, clear, fake, bit;
 
     for (i = 0, base = 1, fake = 0; i < pEvdev->state.btn->real_buttons; i++) {
@@ -249,7 +250,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	/*
 	 * See if the button is ignored for mapping purposes.
 	 */
-	if (state->btn->ignore[i] & EV_BTN_IGNORE_MAP)
+	if (btn->ignore[i] & EV_BTN_IGNORE_MAP)
 	    continue;
 
 	/*
@@ -265,21 +266,23 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	if (!test_bit (bit, pEvdev->bits.key))
 	    continue;
 
-	state->btn->buttons = state->btn->map[i] = i + base;
+	btn->buttons = btn->map[i] = i + base;
     }
 
-    if (state->btn->real_buttons >= 3 && (!fake || fake >= 3)) {
-	base = state->btn->map[1];
-	state->btn->map[1] = state->btn->map[2];
-	state->btn->map[2] = base;
+    if ((!fake || fake >= 3) &&
+	    test_bit(BTN_RIGHT, pEvdev->bits.key) &&
+	    test_bit(BTN_MIDDLE, pEvdev->bits.key)) {
+	base = btn->map[1];
+	btn->map[1] = btn->map[2];
+	btn->map[2] = base;
     }
 
     if (state->rel) {
 	for (i = 0; i < REL_MAX; i++) {
-	    if (state->rel->btnMap[i][0] > state->btn->buttons)
-		state->btn->buttons = state->rel->btnMap[i][0];
-	    if (state->rel->btnMap[i][1] > state->btn->buttons)
-		state->btn->buttons = state->rel->btnMap[i][1];
+	    if (state->rel->btnMap[i][0] > btn->buttons)
+		btn->buttons = state->rel->btnMap[i][0];
+	    if (state->rel->btnMap[i][1] > btn->buttons)
+		btn->buttons = state->rel->btnMap[i][1];
 	}
     }
 }
