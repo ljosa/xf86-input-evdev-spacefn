@@ -298,6 +298,15 @@ EvdevBtnNew0(InputInfoPtr pInfo)
 
     state->btn = Xcalloc (sizeof (evdevBtnRec));
 
+    /*
+     * XXX: This is evil.
+     * For reasons related to handling pathological remapping cases, and
+     * differences between HID and X, pretend a middle button exists
+     * whenever a right button exists.
+     */
+    if (test_bit (BTN_RIGHT, pEvdev->bits.key))
+	set_bit (BTN_MIDDLE, pEvdev->bits.key);
+
     for (i = BTN_MISC; i < (KEY_OK - 1); i++) {
 	btn = i;
 	if ((btn >= BTN_MOUSE) && (btn < BTN_JOYSTICK)) {
