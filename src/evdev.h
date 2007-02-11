@@ -172,7 +172,6 @@ typedef struct {
     int		min[ABS_MAX];
     int		max[ABS_MAX];
     int		map[ABS_MAX];
-    int		scale[2];
     int		screen; /* Screen number for this device. */
     Bool	use_touch;
     Bool	touch;

@@ -276,11 +276,14 @@ EvdevAxesAbsSynRep (InputInfoPtr pInfo)
 	skip_xy = 1;
     } else if (state->mode == Absolute && state->abs->screen != -1 && state->abs->axes >= 2) {
 	int conv_x, conv_y;
+	int scale[2];
+
+	scale[0] = screenInfo.screens[state->abs->screen]->width;
+	scale[1] = screenInfo.screens[state->abs->screen]->height;
 
 	for (i = 0; i < 2; i++)
 	    state->axes->v[i] = xf86ScaleAxis (state->abs->v[i],
-		    0, state->abs->scale[i],
-		    state->abs->min[i], state->abs->max[i]);
+		    0, scale[i], state->abs->min[i], state->abs->max[i]);
 
 
 	EvdevConvert (pInfo, 0, 2, state->abs->v[0], state->abs->v[1],
@@ -504,9 +507,6 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
     if (k < screenInfo.numScreens && k >= 0) {
 	state->abs->screen = k;
 	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d.\n", pInfo->name, k);
-
-	state->abs->scale[0] = screenInfo.screens[state->abs->screen]->width;
-	state->abs->scale[1] = screenInfo.screens[state->abs->screen]->height;
     } else {
 	if (k != -1)
 	    xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
