@@ -214,8 +214,7 @@ static KeySym map[] = {
     /* 0x6d */  XK_Next,	NoSymbol,
     /* 0x6e */  XK_Insert,	NoSymbol,
     /* 0x6f */  XK_Delete,	NoSymbol,
-    /* 0x6f */  NoSymbol,	NoSymbol, /* KEY_MACRO */
-    /* 0x70 */  NoSymbol,	NoSymbol,
+    /* 0x70 */  NoSymbol,	NoSymbol, /* KEY_MACRO */
     /* 0x71 */  NoSymbol,	NoSymbol,
     /* 0x72 */  NoSymbol,	NoSymbol,
     /* 0x73 */  NoSymbol,	NoSymbol,
@@ -351,7 +350,6 @@ static KeySym map[] = {
     /* 0xf5 */  NoSymbol,	NoSymbol,
     /* 0xf6 */  NoSymbol,	NoSymbol,
     /* 0xf7 */  NoSymbol,	NoSymbol,
-    /* 0xf8 */  NoSymbol,	NoSymbol,
 };
 
 /*
