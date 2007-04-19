@@ -334,8 +334,7 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 
     if (driver->configured) {
 	xf86ActivateDevice (pInfo);
-
-	pInfo->dev->inited = (device->callback(device->pInfo->dev, DEVICE_INIT) == Success);
+        pInfo->dev->inited = (ActivateDevice(pInfo->dev) == Success);
         ActivateDevice(pInfo->dev);
 	EnableDevice (pInfo->dev);
     }
