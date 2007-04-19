@@ -48,12 +48,31 @@
 #define SYSCALL(call) while(((call) == -1) && (errno == EINTR))
 #endif
 
+/**
+ * Indicate if evdev brain has been started yet.
+ */
 static Bool evdev_alive = FALSE;
+/**
+ * Pointer to the "evdev brain".
+ * Note that this is a list, so evdev_pInfo->next will point to other devices
+ * (albeit not evdev ones).
+ */
 static InputInfoPtr evdev_pInfo = NULL;
+/**
+ * All drivers that are currently active for one or more devices.
+ */
 static evdevDriverPtr evdev_drivers = NULL;
+/**
+ * Internal sequence numbering. Increased each time we evdevRescanDevices().
+ */
 static int evdev_seq;
 static int evdev_inotify;
 
+/**
+ * Open the file descriptor for the given device in rw, nonblocking mode. 
+ *
+ * @return The FD on success or -1 otherwise.
+ */
 int
 evdevGetFDForDevice (evdevDevicePtr device)
 {
@@ -127,6 +146,18 @@ MatchAny (unsigned long *dev, unsigned long *match, int len)
 	return TRUE;
 }
 
+/**
+ * Compare various fields of the given driver to the matching fields of the
+ * info struct. Fields include but are not limited to name, phys string and
+ * device.
+ * If this function returns TRUE, the given driver is responsible for the
+ * device with the given info.
+ *
+ * @param driver One of the evdev drivers.
+ * @param info Information obtained using ioctls on the device file.
+ *
+ * @return TRUE on match, FALSE otherwise.
+ */
 static Bool
 MatchDriver (evdevDriverPtr driver, evdevDevInfoPtr info)
 {
@@ -174,6 +205,16 @@ MatchDriver (evdevDriverPtr driver, evdevDevInfoPtr info)
     return TRUE;
 }
 
+/**
+ * Compare various fields of the device with the given info.
+ * If this function returns true, the device is identical to the device the
+ * information was obtained from.
+ *
+ * @param device The device using some driver.
+ * @param info Information obtained using ioctls on the device file.
+ *
+ * @return TRUE on match, FALSE otherwise.
+ */
 static Bool
 MatchDevice (evdevDevicePtr device, evdevDevInfoPtr info)
 {
@@ -199,6 +240,17 @@ MatchDevice (evdevDevicePtr device, evdevDevInfoPtr info)
     return TRUE;
 }
 
+/**
+ * Figure out if the device has already been initialised previously. If so,
+ * switch it on. If not, create a new device and call it's callback to set it
+ * up.
+ *
+ * @param driver The driver responsible for the device.
+ * @param info Information obtained using ioctls on the device file.
+ * 
+ * @return TRUE if device was switched on or newly created. False if driver
+ * and info are not matching.
+ */
 static Bool
 evdevScanDevice (evdevDriverPtr driver, evdevDevInfoPtr info)
 {
@@ -240,6 +292,13 @@ evdevScanDevice (evdevDriverPtr driver, evdevDevInfoPtr info)
 }
 
 
+/**
+ * Use various ioctls to get information about the given device file.
+ * This information is used in evdevScanDevice, MatchDriver and MatchDevice.
+ *
+ * @param dev The device file to use.
+ * @param info The struct to fill with the given info.
+ */
 static Bool
 FillDevInfo (char *dev, evdevDevInfoPtr info)
 {
@@ -268,6 +327,12 @@ FillDevInfo (char *dev, evdevDevInfoPtr info)
     return TRUE;
 }
 
+/**
+ * Scan all /dev/input/event* devices. If a driver is available for one, try
+ * to get a device going on it (either creating a new one or switching it on).
+ * After the scan, switch off all devices that didn't get switched on in the
+ * previous run through the device files.
+ */
 static void
 evdevRescanDevices (InputInfoPtr pInfo)
 {
@@ -417,6 +482,15 @@ evdevControl(DeviceIntPtr pPointer, int what)
     return Success;
 }
 
+/**
+ * Start up the evdev brain device. 
+ * Without the brain device, evdev won't be of a lot of use, so if this method
+ * fails you just shot yourself in the foot. 
+ * 
+ * If the evdev brain was already started up, this method returns TRUE.
+ *
+ * Returns TRUE on success or FALSE otherwise.
+ */
 Bool
 evdevStart (InputDriverPtr drv)
 {
@@ -441,6 +515,14 @@ evdevStart (InputDriverPtr drv)
     return TRUE;
 }
 
+/**
+ * Prepend a new driver to the global driver list and rescan all devices.
+ * evdevStart() must be called before.
+ * 
+ * @param driver The new driver to be prepended
+ *
+ * @return TRUE on success or FALSE if the driver's callback wasn't setup.
+ */
 Bool
 evdevNewDriver (evdevDriverPtr driver)
 {
@@ -462,6 +544,14 @@ evdevNewDriver (evdevDriverPtr driver)
     return TRUE;
 }
 
+/**
+ * Search all drivers for the given device. If it exists, remove the device.
+ * Note that this does not remove the driver, so after calling this function
+ * with a valid device, there may be a driver without a device floating
+ * around.
+ *
+ * @param pEvdev The device to remove.
+ */
 void
 evdevRemoveDevice (evdevDevicePtr pEvdev)
 {
@@ -474,12 +564,19 @@ evdevRemoveDevice (evdevDevicePtr pEvdev)
                 *device = pEvdev->next;
                 xf86DeleteInput(pEvdev->pInfo, 0);
                 pEvdev->next = NULL;
+                if (!driver->devices)
                 return;
             }
         }
     }
 }
 
+/**
+ * Obtain various information using ioctls on the given socket. This
+ * information is used to determine if a device has axis, buttons or keys.
+ *
+ * @return TRUE on success or FALSE on error.
+ */
 Bool
 evdevGetBits (int fd, evdevBitsPtr bits)
 {

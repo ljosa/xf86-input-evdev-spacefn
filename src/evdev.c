@@ -391,6 +391,16 @@ EvdevParseBitOption (char *opt, unsigned long *all, unsigned long *not, unsigned
     }
 }
 
+/**
+ * Called during InitInput().
+ * Starts up the evdev brain device if it hasn't started yet and then causes a
+ * full rescan of all devices. 
+ *
+ * @param drv The evdev driver module. Copied version of EVDEV.
+ * @param dev The device we'd like to initialise. 
+ *
+ * @return NULL on failure or the InputInfoPtr of the new device.
+ */
 static InputInfoPtr
 EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
