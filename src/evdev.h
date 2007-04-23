@@ -256,6 +256,8 @@ Bool evdevStart (InputDriverPtr drv);
 Bool evdevNewDriver (evdevDriverPtr driver);
 Bool evdevGetBits (int fd, evdevBitsPtr bits);
 void evdevRemoveDevice (evdevDevicePtr device);
+void evdevDeleteDevice (evdevDevicePtr device);
+void evdevRemoveDriver (evdevDriverPtr device);
 
 int EvdevBtnInit (DeviceIntPtr device);
 int EvdevBtnOn (DeviceIntPtr device);

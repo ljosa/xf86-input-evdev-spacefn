@@ -555,16 +555,24 @@ evdevNewDriver (evdevDriverPtr driver)
 void
 evdevRemoveDevice (evdevDevicePtr pEvdev)
 {
-    evdevDriverPtr driver;
+    evdevDriverPtr driver, prev;
     evdevDevicePtr *device;
 
-    for (driver = evdev_drivers; driver; driver = driver->next) {
+    prev = evdev_drivers;
+
+    for (driver = evdev_drivers; driver; prev = driver, driver = driver->next) {
         for (device = &driver->devices; *device; device = &(*device)->next) {
             if (*device == pEvdev) {
                 *device = pEvdev->next;
-                xf86DeleteInput(pEvdev->pInfo, 0);
                 pEvdev->next = NULL;
+                /* driver without device? get rid of it, otherwise it'll
+                 * auto-hotplug when a device is plugged in again.
+                 */
                 if (!driver->devices)
+                {
+                    evdevDeleteDevice(pEvdev);
+                    evdevRemoveDriver(driver);
+                }
                 return;
             }
         }
@@ -598,5 +606,53 @@ evdevGetBits (int fd, evdevBitsPtr bits)
 #undef get_bitmask
 
     return TRUE;
+}
+
+/**
+ * Free memory associated with device.
+ */
+void
+evdevDeleteDevice(evdevDevicePtr pEvdev)
+{
+    /* pEvdev->pInp is freed in xf86DeleteInput() when
+     * DeleteInputDeviceRequest is called. */
+    xfree(pEvdev->name);
+    xfree(pEvdev->phys);
+    xfree(pEvdev->device);
+    xfree(pEvdev);
+}
+
+/**
+ * Remove a driver from the list, free memory.
+ */
+void evdevRemoveDriver(evdevDriverPtr drv)
+{
+    evdevDriverPtr driver, prev; 
+    evdevDevicePtr device;
+
+    if (drv == evdev_drivers)
+        evdev_drivers = evdev_drivers->next;
+    else
+        for (prev = evdev_drivers, driver = prev->next; driver; 
+                prev = driver, driver = driver->next) 
+        {
+            if (driver == drv)
+            {
+                prev->next = driver->next;
+            }
+        }
+
+    xfree(drv->name);
+    xfree(drv->phys);
+    xfree(drv->device);
+
+    device = drv->devices;
+    while(device)
+    {
+        evdevDeleteDevice(device);
+        device = device->next;
+    }
+
+    xfree(drv);
 }
 

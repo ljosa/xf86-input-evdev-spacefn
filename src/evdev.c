@@ -461,6 +461,14 @@ EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     if (pEvdev->devices && pEvdev->devices->pInfo)
 	return pEvdev->devices->pInfo;
 
+    /* In some cases pEvdev->devices is NULL, but on the next
+     * evdevRescanDevices the device suddenly appears. If we return NULL here,
+     * the server will clean up and the sudden appearance of the device will
+     * segfault. We need to remove the driver from the list to avoid this.
+     * No. I don't know why it just appears. (whot)
+     */
+    evdevRemoveDriver(pEvdev);
+
     return NULL;
 }
 
