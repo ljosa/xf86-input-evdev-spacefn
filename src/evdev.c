@@ -116,10 +116,8 @@ EvdevReadInput(InputInfoPtr pInfo)
              * event, so len != sizeof ev is an error. */
             xf86Msg(X_ERROR, "Read error: %s (%d, %d != %ld)\n",
 		    strerror(errno), errno, len, sizeof (ev));
-	    if (len < 0) {
-		evdevDevicePtr pEvdev = pInfo->private;
-		EvdevProc(pEvdev->pInfo->dev, DEVICE_OFF);
-	    }
+	    if (len < 0)
+		EvdevProc(pInfo->dev, DEVICE_CLOSE);
             break;
         }
 
@@ -275,13 +273,13 @@ InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    evdevDevicePtr device;
+    evdevDevicePtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
 	return NULL;
 
-    device = Xcalloc (sizeof (evdevDeviceRec));
-    if (!device) {
+    pEvdev = Xcalloc (sizeof (evdevDeviceRec));
+    if (!pEvdev) {
 	pInfo->private = NULL;
 	xf86DeleteInput (pInfo, 0);
 	return NULL;
@@ -299,36 +297,36 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 #endif
     pInfo->conf_idev = dev;
 
-    pInfo->private = device;
+    pInfo->private = pEvdev;
 
-    device->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
 
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
-    SYSCALL(pInfo->fd = open (device->device, O_RDWR | O_NONBLOCK));
+    SYSCALL(pInfo->fd = open (pEvdev->device, O_RDWR | O_NONBLOCK));
     if (pInfo->fd  == -1) {
-	xf86Msg(X_ERROR, "%s: cannot open input device\n", pInfo->name);
+	xf86Msg(X_ERROR, "%s: cannot open input pEvdev\n", pInfo->name);
 	pInfo->private = NULL;
-	xfree(device);
+	xfree(pEvdev);
 	xf86DeleteInput (pInfo, 0);
 	return NULL;
     }
 
-    if (!evdevGetBits (pInfo->fd, &device->bits)) {
+    if (!evdevGetBits (pInfo->fd, &pEvdev->bits)) {
 	xf86Msg(X_ERROR, "%s: cannot load bits\n", pInfo->name);
 	pInfo->private = NULL;
 	close (pInfo->fd);
-	xfree(device);
+	xfree(pEvdev);
 	xf86DeleteInput (pInfo, 0);
 	return NULL;
     }
 
     if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
-	xf86Msg(X_INFO, "%s: Unable to grab device (%s).  Cowardly refusing to check use as keyboard.\n", pInfo->name, strerror(errno));
-	device->state.can_grab = 0;
+	xf86Msg(X_INFO, "%s: Unable to grab pEvdev (%s).  Cowardly refusing to check use as keyboard.\n", pInfo->name, strerror(errno));
+	pEvdev->state.can_grab = 0;
     } else {
-	device->state.can_grab = 1;
+	pEvdev->state.can_grab = 1;
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
@@ -340,7 +338,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     EvdevAxesNew1 (pInfo);
     EvdevBtnNew1 (pInfo);
 
-    if (device->state.can_grab)
+    if (pEvdev->state.can_grab)
 	EvdevKeyNew (pInfo);
 
     close (pInfo->fd);
@@ -348,10 +346,10 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     pInfo->flags |= XI86_OPEN_ON_INIT;
     if (!(pInfo->flags & XI86_CONFIGURED)) {
-        xf86Msg(X_ERROR, "%s: Don't know how to use device.\n", pInfo->name);
+        xf86Msg(X_ERROR, "%s: Don't know how to use pEvdev.\n", pInfo->name);
 	pInfo->private = NULL;
 	close (pInfo->fd);
-	xfree(device);
+	xfree(pEvdev);
 	xf86DeleteInput (pInfo, 0);
         return NULL;
     }

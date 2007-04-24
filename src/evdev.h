@@ -170,8 +170,6 @@ typedef struct _evdevState {
 typedef struct _evdevDevice {
     const char		*device;
 
-    InputInfoPtr	pInfo;
-
     evdevBitsRec	bits;
 
     evdevStateRec	state;
