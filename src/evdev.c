@@ -235,14 +235,6 @@ EvdevProc(DeviceIntPtr device, int what)
 		EvdevKeyOff (device);
 	}
 
-#if 0
-	/*
-	 * FIXME: Handle device removal properly.
-	 */
-        if (what == DEVICE_CLOSE)
-            evdevRemoveDevice(pEvdev);
-#endif
-
 	device->public.on = FALSE;
 	break;
     }
@@ -367,6 +359,72 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     return pInfo;
 }
 
+static void
+EvdevUnInit (InputDriverRec *drv, InputInfoRec *pInfo, int flags)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+
+    if (pEvdev->device) {
+	xfree (pEvdev->device);
+	pEvdev->device = NULL;
+    }
+
+    if (state->btn) {
+	xfree (state->btn);
+	state->btn = NULL;
+    }
+
+    if (state->abs) {
+	xfree (state->abs);
+	state->abs = NULL;
+    }
+
+    if (state->rel) {
+	xfree (state->rel);
+	state->rel = NULL;
+    }
+
+    if (state->axes) {
+	xfree (state->axes);
+	state->axes = NULL;
+    }
+
+    if (state->key) {
+	evdevKeyRec *key = state->key;
+
+	if (key->xkb_rules) {
+	    xfree (key->xkb_rules);
+	    key->xkb_rules = NULL;
+	}
+
+	if (key->xkb_model) {
+	    xfree (key->xkb_model);
+	    key->xkb_model = NULL;
+	}
+
+	if (key->xkb_layout) {
+	    xfree (key->xkb_layout);
+	    key->xkb_layout = NULL;
+	}
+
+	if (key->xkb_variant) {
+	    xfree (key->xkb_variant);
+	    key->xkb_variant = NULL;
+	}
+
+	if (key->xkb_options) {
+	    xfree (key->xkb_options);
+	    key->xkb_options = NULL;
+	}
+
+	xfree (state->key);
+	state->key = NULL;
+    }
+
+
+    xf86DeleteInput (pInfo, 0);
+}
 
 
 _X_EXPORT InputDriverRec EVDEV = {
@@ -374,7 +432,7 @@ _X_EXPORT InputDriverRec EVDEV = {
     "evdev",
     NULL,
     EvdevPreInit,
-    NULL,
+    EvdevUnInit,
     NULL,
     0
 };
