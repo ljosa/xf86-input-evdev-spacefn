@@ -171,13 +171,10 @@ typedef struct _evdevDevice {
     const char		*device;
 
     InputInfoPtr	pInfo;
-    int			(*callback)(DeviceIntPtr cb_data, int what);
 
     evdevBitsRec	bits;
 
     evdevStateRec	state;
-
-    struct _evdevDevice *next;
 } evdevDeviceRec, *evdevDevicePtr;
 
 int EvdevBtnInit (DeviceIntPtr device);
