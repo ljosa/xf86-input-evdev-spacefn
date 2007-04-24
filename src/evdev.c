@@ -72,12 +72,7 @@
 
 #include <xf86_OSproc.h>
 
-/*
- * FIXME: This should most definitely not be here.
- * But I need it, even if it _is_ private.
- */
-
-void xf86ActivateDevice(InputInfoPtr pInfo);
+static int EvdevProc(DeviceIntPtr device, int what);
 
 /**
  * Obtain various information using ioctls on the given socket. This
@@ -123,7 +118,7 @@ EvdevReadInput(InputInfoPtr pInfo)
 		    strerror(errno), errno, len, sizeof (ev));
 	    if (len < 0) {
 		evdevDevicePtr pEvdev = pInfo->private;
-		pEvdev->callback(pEvdev->pInfo->dev, DEVICE_OFF);
+		EvdevProc(pEvdev->pInfo->dev, DEVICE_OFF);
 	    }
             break;
         }
