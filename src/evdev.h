@@ -90,55 +90,10 @@
 #define clear_bit(bit, array)	(array[LONG(bit)] &= ~MASK(bit))
 #endif
 
-/* 2.4 compatibility */
-#ifndef EVIOCGSW
-
-#include <sys/time.h>
-#include <sys/ioctl.h>
-
-#define EVIOCGSW(len)		_IOC(_IOC_READ, 'E', 0x1b, len)		/* get all switch states */
-
-#define EV_SW			0x05
-#endif
-
-#ifndef EVIOCGRAB
-#define EVIOCGRAB _IOW('E', 0x90, int)
-#endif
-
-#ifndef BTN_TASK
-#define BTN_TASK 0x117
-#endif
-
-#ifndef EV_SYN
-#define EV_SYN EV_RST
-#endif
-/* end compat */
 
 #include <X11/extensions/XKB.h>
 #include <X11/extensions/XKBstr.h>
 
-/* XInput 1.4+ compatability. */
-#ifndef SendCoreEvents
-#define SendCoreEvents		59
-#define DontSendCoreEvents	60
-#endif
-
-
-/*
- * Switch events
- */
-
-#define EV_SW_0		0x00
-#define EV_SW_1		0x01
-#define EV_SW_2		0x02
-#define EV_SW_3		0x03
-#define EV_SW_4		0x04
-#define EV_SW_5		0x05
-#define EV_SW_6		0x06
-#define EV_SW_7		0x07
-#define EV_SW_MAX	0x0f
-
-#define EV_BUS_GSC		0x1A
 
 #define EVDEV_MAXBUTTONS	96
 
@@ -213,51 +168,17 @@ typedef struct _evdevState {
 } evdevStateRec, *evdevStatePtr;
 
 typedef struct _evdevDevice {
-    const char		*name;
-    const char		*phys;
     const char		*device;
-    int			seen;
 
     InputInfoPtr	pInfo;
     int			(*callback)(DeviceIntPtr cb_data, int what);
 
     evdevBitsRec	bits;
-    struct input_id	id;
 
     evdevStateRec	state;
 
     struct _evdevDevice *next;
 } evdevDeviceRec, *evdevDevicePtr;
-
-typedef struct _evdevDriver {
-    const char		*name;
-    const char		*phys;
-    const char		*device;
-
-    evdevBitsRec	all_bits;
-    evdevBitsRec	not_bits;
-    evdevBitsRec	any_bits;
-
-    struct input_id	id;
-
-    int			pass;
-
-    InputDriverPtr	drv;
-    IDevPtr		dev;
-    Bool		(*callback)(struct _evdevDriver *driver, evdevDevicePtr device);
-    evdevDevicePtr	devices;
-    Bool		configured;
-
-    struct _evdevDriver	*next;
-} evdevDriverRec, *evdevDriverPtr;
-
-int evdevGetFDForDevice (evdevDevicePtr driver);
-Bool evdevStart (InputDriverPtr drv);
-Bool evdevNewDriver (evdevDriverPtr driver);
-Bool evdevGetBits (int fd, evdevBitsPtr bits);
-void evdevRemoveDevice (evdevDevicePtr device);
-void evdevDeleteDevice (evdevDevicePtr device);
-void evdevRemoveDriver (evdevDriverPtr device);
 
 int EvdevBtnInit (DeviceIntPtr device);
 int EvdevBtnOn (DeviceIntPtr device);

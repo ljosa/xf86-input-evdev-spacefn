@@ -67,6 +67,7 @@
 
 #include <xf86Module.h>
 #include <mipointer.h>
+#include <xf86_OSlib.h>
 
 
 #include <xf86_OSproc.h>
@@ -77,6 +78,35 @@
  */
 
 void xf86ActivateDevice(InputInfoPtr pInfo);
+
+/**
+ * Obtain various information using ioctls on the given socket. This
+ * information is used to determine if a device has axis, buttons or keys.
+ *
+ * @return TRUE on success or FALSE on error.
+ */
+static Bool
+evdevGetBits (int fd, evdevBitsPtr bits)
+{
+#define get_bitmask(fd, which, where) \
+    if (ioctl(fd, EVIOCGBIT(which, sizeof (where)), where) < 0) {			\
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT %s failed: %s\n", #which, strerror(errno));	\
+        return FALSE;									\
+    }
+
+    get_bitmask (fd, 0, bits->ev);
+    get_bitmask (fd, EV_KEY, bits->key);
+    get_bitmask (fd, EV_REL, bits->rel);
+    get_bitmask (fd, EV_ABS, bits->abs);
+    get_bitmask (fd, EV_MSC, bits->msc);
+    get_bitmask (fd, EV_LED, bits->led);
+    get_bitmask (fd, EV_SND, bits->snd);
+    get_bitmask (fd, EV_FF, bits->ff);
+
+#undef get_bitmask
+
+    return TRUE;
+}
 
 static void
 EvdevReadInput(InputInfoPtr pInfo)
@@ -94,7 +124,6 @@ EvdevReadInput(InputInfoPtr pInfo)
 	    if (len < 0) {
 		evdevDevicePtr pEvdev = pInfo->private;
 		pEvdev->callback(pEvdev->pInfo->dev, DEVICE_OFF);
-		pEvdev->seen--;
 	    }
             break;
         }
@@ -162,12 +191,9 @@ EvdevProc(DeviceIntPtr device, int what)
 	if (device->public.on)
 	    break;
 
-	if ((pInfo->fd = evdevGetFDForDevice (pEvdev)) == -1) {
+	SYSCALL(pInfo->fd = open (pEvdev->device, O_RDWR | O_NONBLOCK));
+	if (pInfo->fd == -1) {
 	    xf86Msg(X_ERROR, "%s: cannot open input device.\n", pInfo->name);
-
-	    if (pEvdev->phys)
-		xfree(pEvdev->phys);
-	    pEvdev->phys = NULL;
 
 	    if (pEvdev->device)
 		xfree(pEvdev->device);
@@ -214,8 +240,13 @@ EvdevProc(DeviceIntPtr device, int what)
 		EvdevKeyOff (device);
 	}
 
+#if 0
+	/*
+	 * FIXME: Handle device removal properly.
+	 */
         if (what == DEVICE_CLOSE)
             evdevRemoveDevice(pEvdev);
+#endif
 
 	device->public.on = FALSE;
 	break;
@@ -241,12 +272,6 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
 	    else
 		return !Success;
 	    break;
-#if 0
-	case SendCoreEvents:
-	case DontSendCoreEvents:
-	    xf86XInputSetSendCoreEvents (pInfo, (mode == SendCoreEvents));
-	    break;
-#endif
 	default:
 	    return !Success;
     }
@@ -254,20 +279,29 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
     return Success;
 }
 
+/*
 static Bool
 EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
+*/
+
+InputInfoPtr
+EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    char name[512] = {0};
+    evdevDevicePtr device;
 
-    if (!(pInfo = xf86AllocateInput(driver->drv, 0)))
-	return 0;
+    if (!(pInfo = xf86AllocateInput(drv, 0)))
+	return NULL;
+
+    device = Xcalloc (sizeof (evdevDeviceRec));
+    if (!device) {
+	pInfo->private = NULL;
+	xf86DeleteInput (pInfo, 0);
+	return NULL;
+    }
 
     /* Initialise the InputInfoRec. */
-    strncat (name, driver->dev->identifier, sizeof(name));
-    strncat (name, "-", sizeof(name));
-    strncat (name, device->phys, sizeof(name));
-    pInfo->name = xstrdup(name);
+    pInfo->name = xstrdup(dev->identifier);
     pInfo->flags = 0;
     pInfo->type_name = "UNKNOWN";
     pInfo->device_control = EvdevProc;
@@ -276,29 +310,31 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
     pInfo->motion_history_proc = xf86GetMotionEvents;
 #endif
-    pInfo->conf_idev = driver->dev;
+    pInfo->conf_idev = dev;
 
     pInfo->private = device;
 
-    device->callback = EvdevProc;
-    device->pInfo = pInfo;
+    device->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
 
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
-    if ((pInfo->fd = evdevGetFDForDevice (device)) == -1) {
+    SYSCALL(pInfo->fd = open (device->device, O_RDWR | O_NONBLOCK));
+    if (pInfo->fd  == -1) {
 	xf86Msg(X_ERROR, "%s: cannot open input device\n", pInfo->name);
 	pInfo->private = NULL;
+	xfree(device);
 	xf86DeleteInput (pInfo, 0);
-	return 0;
+	return NULL;
     }
 
     if (!evdevGetBits (pInfo->fd, &device->bits)) {
 	xf86Msg(X_ERROR, "%s: cannot load bits\n", pInfo->name);
 	pInfo->private = NULL;
 	close (pInfo->fd);
+	xfree(device);
 	xf86DeleteInput (pInfo, 0);
-	return 0;
+	return NULL;
     }
 
     if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
@@ -328,148 +364,12 @@ EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
         xf86Msg(X_ERROR, "%s: Don't know how to use device.\n", pInfo->name);
 	pInfo->private = NULL;
 	close (pInfo->fd);
+	xfree(device);
 	xf86DeleteInput (pInfo, 0);
-        return 0;
-    }
-
-    if (driver->configured) {
-	xf86ActivateDevice (pInfo);
-        pInfo->dev->inited = (ActivateDevice(pInfo->dev) == Success);
-        ActivateDevice(pInfo->dev);
-	EnableDevice (pInfo->dev);
-    }
-
-    return 1;
-}
-
-static void
-EvdevParseBits (char *in, unsigned long *out, int len)
-{
-    unsigned long v[2];
-    int n, i, max_bits = len * BITS_PER_LONG;
-
-    n = sscanf (in, "%lu-%lu", &v[0], &v[1]);
-    if (!n)
-	return;
-
-    if (v[0] >= max_bits)
-	return;
-
-    if (n == 2) {
-	if (v[1] >= max_bits)
-	    v[1] = max_bits - 1;
-
-	for (i = v[0]; i <= v[1]; i++)
-	    set_bit (i, out);
-    } else
-	set_bit (v[0], out);
-}
-
-static void
-EvdevParseBitOption (char *opt, unsigned long *all, unsigned long *not, unsigned long *any, int len)
-{
-    char *cur, *next;
-
-    next = opt - 1;
-    while (next) {
-	cur = next + 1;
-	if ((next = strchr(cur, ' ')))
-	    *next = '\0';
-
-	switch (cur[0]) {
-	    case '+':
-		EvdevParseBits (cur + 1, all, len);
-		break;
-	    case '-':
-		EvdevParseBits (cur + 1, not, len);
-		break;
-	    case '~':
-		EvdevParseBits (cur + 1, any, len);
-		break;
-	}
-    }
-}
-
-/**
- * Called during InitInput().
- * Starts up the evdev brain device if it hasn't started yet and then causes a
- * full rescan of all devices. 
- *
- * @param drv The evdev driver module. Copied version of EVDEV.
- * @param dev The device we'd like to initialise. 
- *
- * @return NULL on failure or the InputInfoPtr of the new device.
- */
-static InputInfoPtr
-EvdevCorePreInit(InputDriverPtr drv, IDevPtr dev, int flags)
-{
-    evdevDriverPtr pEvdev;
-    char *opt, *tmp;
-
-    if (!(pEvdev = Xcalloc(sizeof(*pEvdev))))
         return NULL;
-
-    pEvdev->name = xf86CheckStrOption(dev->commonOptions, "Name", NULL);
-    pEvdev->phys = xf86CheckStrOption(dev->commonOptions, "Phys", NULL);
-    pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
-
-#define bitoption(field)							\
-    opt = xf86CheckStrOption(dev->commonOptions, #field "Bits", NULL);		\
-    if (opt) {									\
-	tmp = strdup(opt);							\
-	EvdevParseBitOption (tmp, pEvdev->all_bits.field,			\
-		pEvdev->not_bits.field,					\
-		pEvdev->any_bits.field,					\
-		sizeof(pEvdev->not_bits.field) / sizeof (unsigned long));	\
-	free (tmp);								\
-    }
-    bitoption(ev);
-    bitoption(key);
-    bitoption(rel);
-    bitoption(abs);
-    bitoption(msc);
-    bitoption(led);
-    bitoption(snd);
-    bitoption(ff);
-#undef bitoption
-
-    pEvdev->id.bustype = xf86CheckIntOption(dev->commonOptions, "bustype", 0);
-    pEvdev->id.vendor = xf86CheckIntOption(dev->commonOptions, "vendor", 0);
-    pEvdev->id.product = xf86CheckIntOption(dev->commonOptions, "product", 0);
-    pEvdev->id.version = xf86CheckIntOption(dev->commonOptions, "version", 0);
-
-    pEvdev->pass = xf86CheckIntOption(dev->commonOptions, "Pass", 0);
-    if (pEvdev->pass > 3)
-	pEvdev->pass = 3;
-    else if (pEvdev->pass < 0)
-	pEvdev->pass = 0;
-
-
-    pEvdev->callback = EvdevNew;
-
-    pEvdev->dev = dev;
-    pEvdev->drv = drv;
-
-    if (!evdevStart (drv)) {
-	xf86Msg(X_ERROR, "%s: cannot start evdev brain.\n", dev->identifier);
-        xfree(pEvdev);
-	return NULL;
     }
 
-    evdevNewDriver (pEvdev);
-
-    if (pEvdev->devices && pEvdev->devices->pInfo)
-	return pEvdev->devices->pInfo;
-
-    /* In some cases pEvdev->devices is NULL, but on the next
-     * evdevRescanDevices the device suddenly appears. If we return NULL here,
-     * the server will clean up and the sudden appearance of the device will
-     * segfault. We need to remove the driver from the list to avoid this.
-     * No. I don't know why it just appears. (whot)
-     */
-    evdevRemoveDriver(pEvdev);
-
-    return NULL;
+    return pInfo;
 }
 
 
@@ -478,7 +378,7 @@ _X_EXPORT InputDriverRec EVDEV = {
     1,
     "evdev",
     NULL,
-    EvdevCorePreInit,
+    EvdevPreInit,
     NULL,
     NULL,
     0
