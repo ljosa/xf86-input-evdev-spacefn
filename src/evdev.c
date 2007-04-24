@@ -117,7 +117,10 @@ EvdevReadInput(InputInfoPtr pInfo)
             xf86Msg(X_ERROR, "Read error: %s (%d, %d != %ld)\n",
 		    strerror(errno), errno, len, sizeof (ev));
 	    if (len < 0)
-		EvdevProc(pInfo->dev, DEVICE_CLOSE);
+            {
+                xf86DisableDevice(pInfo->dev, TRUE);
+                return;
+            }
             break;
         }
 
