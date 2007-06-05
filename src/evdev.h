@@ -32,8 +32,8 @@
  *   Kristian Høgsberg (krh@redhat.com)
  */
 
-#ifndef EVDEV_BRAIN_H_
-#define EVDEV_BRAIN_H_
+#ifndef __EVDEV_H
+#define __EVDEV_H
 
 #define _XF86_ANSIC_H
 #define XF86_LIBC_H
@@ -180,4 +180,4 @@ int EvdevKeyOn (DeviceIntPtr device);
 int EvdevKeyOff (DeviceIntPtr device);
 void EvdevKeyProcess (InputInfoPtr pInfo, struct input_event *ev);
 
-#endif	/* LNX_EVDEV_H_ */
+#endif	/* __EVDEV_H */
