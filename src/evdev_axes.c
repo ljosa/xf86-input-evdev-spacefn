@@ -1,5 +1,5 @@
 /*
- * Copyright © 2006 Zephaniah E. Hull
+ * Copyright © 2006-2007 Zephaniah E. Hull
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Soft-
