@@ -362,7 +362,7 @@ EvdevBtnNew1(InputInfoRec *pInfo)
     evdevStateRec *state = &pEvdev->state;
     evdevBtnRec *btn = state->btn;
     char option[128], value[128];
-    int i, b, j;
+    int i, b, j, target;
 
     if (!btn)
 	return !Success;
@@ -375,24 +375,32 @@ EvdevBtnNew1(InputInfoRec *pInfo)
 	btn->real_buttons++;
 
 	snprintf(option, sizeof(option), "Button%sMapTo", button_names[i]);
+
 	if (b >= BTN_DIGI && b < BTN_WHEEL)
-	    snprintf (value, sizeof (value), "null");
+	    target = -1;
 	else if (b == BTN_RIGHT)
-	    snprintf (value, sizeof (value), "Button 3");
+	    target = 3;
 	else if (b == BTN_MIDDLE)
-	    snprintf (value, sizeof (value), "Button 2");
+	    target = 2;
 	else if (b >= BTN_MOUSE && b < BTN_JOYSTICK)
-	    snprintf (value, sizeof (value), "Button %d", 1 + i - (BTN_MOUSE - BTN_MISC));
+	    target = 1 + i - (BTN_MOUSE - BTN_MISC);
 	else if (b >= BTN_MISC && b < BTN_MOUSE)
-	    snprintf (value, sizeof (value), "Button %d", 1 + i + (BTN_MOUSE - BTN_MISC));
-	else if (btn->b_flags[i] & EV_BTN_B_PRESENT) {
-	    for (j = i; j < BTN_MAX; j++)
+	    target = 1 + i + (BTN_MOUSE - BTN_MISC);
+	else
+	    target = 1 + i;
+
+	if (btn->b_flags[target] & EV_BTN_B_PRESENT) {
+	    for (j = target; j < BTN_MAX; j++)
 		if (!(btn->b_flags[j] & EV_BTN_B_PRESENT)) {
-		    snprintf (value, sizeof (value), "Button %d", j + 1);
+		    target = j;
 		    break;
 		}
-	} else
-	    snprintf (value, sizeof (value), "Button %d", i + 1);
+	}
+
+	if (target > 0)
+	    snprintf (value, sizeof (value), "Button %d", target);
+	else
+	    snprintf (value, sizeof (value), "null");
 
 	EvdevParseMapOption (pInfo, option, value, &btn->b_map_data[i], &btn->b_map[i]);
     }
