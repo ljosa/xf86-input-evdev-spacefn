@@ -140,6 +140,219 @@ static char *abs_axis_names[] = {
 
 static void EvdevAxesTouchCallback (InputInfoPtr pInfo, int button, int value);
 
+void
+EvdevAxesMapAxis (InputInfoPtr pInfo, int value, int mode, void *map_data)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    evdevAxesPtr axes = state->axes;
+    long map = (long) map_data;
+
+    if (map >= AXES_MAX || !axes || !(axes->v_flags[map] & (EV_AXES_V_M_ABS | EV_AXES_V_M_REL)))
+	return;
+
+    axes->v[map] = value;
+    if (mode == 0) {
+	axes->v_flags[map] &= ~EV_AXES_V_M_ABS;
+	axes->v_flags[map] |= EV_AXES_V_M_REL;
+    } else if (mode == 1) {
+	axes->v_flags[map] &= ~EV_AXES_V_M_REL;
+	axes->v_flags[map] |= EV_AXES_V_M_ABS;
+    }
+    axes->v_flags[map] |= EV_AXES_V_UPDATED;
+    axes->flags |= EV_AXES_UPDATED;
+}
+
+#if 0
+typedef struct {
+    int button_plus;
+    int button_minus;
+    int step;
+    int count;
+} AxisMapButton_t;
+
+void
+EvdevAxesMapButton (InputInfoPtr pInfo, int value, void *map_data)
+{
+    AxisMapButton_t *map = map_data;
+    int i;
+
+    // FIXME: Scream loudly, this is bad.
+    if (!map)
+	return;
+
+    map->count += value;
+    i = map->count / map->step;
+    if (i) {
+	map->count -= i * map->step;
+	if (i > 0)
+	    EvdevBtnPostFakeClicks (pInfo, map->button_plus, i);
+	else
+	    EvdevBtnPostFakeClicks (pInfo, map->button_minus, -i);
+    }
+}
+#endif
+
+static Bool
+EvdevParseRelOptions (InputInfoPtr pInfo, const char *name, evdev_option_token_t *option, int *flags)
+{
+    if (!option)
+	return 0;
+
+    for (; option; option = option->next) {
+	// XXX: Impossible.
+	if (option->is_chain)
+	    continue;
+
+	if (!strcasecmp (option->u.str, "invert"))
+	    *flags |= EV_REL_V_INVERT;
+	else
+	    xf86Msg(X_ERROR, "%s: %s unknown relative option '%s'.\n", pInfo->name, name, option->u.str);
+
+    }
+    *flags |= EV_REL_V_PRESENT;
+
+    return 1;
+}
+
+static Bool
+EvdevParseAbsOptions (InputInfoPtr pInfo, const char *name, evdev_option_token_t *option, int *flags)
+{
+    if (!option)
+	return 0;
+
+    for (; option; option = option->next) {
+	// XXX: Impossible.
+	if (option->is_chain)
+	    continue;
+
+	if (!strcasecmp (option->u.str, "invert"))
+	    *flags |= EV_ABS_V_INVERT;
+	else if (!strcasecmp (option->u.str, "use_touch"))
+	    *flags |= EV_ABS_V_USE_TOUCH;
+	else if (!strcasecmp (option->u.str, "mode_auto"))
+	    *flags |= EV_ABS_V_M_AUTO;
+	else if (!strcasecmp (option->u.str, "mode_rel"))
+	    *flags |= EV_ABS_V_M_REL;
+	else
+	    xf86Msg(X_ERROR, "%s: %s unknown absolute option '%s'.\n", pInfo->name, name, option->u.str);
+
+    }
+    *flags |= EV_ABS_V_PRESENT;
+
+    return 1;
+}
+
+Bool
+EvdevParseMapToRelAxis (InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    evdevAxesPtr axes = state->axes;
+    long i;
+
+    if (!option || option->is_chain)
+	return 0;
+
+    errno = 0;
+    i = strtol (option->u.str, NULL, 0);
+    if (errno) {
+	for (i = 0; rel_axis_names[i]; i++) {
+	    if (!strcmp (option->u.str, rel_axis_names[i]))
+		break;
+	}
+	if (!rel_axis_names[i])
+	    return 0;
+    }
+    if ((i < 0) || (i > AXES_MAX))
+	return 0;
+
+    if (axes->v_flags[i] & EV_AXES_V_PRESENT)
+	return 0;
+
+    axes->v_flags[i] = EV_AXES_V_M_REL | EV_AXES_V_PRESENT;
+
+    *map_data = (void *) i;
+    *map_func = EvdevAxesMapAxis;
+
+    return 1;
+}
+
+Bool
+EvdevParseMapToAbsAxis (InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func)
+{
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    evdevAxesPtr axes = state->axes;
+    long i;
+
+    if (!option || option->is_chain) {
+	xf86Msg (X_ERROR, "%s: %s: No option/option is chain.\n", pInfo->name, name);
+	return 0;
+    }
+
+    errno = 0;
+    i = strtol (option->u.str, NULL, 0);
+    if (errno) {
+	for (i = 0; abs_axis_names[i]; i++) {
+	    if (!strcmp (option->u.str, abs_axis_names[i]))
+		break;
+	}
+	if (!abs_axis_names[i]) {
+	    xf86Msg (X_ERROR, "%s: %s: No axis named '%s'.\n", pInfo->name, name, option->u.str);
+	    return 0;
+	}
+    }
+    if ((i < 0) || (i > AXES_MAX)) {
+	xf86Msg (X_ERROR, "%s: %s: Axis %ld out of range.\n", pInfo->name, name, i);
+	return 0;
+    }
+
+    if (axes->v_flags[i] & EV_AXES_V_PRESENT) {
+	xf86Msg (X_ERROR, "%s: %s: Axis %ld already claimed.\n", pInfo->name, name, i);
+	return 0;
+    }
+
+    option = option->next;
+    if (!option || option->is_chain) {
+	xf86Msg (X_ERROR, "%s: %s: No min.\n", pInfo->name, name);
+	return 0;
+    }
+
+    errno = 0;
+    axes->v_min[i] = strtol (option->u.str, NULL, 0);
+    if (errno) {
+	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as min. (%s)\n", pInfo->name, name, option->u.str, strerror(errno));
+	return 0;
+    }
+
+    option = option->next;
+    if (!option || option->is_chain) {
+	xf86Msg (X_ERROR, "%s: %s: No max.\n", pInfo->name, name);
+	return 0;
+    }
+
+    errno = 0;
+    axes->v_max[i] = strtol (option->u.str, NULL, 0);
+    if (errno) {
+	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as max. (%s)\n", pInfo->name, name, option->u.str, strerror(errno));
+	return 0;
+    }
+
+    axes->v_flags[i] = EV_AXES_V_M_ABS | EV_AXES_V_PRESENT;
+
+    *map_data = (void *) i;
+    *map_func = EvdevAxesMapAxis;
+
+    return 1;
+}
+
 static Bool
 EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
 	     int v3, int v4, int v5, int *x, int *y)
@@ -152,190 +365,226 @@ EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
         return FALSE;
 }
 
+
+/*
+ * Rotation and rep code, this is a mess and much of it needs to live in mi/
+ * after a cleanup.
+ */
 static void
-EvdevAxesRealSyn (InputInfoPtr pInfo, int absolute, int skip_xy)
+EvdevAxesDoRotation (InputInfoPtr pInfo, float x, float y)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     evdevAxesPtr axes = state->axes;
-    int i;
+    DeviceIntPtr dev = pInfo->dev;
+    AbsoluteClassRec *dabs = dev->absolute;
 
-#if DEBUG
-    if (skip_xy == 2 && (axes->v[0] || axes->v[1]))
-	xf86Msg(X_INFO, "%s: skip_xy: %d, x: %d, y: %d.\n", pInfo->name, skip_xy, axes->v[0], axes->v[1]);
-#endif
-
-    /* FIXME: This is a truly evil kluge. */
-    if (skip_xy == 1 && state->axes->axes >= 2)
-	xf86PostMotionEvent(pInfo->dev, absolute, 2,
-	    state->axes->axes - 2,
-	    axes->v[0x02], axes->v[0x03],
-	    axes->v[0x04], axes->v[0x05], axes->v[0x06], axes->v[0x07],
-	    axes->v[0x08], axes->v[0x09], axes->v[0x0a], axes->v[0x0b],
-	    axes->v[0x0c], axes->v[0x0d], axes->v[0x0e], axes->v[0x0f],
-	    axes->v[0x10], axes->v[0x11], axes->v[0x12], axes->v[0x13],
-	    axes->v[0x14], axes->v[0x15], axes->v[0x16], axes->v[0x17],
-	    axes->v[0x18], axes->v[0x19], axes->v[0x1a], axes->v[0x1b],
-	    axes->v[0x1c], axes->v[0x1d], axes->v[0x1e], axes->v[0x1f],
-	    axes->v[0x20], axes->v[0x21], axes->v[0x22], axes->v[0x23],
-	    axes->v[0x24], axes->v[0x25], axes->v[0x26], axes->v[0x27],
-	    axes->v[0x28], axes->v[0x29], axes->v[0x2a], axes->v[0x2b],
-	    axes->v[0x2c], axes->v[0x2d], axes->v[0x2e], axes->v[0x2f],
-	    axes->v[0x30], axes->v[0x31], axes->v[0x32], axes->v[0x33],
-	    axes->v[0x34], axes->v[0x35], axes->v[0x36], axes->v[0x37],
-	    axes->v[0x38], axes->v[0x39], axes->v[0x3a], axes->v[0x3b],
-	    axes->v[0x3c], axes->v[0x3d], axes->v[0x3e], axes->v[0x3f]);
-    else
-	xf86PostMotionEvent(pInfo->dev, absolute, 0,
-	    state->axes->axes,
-	    axes->v[0x00], axes->v[0x01], axes->v[0x02], axes->v[0x03],
-	    axes->v[0x04], axes->v[0x05], axes->v[0x06], axes->v[0x07],
-	    axes->v[0x08], axes->v[0x09], axes->v[0x0a], axes->v[0x0b],
-	    axes->v[0x0c], axes->v[0x0d], axes->v[0x0e], axes->v[0x0f],
-	    axes->v[0x10], axes->v[0x11], axes->v[0x12], axes->v[0x13],
-	    axes->v[0x14], axes->v[0x15], axes->v[0x16], axes->v[0x17],
-	    axes->v[0x18], axes->v[0x19], axes->v[0x1a], axes->v[0x1b],
-	    axes->v[0x1c], axes->v[0x1d], axes->v[0x1e], axes->v[0x1f],
-	    axes->v[0x20], axes->v[0x21], axes->v[0x22], axes->v[0x23],
-	    axes->v[0x24], axes->v[0x25], axes->v[0x26], axes->v[0x27],
-	    axes->v[0x28], axes->v[0x29], axes->v[0x2a], axes->v[0x2b],
-	    axes->v[0x2c], axes->v[0x2d], axes->v[0x2e], axes->v[0x2f],
-	    axes->v[0x30], axes->v[0x31], axes->v[0x32], axes->v[0x33],
-	    axes->v[0x34], axes->v[0x35], axes->v[0x36], axes->v[0x37],
-	    axes->v[0x38], axes->v[0x39], axes->v[0x3a], axes->v[0x3b],
-	    axes->v[0x3c], axes->v[0x3d], axes->v[0x3e], axes->v[0x3f]);
-
-    if (!skip_xy)
-	for (i = 0; i < ABS_MAX; i++)
-	    state->axes->v[i] = 0;
-    else if (skip_xy == 1)
-	for (i = 2; i < ABS_MAX; i++)
-	    state->axes->v[i] = 0;
-    else if (skip_xy == 2)
-	for (i = 0; i < 2; i++)
-	    state->axes->v[i] = 0;
-}
-
-static void
-EvdevAxesAbsSynCfg (InputInfoPtr pInfo)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    struct input_absinfo absinfo;
-    int i;
-
-    for (i = 0; i < ABS_MAX; i++) {
-	if (!test_bit (i, pEvdev->bits.abs))
-	    continue;
-
-	if (ioctl (pInfo->fd, EVIOCGABS(i), &absinfo) < 0) {
-	    xf86Msg(X_ERROR, "ioctl EVIOCGABS (%d) failed: %s\n", i, strerror(errno));
-	    continue;
-	}
-	state->abs->min[state->abs->map[i]] = absinfo.minimum;
-	state->abs->max[state->abs->map[i]] = absinfo.maximum;
+    /*
+     * Rotation.
+     * Cache the sine and cosine results so we're not doing it every time.
+     */
+    if (dabs->rotation != axes->rotation || (axes->rot_cos == axes->rot_sin)) {
+	axes->rotation = dabs->rotation % 360;
+	axes->rot_cos = cos ( ((float) axes->rotation) * (M_PI/180));
+	axes->rot_sin = sin ( ((float) axes->rotation) * (M_PI/180));
     }
 
+    if (axes->rotation) {
+	axes->v[0] = (x * axes->rot_cos) - (y * axes->rot_sin);
+	axes->v[1] = (y * axes->rot_cos) + (x * axes->rot_sin);
+
+	axes->v_flags[0] |= EV_AXES_V_UPDATED;
+	axes->v_flags[1] |= EV_AXES_V_UPDATED;
+#if DEBUG
+	xf86Msg(X_ERROR, "%s %d (%s): cos=%f, sin=%f, x=%f, y=%f, v[0]=%d, v[1]=%d\n", __FILE__, __LINE__, __FUNCTION__,
+		axes->rot_cos, axes->rot_sin, x, y, axes->v[0], axes->v[1]);
+#endif
+    } else {
+	axes->v[0] = x;
+	axes->v[1] = y;
+    }
 }
 
-static void
-EvdevAxesAbsSynRep (InputInfoPtr pInfo)
+/* 
+ * Cx     - raw data from touch screen
+ * Sxhigh - scaled highest dimension
+ *          (remember, this is of rows - 1 because of 0 origin)
+ * Sxlow  - scaled lowest dimension
+ * Rxhigh - highest raw value from touch screen calibration
+ * Rxlow  - lowest raw value from touch screen calibration
+ *
+ * This function is the same for X or Y coordinates.
+ * You may have to reverse the high and low values to compensate for
+ * different orgins on the touch screen vs X.
+ */
+
+_X_EXPORT int
+EvdevScaleAxis(int	Cx,
+              int	Sxlow,
+              int	Sxhigh,
+              int	Rxlow,
+              int	Rxhigh)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    int i = 0;
-    Bool skip_xy = 0;
+    int X;
+    int dSx = Sxhigh - Sxlow;
+    int dRx = Rxhigh - Rxlow;
 
-    if (!state->axes || !state->abs || !state->abs->count)
-	return;
+    /* This is +, because Cx is negitive, so we're really subtracting. */
+    if (Cx < 0)
+	Cx = Rxhigh + Cx;
 
-    if (state->mode == Relative && state->abs->axes >= 2) {
-	if (!state->abs->use_touch || state->abs->touch) {
-	    if (state->abs->reset_x && state->abs->v[0] != state->abs->old_x) {
-		state->axes->v[0] = 0;
-		state->abs->reset_x = 0;
-#if DEBUG
-		xf86Msg(X_INFO, "%s: Resetting X.\n", pInfo->name);
-#endif
-	    } else
-		state->axes->v[0] = state->abs->v[0] - state->abs->old_x;
-
-	    if (state->abs->reset_y && state->abs->v[1] != state->abs->old_y) {
-		state->axes->v[1] = 0;
-		state->abs->reset_y = 0;
-#if DEBUG
-		xf86Msg(X_INFO, "%s: Resetting Y.\n", pInfo->name);
-#endif
-	    } else
-		state->axes->v[1] = state->abs->v[1] - state->abs->old_y;
-
-	    state->abs->old_x = state->abs->v[0];
-	    state->abs->old_y = state->abs->v[1];
-	    EvdevAxesRealSyn (pInfo, 0, 2);
-	}
-	skip_xy = 1;
-    } else if (state->mode == Absolute && state->abs->screen != -1 && state->abs->axes >= 2) {
-	int conv_x, conv_y;
-	int scale[2];
-
-	scale[0] = screenInfo.screens[state->abs->screen]->width;
-	scale[1] = screenInfo.screens[state->abs->screen]->height;
-
-	for (i = 0; i < 2; i++)
-	    state->axes->v[i] = xf86ScaleAxis (state->abs->v[i],
-		    0, scale[i], state->abs->min[i], state->abs->max[i]);
-
-
-	EvdevConvert (pInfo, 0, 2, state->abs->v[0], state->abs->v[1],
-		0, 0, 0, 0, &conv_x, &conv_y);
-	xf86XInputSetScreen (pInfo, state->abs->screen, conv_x, conv_y);
+    dSx = Sxhigh - Sxlow;
+    if (dRx) {
+	X = ((dSx * (Cx - Rxlow)) / dRx) + Sxlow;
     }
-
-    for (; i < ABS_MAX; i++)
-	state->axes->v[i] = state->abs->v[i];
-
-    EvdevAxesRealSyn (pInfo, 1, skip_xy);
-    state->abs->count = 0;
-}
-
-static void
-EvdevAxesRelSynRep (InputInfoPtr pInfo)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    evdevRelPtr rel = state->rel;
-    int i, btn;
-
-    if (!state->axes || !state->rel || !state->rel->count)
-	return;
-
-    for (i = 0; i < REL_MAX; i++) {
-	if (rel->btnMap[i][0] || rel->btnMap[i][1]) {
-	    if ((rel->v[i] > 0) && (btn = rel->btnMap[i][0]))
-		EvdevBtnPostFakeClicks (pInfo, btn, rel->v[i]);
-	    else if ((rel->v[i] < 0) && (btn = rel->btnMap[i][1]))
-		EvdevBtnPostFakeClicks (pInfo, btn, -rel->v[i]);
-	}
-
-	state->axes->v[i] = rel->v[i];
-	rel->v[i] = 0;
+    else {
+	X = 0;
+	ErrorF ("Divide by Zero in evdevScaleAxis");
     }
+    
+    if (X < Sxlow)
+	X = Sxlow;
+    if (X > Sxhigh)
+	X = Sxhigh;
 
-    EvdevAxesRealSyn (pInfo, 0, 0);
-    rel->count = 0;
+    return (X);
 }
 
 void
 EvdevAxesSynRep (InputInfoPtr pInfo)
 {
-    EvdevAxesAbsSynRep (pInfo);
-    EvdevAxesRelSynRep (pInfo);
+    evdevDevicePtr pEvdev = pInfo->private;
+    evdevStatePtr state = &pEvdev->state;
+    evdevAxesPtr axes = state->axes;
+    DeviceIntPtr dev = pInfo->dev;
+    AbsoluteClassRec *dabs = dev->absolute;
+
+    int i, start, run, mode;
+
+    if (!axes || !(axes->flags & EV_AXES_UPDATED))
+	return;
+
+    start = 0;
+    mode = 0;
+    run = 0;
+
+    /*
+     * This handles most, but not all, of the ABS_CALIB and ABS_AREA
+     * additions to XInput 1.0.
+     *
+     * Note, we do this if both X and Y are set to absolute, or a more
+     * limited subset if both X and Y are relative, we don't do anything
+     * if we lack X or Y, or if they are not both set to both be ABS or REL.
+     */
+    if (axes->axes >= 2 && dabs) {
+	if ((axes->v_flags[0] & EV_AXES_V_M_ABS) &&
+	    (axes->v_flags[1] & EV_AXES_V_M_ABS) &&
+	    ((axes->v_flags[0] & EV_AXES_V_UPDATED) ||
+	     (axes->v_flags[1] & EV_AXES_V_UPDATED))
+	    ) {
+	    int width, height, min_x, max_x, min_y, max_y;
+
+	    if (axes->v_flags[0] & EV_AXES_V_UPDATED) axes->x = axes->v[0];
+	    else axes->v[0] = axes->x;
+	    if (axes->v_flags[1] & EV_AXES_V_UPDATED) axes->y = axes->v[1];
+	    else axes->v[1] = axes->y;
+
+	    if (dabs->width > 0)
+		width = dabs->width;
+	    else
+		width = screenInfo.screens[dabs->screen]->width;
+
+	    if (dabs->height > 0)
+		height = dabs->height;
+	    else
+		height = screenInfo.screens[dabs->screen]->height;
+
+	    if (dabs->flip_x)
+		axes->v[0] = dabs->max_x - axes->v[0];
+	    if (dabs->flip_y)
+		axes->v[1] = dabs->max_y - axes->v[1];
+
+	    /*
+	     * In some cases we need to swap width and height.
+	     * This depends on the rotation.
+	     */
+	    if ( (axes->rotation >= 45  && axes->rotation < 135) ||
+		    (axes->rotation >= 225 && axes->rotation < 315)) {
+		min_x = dabs->min_y;
+		max_x = dabs->max_y;
+		min_y = dabs->min_x;
+		max_y = dabs->max_x;
+	    } else {
+		min_x = dabs->min_x;
+		max_x = dabs->max_x;
+		min_y = dabs->min_y;
+		max_y = dabs->max_y;
+	    }
+
+	    EvdevAxesDoRotation (pInfo, axes->v[0], axes->v[1]);
+
+	    axes->v[0] = EvdevScaleAxis (axes->v[0], 0, width, min_x, max_x);
+	    axes->v[1] = EvdevScaleAxis (axes->v[1], 0, height, min_y, max_y);
+
+	    axes->v[0] += dabs->offset_x;
+	    axes->v[1] += dabs->offset_y;
+
+	    xf86XInputSetScreen (pInfo, dabs->screen, axes->v[0], axes->v[1]);
+	} else if ((axes->v_flags[0] & EV_AXES_V_M_REL) &&
+		(axes->v_flags[1] & EV_AXES_V_M_REL) &&
+		((axes->v_flags[0] & EV_AXES_V_UPDATED) ||
+		 (axes->v_flags[1] & EV_AXES_V_UPDATED))
+		) {
+
+	    if (axes->v_flags[0] & EV_AXES_V_UPDATED) axes->x = axes->v[0];
+	    else axes->v[0] = axes->x;
+	    if (axes->v_flags[1] & EV_AXES_V_UPDATED) axes->y = axes->v[1];
+	    else axes->v[1] = axes->y;
+
+	    if (dabs->flip_x)
+		axes->v[0] = -axes->v[0];
+	    if (dabs->flip_y)
+		axes->v[1] = -axes->v[1];
+
+	    EvdevAxesDoRotation (pInfo, axes->v[0], axes->v[1]);
+	}
+    }
+
+    for (i = 0; i < axes->axes; i++) {
+	if (axes->v_flags[i] & EV_AXES_V_UPDATED) {
+	    if (run) {
+		if (mode != (axes->v_flags[i] & EV_AXES_V_M_MASK)) {
+		    mode = (mode == EV_AXES_V_M_ABS);
+		    xf86PostMotionEventP (pInfo->dev, mode, start, i - start, axes->v + start);
+		    start = i;
+		    mode = axes->v_flags[i] & EV_AXES_V_M_MASK;
+		}
+	    } else {
+		start = i;
+		mode = axes->v_flags[i] & EV_AXES_V_M_MASK;
+	    }
+	    run = 1;
+	    axes->v_flags[i] &= ~EV_AXES_V_UPDATED;
+	} else if (run) {
+	    mode = (mode == EV_AXES_V_M_ABS);
+	    xf86PostMotionEventP (pInfo->dev, mode, start, i - start, axes->v + start);
+	}
+    }
+    if (run) {
+	mode = (mode == EV_AXES_V_M_ABS);
+	xf86PostMotionEventP (pInfo->dev, mode, start, i - start, axes->v + start);
+    }
 }
+/*
+ * End rotation and rep code, this is a mess and much of it needs to live in mi/
+ * after a cleanup.
+ */
+
 
 void
 EvdevAxesSynCfg (InputInfoPtr pInfo)
 {
-    EvdevAxesAbsSynCfg (pInfo);
+/*    EvdevAxesAbsSynCfg (pInfo);*/
 /*    EvdevAxesRelSynCfg (pInfo);*/
 }
 
@@ -344,22 +593,38 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int map;
+    evdevAbsRec *abs = state->abs;
+    int value, v_flags, is_rel;
 
-    if (ev->code >= ABS_MAX)
+    if (ev->code >= ABS_MAX || !abs->v_map[ev->code])
 	return;
 
-    /* FIXME: Handle inverted axes properly. */
-    map = state->abs->map[ev->code];
-    if (map >= 0)
-	state->abs->v[map] = ev->value;
+    value = ev->value;
+    v_flags = abs->v_flags[ev->code];
+
+    if ((v_flags & EV_ABS_V_USE_TOUCH) && !(state->abs->flags & EV_ABS_TOUCH))
+	return;
+
+    if (v_flags & EV_ABS_V_INVERT)
+	value = state->abs->v_max[ev->code] - value;
+
+    if (v_flags & EV_ABS_V_M_REL)
+	is_rel = 1;
+    else if ((v_flags & EV_ABS_V_M_AUTO) && state->mode == Relative)
+	is_rel = 1;
     else
-	state->abs->v[-map] = ev->value;
+	is_rel = 0;
 
-    state->abs->count++;
+    if (is_rel) {
+	if ((v_flags & EV_ABS_V_RESET) && value != abs->v[ev->code]) {
+	    abs->v_flags[ev->code] &= ~EV_ABS_V_RESET;
+	} else
+	    abs->v_map[ev->code](pInfo, value - abs->v[ev->code], 0, abs->v_map_data[ev->code]);
 
-    if (!state->sync)
-	EvdevAxesAbsSynRep (pInfo);
+	abs->v[ev->code] = value;
+    } else
+	abs->v_map[ev->code](pInfo, value, 1, abs->v_map_data[ev->code]);
+
 }
 
 void
@@ -367,21 +632,19 @@ EvdevAxesRelProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int map;
+    evdevRelRec *rel = state->rel;
+    int value, v_flags;
 
-    if (ev->code >= REL_MAX)
+    if (ev->code >= REL_MAX || !rel->v_map[ev->code])
 	return;
 
-    map = state->rel->map[ev->code];
-    if (map >= 0)
-	state->rel->v[map] += ev->value;
-    else
-	state->rel->v[-map] -= ev->value;
+    value = ev->value;
+    v_flags = rel->v_flags[ev->code];
 
-    state->rel->count++;
+    if (v_flags & EV_REL_V_INVERT)
+	value = -value;
 
-    if (!state->sync)
-	EvdevAxesRelSynRep (pInfo);
+    rel->v_map[ev->code](pInfo, value, 0, rel->v_map_data[ev->code]);
 }
 
 int
@@ -397,13 +660,16 @@ EvdevAxesOff (DeviceIntPtr device)
 }
 
 static int
-EvdevAxisAbsNew0(InputInfoPtr pInfo)
+EvdevAxisAbsNew(InputInfoPtr pInfo)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
+    evdevAbsRec *abs;
     struct input_absinfo absinfo;
-    char option[64];
-    int i, j, k = 0, real_axes;
+    char option[128], value[128];
+    const char *s;
+    int i, j, k, real_axes;
+    evdev_option_token_t *tokens;
 
     real_axes = 0;
     for (i = 0; i < ABS_MAX; i++)
@@ -413,7 +679,7 @@ EvdevAxisAbsNew0(InputInfoPtr pInfo)
     if (!real_axes)
 	return !Success;
 
-    state->abs = Xcalloc (sizeof (evdevAbsRec));
+    state->abs = abs = Xcalloc (sizeof (evdevAbsRec));
 
     xf86Msg(X_INFO, "%s: Found %d absolute axes.\n", pInfo->name, real_axes);
     xf86Msg(X_INFO, "%s: Configuring as pointer.\n", pInfo->name);
@@ -426,31 +692,46 @@ EvdevAxisAbsNew0(InputInfoPtr pInfo)
 	if (!test_bit (i, pEvdev->bits.abs))
 	    continue;
 
-	snprintf(option, sizeof(option), "%sAbsoluteAxisMap", abs_axis_names[i]);
-	k = xf86SetIntOption(pInfo->options, option, -1);
-	if (k != -1)
-	    state->abs->map[i] = k;
-	else
-	    state->abs->map[i] = j;
-
-	if (k != -1)
-	    xf86Msg(X_CONFIG, "%s: %s: %d.\n", pInfo->name, option, k);
-
 	if (ioctl (pInfo->fd, EVIOCGABS(i), &absinfo) < 0) {
 	    xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
 	    return !Success;
 	}
-	state->abs->min[state->abs->map[i]] = absinfo.minimum;
-	state->abs->max[state->abs->map[i]] = absinfo.maximum;
+
+	snprintf(option, sizeof(option), "Abs%sMapTo", abs_axis_names[i]);
+	snprintf(value, sizeof(value), "AbsAxis %d %d %d", j, absinfo.minimum, absinfo.maximum);
+	s = xf86SetStrOption(pInfo->options, option, value);
+	tokens = EvdevTokenize (s, " =", NULL); 
+	if (!tokens->is_chain && tokens->next) {
+	    for (k = 0; evdev_map_parsers[k].name; k++) {
+		if (!strcasecmp (tokens->u.str, evdev_map_parsers[k].name)) {
+		    if (!evdev_map_parsers[k].func (pInfo, option, tokens->next, &abs->v_map_data[i], &abs->v_map[i]))
+			xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier (%s).\n", pInfo->name, s, evdev_map_parsers[k].name);
+		    break;
+		}
+	    }
+
+	    if (!evdev_map_parsers[k].name)
+		xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
+	}
+	EvdevFreeTokens (tokens);
+
+	snprintf(option, sizeof(option), "Abs%sOptions", abs_axis_names[i]);
+	if (i == ABS_X || i == ABS_Y)
+	    s = xf86SetStrOption(pInfo->options, option, "use_touch mode_auto");
+	else
+	    s = xf86SetStrOption(pInfo->options, option, "");
+	if (s[0]) {
+	    tokens = EvdevTokenize (s, " =", NULL); 
+	    if (!EvdevParseAbsOptions (pInfo, option, tokens, &abs->v_flags[i]))
+		xf86Msg (X_ERROR, "%s: Unable to parse '%s' as absolute options.\n", pInfo->name, s);
+	    EvdevFreeTokens (tokens);
+	}
+	abs->v_flags[i] |= EV_ABS_V_PRESENT;
 
 	j++;
     }
 
     state->abs->axes = real_axes;
-    for (i = 0; i < ABS_MAX; i++) {
-	if (state->abs->map[i] > state->abs->axes)
-	    state->abs->axes = state->abs->map[i];
-    }
 
     return Success;
 }
@@ -461,7 +742,6 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
     char *s;
-    int k = 0;
 
     if (!state->abs)
 	return !Success;
@@ -476,7 +756,7 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 	btn = EvdevBtnFind (pInfo, s);
 	if (btn != -1) {
 	    if (EvdevBtnExists (pInfo, btn)) {
-		state->abs->use_touch = 1;
+		state->abs->flags |= EV_ABS_USE_TOUCH;
 		xf86Msg(X_ERROR, "%s: Button: %d.\n", pInfo->name, btn);
 		xf86Msg(X_ERROR, "%s: state->btn: %p.\n", pInfo->name, state->btn);
 		state->btn->callback[btn] = &EvdevAxesTouchCallback;
@@ -500,29 +780,18 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
     }
 
-    if (test_bit (ABS_X, pEvdev->bits.abs) && test_bit (ABS_Y, pEvdev->bits.abs))
-	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", 0);
-    else
-	k = xf86SetIntOption(pInfo->options, "AbsoluteScreen", -1);
-    if (k < screenInfo.numScreens && k >= 0) {
-	state->abs->screen = k;
-	xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d.\n", pInfo->name, k);
-    } else {
-	if (k != -1)
-	    xf86Msg(X_CONFIG, "%s: AbsoluteScreen: %d is not a valid screen.\n", pInfo->name, k);
-	state->abs->screen = -1;
-    }
-
     return Success;
 }
 
 static int
-EvdevAxisRelNew0(InputInfoPtr pInfo)
+EvdevAxisRelNew(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    char *s, option[64];
-    int i, j, k = 0, real_axes;
+    evdevRelPtr rel = state->rel;
+    char *s, option[128], value[128];
+    int i, j, k, real_axes;
+    evdev_option_token_t *tokens;
 
     real_axes = 0;
     for (i = 0; i < REL_MAX; i++)
@@ -546,60 +815,43 @@ EvdevAxisRelNew0(InputInfoPtr pInfo)
 	if (!test_bit (i, pEvdev->bits.rel))
 	    continue;
 
-	snprintf(option, sizeof(option), "%sRelativeAxisMap", rel_axis_names[i]);
-	s = xf86SetStrOption(pInfo->options, option, "0");
-	if (s && (k = strtol(s, NULL, 0)))
-	    state->rel->map[i] = k;
-	else
-	    state->rel->map[i] = j;
-
-	if (s && k)
-	    xf86Msg(X_CONFIG, "%s: %s: %d.\n", pInfo->name, option, k);
-
-
-	snprintf(option, sizeof(option), "%sRelativeAxisButtons", rel_axis_names[i]);
+	snprintf(option, sizeof(option), "Rel%sMapTo", rel_axis_names[i]);
 	if (i == REL_WHEEL || i == REL_Z)
-	    s = xf86SetStrOption(pInfo->options, option, "4 5");
+	    snprintf(value, sizeof(value), "Buttons 4 5 1");
 	else if (i == REL_HWHEEL)
-	    s = xf86SetStrOption(pInfo->options, option, "6 7");
+	    snprintf(value, sizeof(value), "Buttons 6 7 1");
 	else
-	    s = xf86SetStrOption(pInfo->options, option, "0 0");
+	    snprintf(value, sizeof(value), "RelAxis %d", j);
+	s = xf86SetStrOption(pInfo->options, option, value);
+	tokens = EvdevTokenize (s, " =", NULL); 
+	if (!tokens->is_chain && tokens->next) {
+	    for (k = 0; evdev_map_parsers[k].name; k++) {
+		if (!strcasecmp (tokens->u.str, evdev_map_parsers[k].name)) {
+		    if (!evdev_map_parsers[k].func (pInfo, option, tokens->next, &rel->v_map_data[i], &rel->v_map[i]))
+			xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier.\n", pInfo->name, s);
+		    break;
+		}
 
-	k = state->rel->map[i];
+	    }
 
-	if (!s || (sscanf(s, "%d %d", &state->rel->btnMap[k][0],
-			&state->rel->btnMap[k][1]) != 2))
-	    state->rel->btnMap[k][0] = state->rel->btnMap[k][1] = 0;
+	    if (!evdev_map_parsers[k].name)
+		xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
+	}
+	EvdevFreeTokens (tokens);
 
-	if (state->rel->btnMap[k][0] || state->rel->btnMap[k][1])
-	    xf86Msg(X_CONFIG, "%s: %s: %d %d.\n", pInfo->name, option,
-		    state->rel->btnMap[k][0], state->rel->btnMap[k][1]);
+	snprintf(option, sizeof(option), "Rel%sOptions", rel_axis_names[i]);
+	s = xf86SetStrOption(pInfo->options, option, "");
+	if (s[0]) {
+	    tokens = EvdevTokenize (s, " =", NULL); 
+	    if (!EvdevParseRelOptions (pInfo, option, tokens, &rel->v_flags[i]))
+		xf86Msg (X_ERROR, "%s: Unable to parse '%s' as relative options.\n", pInfo->name, s);
+	    EvdevFreeTokens (tokens);
+	}
+	rel->v_flags[i] |= EV_REL_V_PRESENT;
+
 
 	j++;
     }
-
-    state->rel->axes = real_axes;
-    for (i = 0; i < REL_MAX; i++)
-	if (state->rel->map[i] > state->rel->axes)
-	    state->rel->axes = state->rel->map[i];
-
-    if (state->abs && (state->abs->axes >= 2) && (state->rel->axes < 2))
-	state->rel->axes += 2;
-
-    return Success;
-}
-
-static int
-EvdevAxisRelNew1(InputInfoPtr pInfo)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-
-    if (!state->rel)
-	return !Success;
-
-    xf86Msg(X_CONFIG, "%s: Configuring %d relative axes.\n", pInfo->name,
-	    state->rel->axes);
 
     return Success;
 }
@@ -612,9 +864,9 @@ EvdevAxesNew0 (InputInfoPtr pInfo)
     int ret = Success;
 
     state->axes = Xcalloc (sizeof (evdevAxesRec));
-    if (EvdevAxisAbsNew0(pInfo) != Success)
+    if (EvdevAxisAbsNew(pInfo) != Success)
 	ret = !Success;
-    if (EvdevAxisRelNew0(pInfo) != Success)
+    if (EvdevAxisRelNew(pInfo) != Success)
 	ret = !Success;
     if (!state->abs && !state->rel) {
 	Xfree (state->axes);
@@ -627,14 +879,19 @@ EvdevAxesNew0 (InputInfoPtr pInfo)
 int
 EvdevAxesNew1 (InputInfoPtr pInfo)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    int ret = Success;
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
+    evdevAxesRec *axes = state->axes;
+    int i, ret = Success;
 
-    state->axes = Xcalloc (sizeof (evdevAxesRec));
+    if (!state->axes)
+	return ret;
+
+    for (i = 0; i < AXES_MAX; i++)
+	if (axes->v_flags[i] & EV_AXES_V_PRESENT)
+	    axes->axes = i + 1;
+
     if (EvdevAxisAbsNew1(pInfo) != Success)
-	ret = !Success;
-    if (EvdevAxisRelNew1(pInfo) != Success)
 	ret = !Success;
     if (!state->abs && !state->rel) {
 	Xfree (state->axes);
@@ -657,42 +914,46 @@ EvdevAxesInit (DeviceIntPtr device)
     InputInfoPtr pInfo = device->public.devicePrivate;
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    int i, axes = 0;
+    evdevAxesRec *axes = state->axes;
+    AbsoluteClassRec *dev_abs;
+    int i;
 
-    if (state->abs && state->abs->axes > axes)
-	axes = state->abs->axes;
-    if (state->rel && state->rel->axes > axes)
-	axes = state->rel->axes;
-
-    state->axes->axes = axes;
-
-    xf86Msg(X_CONFIG, "%s: %d valuators.\n", pInfo->name,
-	    axes);
-    if (!axes)
+    if (!axes || !axes->axes)
 	return Success;
 
-    if (!InitValuatorClassDeviceStruct(device, axes,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 1
+    xf86Msg(X_CONFIG, "%s: %d valuators.\n", pInfo->name,
+	    axes->axes);
+
+    if (!InitValuatorClassDeviceStruct(device, axes->axes,
                                        GetMotionHistory,
                                        GetMotionHistorySize(),
-#else
-                                       miPointerGetMotionEvents,
-                                       miPointerGetMotionBufferSize(),
-#endif
                                        0))
         return !Success;
 
-    for (i = 0; i < axes; i++) {
-	xf86InitValuatorAxisStruct(device, i, -1, -1, 0, 0, 1);
+    /*
+     * Yes, we want to do this for relative devices too.
+     * Some of the settings are useful for both.
+     */
+    if ((axes->v_flags[0] & EV_AXES_V_PRESENT) &&
+	    (axes->v_flags[1] & EV_AXES_V_PRESENT) &&
+	    InitAbsoluteClassDeviceStruct (device)) {
+	dev_abs = device->absolute;
+	if (axes->v_min[0] != axes->v_max[1] && axes->v_min[1] != axes->v_max[1]) {
+	    device->absolute->min_x = axes->v_min[0];
+	    device->absolute->max_x = axes->v_max[0];
+	    device->absolute->min_y = axes->v_min[1];
+	    device->absolute->max_y = axes->v_max[1];
+	}
+    }
+
+    for (i = 0; i < axes->axes; i++) {
+	xf86InitValuatorAxisStruct(device, i, -1, -1, 1, 1, 1);
+
 	xf86InitValuatorDefaults(device, i);
     }
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
-
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
-    xf86MotionHistoryAllocate (pInfo);
-#endif
 
     return Success;
 }
@@ -702,13 +963,18 @@ EvdevAxesTouchCallback (InputInfoPtr pInfo, int button, int value)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
+    int i;
 
 #if DEBUG
     xf86Msg(X_INFO, "%s: Touch callback; %d.\n", pInfo->name, value);
 #endif
-    if (state->abs->use_touch) {
-	state->abs->touch = !!value;
-	if (value)
-	    state->abs->reset_x = state->abs->reset_y = 1;
+    if (state->abs->flags & EV_ABS_USE_TOUCH) {
+	if (value) {
+	    state->abs->flags |= EV_ABS_TOUCH;
+	    for (i = 0; i < ABS_MAX; i++)
+		if (state->abs->v_flags[i] & EV_ABS_V_USE_TOUCH)
+		    state->abs->v_flags[i] |= EV_ABS_V_RESET;
+	} else
+	    state->abs->flags &= ~EV_ABS_TOUCH;
     }
 }

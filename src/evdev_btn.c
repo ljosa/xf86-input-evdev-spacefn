@@ -214,6 +214,7 @@ EvdevBtnOff (DeviceIntPtr device)
     return Success;
 }
 
+#if 0
 /*
  * Warning, evil lives here.
  */
@@ -286,6 +287,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	}
     }
 }
+#endif
 
 
 int
@@ -350,7 +352,11 @@ EvdevBtnNew1(InputInfoPtr pInfo)
     if (!state->btn)
 	return !Success;
 
+#if 0
     EvdevBtnCalcRemap (pInfo);
+#else
+    state->btn->buttons = state->btn->real_buttons;
+#endif
 
     if (state->btn->buttons)
 	xf86Msg(X_INFO, "%s: Configured %d mouse buttons\n", pInfo->name, state->btn->buttons);
@@ -399,7 +405,9 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
     if (state->btn->ignore[button] & EV_BTN_IGNORE_X)
 	return;
 
+#if 0
     button = state->btn->map[button];
+#endif
     xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
 }
 

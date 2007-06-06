@@ -94,8 +94,25 @@
 #include <X11/extensions/XKB.h>
 #include <X11/extensions/XKBstr.h>
 
+/*
+ * At the moment, ABS_MAX is larger then REL_MAX.
+ * As they are the only two providors of axes, ABS_MAX is it.
+ */
+#define AXES_MAX	ABS_MAX
+
 
 #define EVDEV_MAXBUTTONS	96
+
+struct _evdevDevice;
+
+/*
+ * FIXME: The mode option here is a kludge.
+ * It can be 0 (rel mode), 1 (abs mode), or -1 (input side has no clue).
+ *
+ * Worse, it arguably shouldn't even be the sender that decides here.
+ * And only the Axes targets and sources care at all right now.
+ */
+typedef void (*evdev_map_func_f)(InputInfoPtr pInfo, int value, int mode, void *map_data);
 
 typedef struct {
     unsigned long	ev[NBITS(EV_MAX)];
@@ -111,6 +128,7 @@ typedef struct {
 #define EV_BTN_IGNORE_X   	1
 #define EV_BTN_IGNORE_EVDEV   	2
 #define EV_BTN_IGNORE_MAP	(EV_BTN_IGNORE_X | EV_BTN_IGNORE_EVDEV)
+
 typedef struct {
     int		real_buttons;
     int		buttons;
@@ -119,31 +137,60 @@ typedef struct {
     void	(*callback[EVDEV_MAXBUTTONS])(InputInfoPtr pInfo, int button, int value);
 } evdevBtnRec, *evdevBtnPtr;
 
+#define EV_ABS_V_PRESENT	(1<<0)
+#define EV_ABS_V_M_AUTO		(1<<1)
+#define EV_ABS_V_M_REL		(1<<2)
+#define EV_ABS_V_INVERT		(1<<3)
+#define EV_ABS_V_RESET		(1<<4)
+#define EV_ABS_V_USE_TOUCH	(1<<5)
+
+#define EV_ABS_USE_TOUCH	(1<<0)
+#define EV_ABS_TOUCH		(1<<1)
+#define EV_ABS_UPDATED		(1<<2)
+
 typedef struct {
+    int		flags;
     int		axes;
     int		v[ABS_MAX];
-    int		old_x, old_y;
-    int		count;
-    int		min[ABS_MAX];
-    int		max[ABS_MAX];
-    int		map[ABS_MAX];
-    int		screen; /* Screen number for this device. */
-    Bool	use_touch;
-    Bool	touch;
-    Bool	reset_x, reset_y;
+    int		v_flags[ABS_MAX];
+    int		v_min[ABS_MAX];
+    int		v_max[ABS_MAX];
+    void	*v_map_data[ABS_MAX];
+    evdev_map_func_f v_map[ABS_MAX];
 } evdevAbsRec, *evdevAbsPtr;
 
+#define EV_REL_V_PRESENT	(1<<0)
+#define EV_REL_V_INVERT		(1<<1)
+#define EV_REL_UPDATED		(1<<0)
+
 typedef struct {
-    int		axes;
+    int		flags;
+    int		v_flags[REL_MAX];
     int		v[REL_MAX];
-    int		count;
-    int		map[REL_MAX];
-    int		btnMap[REL_MAX][2];
+    int		axes;
+    void 	*v_map_data[REL_MAX];
+    evdev_map_func_f v_map[REL_MAX];
 } evdevRelRec, *evdevRelPtr;
+
+#define EV_AXES_V_M_ABS		(1<<0)
+#define EV_AXES_V_M_REL		(1<<1)
+#define EV_AXES_V_PRESENT	(1<<2)
+#define EV_AXES_V_UPDATED	(1<<3)
+
+#define EV_AXES_V_M_MASK	(EV_AXES_V_M_ABS | EV_AXES_V_M_REL)
+
+#define EV_AXES_UPDATED		(1<<0)
 
 typedef struct {
     int		axes;
-    int		v[ABS_MAX];
+    int		flags;
+    int		v_flags[AXES_MAX];
+    int		v_min[AXES_MAX];
+    int		v_max[AXES_MAX];
+    int		v[AXES_MAX];
+    int		rotation;
+    float	rot_sin, rot_cos;
+    int		x, y;
 } evdevAxesRec, *evdevAxesPtr;
 
 typedef struct {
@@ -200,5 +247,43 @@ int EvdevKeyNew (InputInfoPtr pInfo);
 int EvdevKeyOn (DeviceIntPtr device);
 int EvdevKeyOff (DeviceIntPtr device);
 void EvdevKeyProcess (InputInfoPtr pInfo, struct input_event *ev);
+
+
+/*
+ * Option handling stuff.
+ */
+
+typedef struct evdev_option_token_s {
+    int is_chain;
+    union {
+	const char *str;
+	struct evdev_option_token_s *chain;
+    } u;
+    struct evdev_option_token_s *next;
+} evdev_option_token_t;
+
+typedef Bool (*evdev_parse_opt_func_f)(InputInfoPtr pInfo, const char *name, evdev_option_token_t *token, int *flags);
+typedef Bool (*evdev_parse_map_func_f)(InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func);
+
+evdev_option_token_t *EvdevTokenize (const char *option, const char *tokens, const char *first);
+void EvdevFreeTokens (evdev_option_token_t *token);
+Bool EvdevParseMapToRelAxis (InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func);
+Bool EvdevParseMapToAbsAxis (InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func);
+
+typedef struct {
+    char *name;
+    evdev_parse_map_func_f func;
+} evdev_map_parsers_t;
+
+extern evdev_map_parsers_t evdev_map_parsers[];
 
 #endif	/* LNX_EVDEV_H_ */

@@ -103,6 +103,104 @@ evdevGetBits (int fd, evdevBitsPtr bits)
     return TRUE;
 }
 
+/*
+ * Evdev option handling stuff.
+ *
+ * We should probably move this all off to it's own file, but for now it lives
+ * hereish.
+ */
+
+evdev_map_parsers_t evdev_map_parsers[] = {
+    {
+	.name = "RelAxis",
+	.func = EvdevParseMapToRelAxis,
+    },
+    {
+	.name = "AbsAxis",
+	.func = EvdevParseMapToAbsAxis,
+    },
+    {
+	.name = NULL,
+	.func = NULL,
+    }
+};
+
+evdev_option_token_t *
+EvdevTokenize (const char *option, const char *tokens, const char *first)
+{
+    evdev_option_token_t *head = NULL, *token = NULL, *prev = NULL;
+    const char *ctmp;
+    char *tmp = NULL;
+    int len;
+
+    if (!first) {
+	first = strchr (option, tokens[0]);
+    }
+
+    while (1) {
+	if (first)
+	    len = first - option;
+	else {
+	    len = strlen(option);
+	    if (!len)
+		break;
+	}
+
+	if (!len) {
+	    option++;
+	    first = strchr (option, tokens[0]);
+	    continue;
+	}
+
+	token = calloc (1, sizeof(evdev_option_token_t));
+	if (!head)
+	    head = token;
+	if (prev)
+	    prev->next = token;
+
+	prev = token;
+
+	tmp = calloc(1, len + 1);
+	strncpy (tmp, option, len);
+
+	if (tokens[1]) {
+	    ctmp = strchr (tmp, tokens[1]);
+	    if (ctmp) {
+		token->is_chain = 1;
+		token->u.chain = EvdevTokenize (tmp, tokens + 1, ctmp);
+	    } else
+		token->u.str = tmp;
+	} else
+	    token->u.str = tmp;
+
+	if (!first)
+	    break;
+
+	option = first + 1;
+	first = strchr (option, tokens[0]);
+    }
+
+    return head;
+}
+
+void
+EvdevFreeTokens (evdev_option_token_t *token)
+{
+    evdev_option_token_t *next;
+
+    while (token) {
+	if (token->is_chain)
+	    EvdevFreeTokens (token->u.chain);
+	else
+	    free (token->u.str);
+	next = token->next;
+	free (token);
+	token = next;
+    }
+}
+
+
+
 static void
 EvdevReadInput(InputInfoPtr pInfo)
 {
