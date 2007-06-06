@@ -163,36 +163,6 @@ EvdevAxesMapAxis (InputInfoPtr pInfo, int value, int mode, void *map_data)
     axes->flags |= EV_AXES_UPDATED;
 }
 
-#if 0
-typedef struct {
-    int button_plus;
-    int button_minus;
-    int step;
-    int count;
-} AxisMapButton_t;
-
-void
-EvdevAxesMapButton (InputInfoPtr pInfo, int value, void *map_data)
-{
-    AxisMapButton_t *map = map_data;
-    int i;
-
-    // FIXME: Scream loudly, this is bad.
-    if (!map)
-	return;
-
-    map->count += value;
-    i = map->count / map->step;
-    if (i) {
-	map->count -= i * map->step;
-	if (i > 0)
-	    EvdevBtnPostFakeClicks (pInfo, map->button_plus, i);
-	else
-	    EvdevBtnPostFakeClicks (pInfo, map->button_minus, -i);
-    }
-}
-#endif
-
 static Bool
 EvdevParseRelOptions (InputInfoPtr pInfo, const char *name, evdev_option_token_t *option, int *flags)
 {
@@ -200,14 +170,10 @@ EvdevParseRelOptions (InputInfoPtr pInfo, const char *name, evdev_option_token_t
 	return 0;
 
     for (; option; option = option->next) {
-	// XXX: Impossible.
-	if (option->is_chain)
-	    continue;
-
-	if (!strcasecmp (option->u.str, "invert"))
+	if (!strcasecmp (option->str, "invert"))
 	    *flags |= EV_REL_V_INVERT;
 	else
-	    xf86Msg(X_ERROR, "%s: %s unknown relative option '%s'.\n", pInfo->name, name, option->u.str);
+	    xf86Msg(X_ERROR, "%s: %s unknown relative option '%s'.\n", pInfo->name, name, option->str);
 
     }
     *flags |= EV_REL_V_PRESENT;
@@ -222,20 +188,16 @@ EvdevParseAbsOptions (InputInfoPtr pInfo, const char *name, evdev_option_token_t
 	return 0;
 
     for (; option; option = option->next) {
-	// XXX: Impossible.
-	if (option->is_chain)
-	    continue;
-
-	if (!strcasecmp (option->u.str, "invert"))
+	if (!strcasecmp (option->str, "invert"))
 	    *flags |= EV_ABS_V_INVERT;
-	else if (!strcasecmp (option->u.str, "use_touch"))
+	else if (!strcasecmp (option->str, "use_touch"))
 	    *flags |= EV_ABS_V_USE_TOUCH;
-	else if (!strcasecmp (option->u.str, "mode_auto"))
+	else if (!strcasecmp (option->str, "mode_auto"))
 	    *flags |= EV_ABS_V_M_AUTO;
-	else if (!strcasecmp (option->u.str, "mode_rel"))
+	else if (!strcasecmp (option->str, "mode_rel"))
 	    *flags |= EV_ABS_V_M_REL;
 	else
-	    xf86Msg(X_ERROR, "%s: %s unknown absolute option '%s'.\n", pInfo->name, name, option->u.str);
+	    xf86Msg(X_ERROR, "%s: %s unknown absolute option '%s'.\n", pInfo->name, name, option->str);
 
     }
     *flags |= EV_ABS_V_PRESENT;
@@ -254,14 +216,11 @@ EvdevParseMapToRelAxis (InputInfoPtr pInfo,
     evdevAxesPtr axes = state->axes;
     long i;
 
-    if (!option || option->is_chain)
-	return 0;
-
     errno = 0;
-    i = strtol (option->u.str, NULL, 0);
+    i = strtol (option->str, NULL, 0);
     if (errno) {
 	for (i = 0; rel_axis_names[i]; i++) {
-	    if (!strcmp (option->u.str, rel_axis_names[i]))
+	    if (!strcmp (option->str, rel_axis_names[i]))
 		break;
 	}
 	if (!rel_axis_names[i])
@@ -292,20 +251,15 @@ EvdevParseMapToAbsAxis (InputInfoPtr pInfo,
     evdevAxesPtr axes = state->axes;
     long i;
 
-    if (!option || option->is_chain) {
-	xf86Msg (X_ERROR, "%s: %s: No option/option is chain.\n", pInfo->name, name);
-	return 0;
-    }
-
     errno = 0;
-    i = strtol (option->u.str, NULL, 0);
+    i = strtol (option->str, NULL, 0);
     if (errno) {
 	for (i = 0; abs_axis_names[i]; i++) {
-	    if (!strcmp (option->u.str, abs_axis_names[i]))
+	    if (!strcmp (option->str, abs_axis_names[i]))
 		break;
 	}
 	if (!abs_axis_names[i]) {
-	    xf86Msg (X_ERROR, "%s: %s: No axis named '%s'.\n", pInfo->name, name, option->u.str);
+	    xf86Msg (X_ERROR, "%s: %s: No axis named '%s'.\n", pInfo->name, name, option->str);
 	    return 0;
 	}
     }
@@ -320,28 +274,28 @@ EvdevParseMapToAbsAxis (InputInfoPtr pInfo,
     }
 
     option = option->next;
-    if (!option || option->is_chain) {
+    if (!option) {
 	xf86Msg (X_ERROR, "%s: %s: No min.\n", pInfo->name, name);
 	return 0;
     }
 
     errno = 0;
-    axes->v_min[i] = strtol (option->u.str, NULL, 0);
+    axes->v_min[i] = strtol (option->str, NULL, 0);
     if (errno) {
-	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as min. (%s)\n", pInfo->name, name, option->u.str, strerror(errno));
+	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as min. (%s)\n", pInfo->name, name, option->str, strerror(errno));
 	return 0;
     }
 
     option = option->next;
-    if (!option || option->is_chain) {
+    if (!option) {
 	xf86Msg (X_ERROR, "%s: %s: No max.\n", pInfo->name, name);
 	return 0;
     }
 
     errno = 0;
-    axes->v_max[i] = strtol (option->u.str, NULL, 0);
+    axes->v_max[i] = strtol (option->str, NULL, 0);
     if (errno) {
-	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as max. (%s)\n", pInfo->name, name, option->u.str, strerror(errno));
+	xf86Msg (X_ERROR, "%s: %s: Unable to parse '%s' as max. (%s)\n", pInfo->name, name, option->str, strerror(errno));
 	return 0;
     }
 
@@ -620,8 +574,10 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
     if ((v_flags & EV_ABS_V_USE_TOUCH) && !(state->abs->flags & EV_ABS_TOUCH))
 	return;
 
+#if 0
     if (v_flags & EV_ABS_V_INVERT)
-	value = state->abs->v_max[ev->code] - value;
+	value = -value;
+#endif
 
     if (v_flags & EV_ABS_V_M_REL)
 	is_rel = 1;
@@ -683,7 +639,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
     struct input_absinfo absinfo;
     char option[128], value[128];
     const char *s;
-    int i, j, k, real_axes;
+    int i, j, real_axes;
     evdev_option_token_t *tokens;
 
     real_axes = 0;
@@ -714,21 +670,8 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 
 	snprintf(option, sizeof(option), "Abs%sMapTo", abs_axis_names[i]);
 	snprintf(value, sizeof(value), "AbsAxis %d %d %d", j, absinfo.minimum, absinfo.maximum);
-	s = xf86SetStrOption(pInfo->options, option, value);
-	tokens = EvdevTokenize (s, " =", NULL); 
-	if (!tokens->is_chain && tokens->next) {
-	    for (k = 0; evdev_map_parsers[k].name; k++) {
-		if (!strcasecmp (tokens->u.str, evdev_map_parsers[k].name)) {
-		    if (!evdev_map_parsers[k].func (pInfo, option, tokens->next, &abs->v_map_data[i], &abs->v_map[i]))
-			xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier (%s).\n", pInfo->name, s, evdev_map_parsers[k].name);
-		    break;
-		}
-	    }
 
-	    if (!evdev_map_parsers[k].name)
-		xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
-	}
-	EvdevFreeTokens (tokens);
+	EvdevParseMapOption (pInfo, option, value, &abs->v_map_data[i], &abs->v_map[i]);
 
 	snprintf(option, sizeof(option), "Abs%sOptions", abs_axis_names[i]);
 	if (i == ABS_X || i == ABS_Y)
@@ -736,7 +679,7 @@ EvdevAxisAbsNew(InputInfoPtr pInfo)
 	else
 	    s = xf86SetStrOption(pInfo->options, option, "");
 	if (s[0]) {
-	    tokens = EvdevTokenize (s, " =", NULL); 
+	    tokens = EvdevTokenize (s, " "); 
 	    if (!EvdevParseAbsOptions (pInfo, option, tokens, &abs->v_flags[i]))
 		xf86Msg (X_ERROR, "%s: Unable to parse '%s' as absolute options.\n", pInfo->name, s);
 	    EvdevFreeTokens (tokens);
@@ -803,9 +746,9 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
-    evdevRelPtr rel = state->rel;
+    evdevRelPtr rel;
     char *s, option[128], value[128];
-    int i, j, k, real_axes;
+    int i, j, real_axes;
     evdev_option_token_t *tokens;
 
     real_axes = 0;
@@ -816,7 +759,7 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
     if (!real_axes && (!state->abs || state->abs->axes < 2))
 	return !Success;
 
-    state->rel = Xcalloc (sizeof (evdevRelRec));
+    state->rel = rel = Xcalloc (sizeof (evdevRelRec));
 
     xf86Msg(X_INFO, "%s: Found %d relative axes.\n", pInfo->name,
 	    real_axes);
@@ -837,27 +780,13 @@ EvdevAxisRelNew(InputInfoPtr pInfo)
 	    snprintf(value, sizeof(value), "Buttons 6 7 1");
 	else
 	    snprintf(value, sizeof(value), "RelAxis %d", j);
-	s = xf86SetStrOption(pInfo->options, option, value);
-	tokens = EvdevTokenize (s, " =", NULL); 
-	if (!tokens->is_chain && tokens->next) {
-	    for (k = 0; evdev_map_parsers[k].name; k++) {
-		if (!strcasecmp (tokens->u.str, evdev_map_parsers[k].name)) {
-		    if (!evdev_map_parsers[k].func (pInfo, option, tokens->next, &rel->v_map_data[i], &rel->v_map[i]))
-			xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier.\n", pInfo->name, s);
-		    break;
-		}
 
-	    }
-
-	    if (!evdev_map_parsers[k].name)
-		xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
-	}
-	EvdevFreeTokens (tokens);
+	EvdevParseMapOption (pInfo, option, value, &rel->v_map_data[i], &rel->v_map[i]);
 
 	snprintf(option, sizeof(option), "Rel%sOptions", rel_axis_names[i]);
 	s = xf86SetStrOption(pInfo->options, option, "");
 	if (s[0]) {
-	    tokens = EvdevTokenize (s, " =", NULL); 
+	    tokens = EvdevTokenize (s, " "); 
 	    if (!EvdevParseRelOptions (pInfo, option, tokens, &rel->v_flags[i]))
 		xf86Msg (X_ERROR, "%s: Unable to parse '%s' as relative options.\n", pInfo->name, s);
 	    EvdevFreeTokens (tokens);

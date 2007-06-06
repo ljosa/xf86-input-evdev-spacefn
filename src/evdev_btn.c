@@ -151,7 +151,7 @@ static char *button_names[] = {
 };
 
 void
-EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count)
+EvdevBtnPostFakeClicks(InputInfoRec *pInfo, int button, int count)
 {
     int i;
 
@@ -161,11 +161,140 @@ EvdevBtnPostFakeClicks(InputInfoPtr pInfo, int button, int count)
     }
 }
 
-int
-EvdevBtnInit (DeviceIntPtr device)
+typedef struct {
+    int button_plus;
+    int button_minus;
+    int step;
+    int count;
+} MapButtons_t;
+
+static void
+EvdevMapButton (InputInfoRec *pInfo, int value, int mode, void *map_data)
 {
-    InputInfoPtr pInfo = device->public.devicePrivate;
-    evdevDevicePtr pEvdev = pInfo->private;
+    long button = (long) map_data;
+
+    xf86PostButtonEvent (pInfo->dev, 0, button, value, 0, 0);
+}
+
+Bool
+EvdevParseMapToButton (InputInfoRec *pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func)
+{
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
+    evdevBtnRec *btn = state->btn;
+    int button;
+
+    errno = 0;
+    button = strtol (option->str, NULL, 0);
+    if (errno)
+	button = EvdevBtnFind (pInfo, option->str);
+    if ((button < 0) || (button > BTN_MAX)) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d out of range.\n", pInfo->name, name, button);
+	return 0;
+    }
+
+    if (btn->b_flags[button] & EV_BTN_B_PRESENT) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d already claimed.\n", pInfo->name, name, button);
+	return 0;
+    }
+
+    btn->b_flags[button] = EV_BTN_B_PRESENT;
+
+    *map_data = (void *) button;
+    *map_func = EvdevMapButton;
+
+    return 1;
+}
+
+static void
+EvdevMapButtons (InputInfoRec *pInfo, int value, int mode, void *map_data)
+{
+    MapButtons_t *map = map_data;
+    int i;
+
+    if (!map)
+	return;
+
+    map->count += value;
+    i = map->count / map->step;
+    if (i) {
+	map->count -= i * map->step;
+	if (i > 0)
+	    EvdevBtnPostFakeClicks (pInfo, map->button_plus, i);
+	else
+	    EvdevBtnPostFakeClicks (pInfo, map->button_minus, -i);
+    }
+}
+
+Bool
+EvdevParseMapToButtons (InputInfoRec *pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func)
+{
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
+    evdevBtnRec *btn = state->btn;
+    int btn_plus, btn_minus;
+    MapButtons_t *map;
+
+    errno = 0;
+    btn_plus = strtol (option->str, NULL, 0);
+    if (errno)
+	btn_plus = EvdevBtnFind (pInfo, option->str);
+    if ((btn_plus < 0) || (btn_plus > BTN_MAX)) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d out of range.\n", pInfo->name, name, btn_plus);
+	return 0;
+    }
+
+    if (btn->b_flags[btn_plus] & EV_BTN_B_PRESENT) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d already claimed.\n", pInfo->name, name, btn_plus);
+	return 0;
+    }
+
+    option = option->next;
+    if (!option) {
+	xf86Msg (X_ERROR, "%s: %s: No button minus.\n", pInfo->name, name);
+	return 0;
+    }
+
+    errno = 0;
+    btn_minus = strtol (option->str, NULL, 0);
+    if (errno)
+	btn_minus = EvdevBtnFind (pInfo, option->str);
+    if ((btn_minus < 0) || (btn_minus > BTN_MAX)) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d out of range.\n", pInfo->name, name, btn_minus);
+	return 0;
+    }
+
+    if (btn->b_flags[btn_minus] & EV_BTN_B_PRESENT) {
+	xf86Msg (X_ERROR, "%s: %s: Button %d already claimed.\n", pInfo->name, name, btn_minus);
+	return 0;
+    }
+    errno = 0;
+
+    btn->b_flags[btn_plus] = EV_BTN_B_PRESENT;
+    btn->b_flags[btn_minus] = EV_BTN_B_PRESENT;
+
+    map = calloc(1, sizeof (MapButtons_t));
+    map->button_plus = btn_plus;
+    map->button_minus = btn_minus;
+    map->step = 1;
+
+    *map_data = (void *) map;
+    *map_func = EvdevMapButtons;
+
+    return 1;
+}
+
+int
+EvdevBtnInit (DeviceIntRec *device)
+{
+    InputInfoRec *pInfo = device->public.devicePrivate;
+    evdevDeviceRec *pEvdev = pInfo->private;
     CARD8 *map;
     int i;
 
@@ -191,10 +320,10 @@ EvdevBtnInit (DeviceIntPtr device)
 }
 
 int
-EvdevBtnOn (DeviceIntPtr device)
+EvdevBtnOn (DeviceIntRec *device)
 {
-    InputInfoPtr pInfo = device->public.devicePrivate;
-    evdevDevicePtr pEvdev = pInfo->private;
+    InputInfoRec *pInfo = device->public.devicePrivate;
+    evdevDeviceRec *pEvdev = pInfo->private;
     int i, blocked;
 
     if (!pEvdev->state.btn)
@@ -209,161 +338,74 @@ EvdevBtnOn (DeviceIntPtr device)
 }
 
 int
-EvdevBtnOff (DeviceIntPtr device)
+EvdevBtnOff (DeviceIntRec *device)
 {
     return Success;
 }
 
-#if 1
-/*
- * Warning, evil lives here.
- */
-static void
-EvdevBtnCalcRemap (InputInfoPtr pInfo)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    evdevBtnPtr btn = state->btn;
-    int i, j, base, clear, fake, bit;
-
-    for (i = 0, base = 1, fake = 0; i < pEvdev->state.btn->real_buttons; i++) {
-#if 0
-	if (state->rel) {
-	    do {
-		clear = 1;
-		for (j = 0; j < REL_MAX; j++) {
-		    if (state->rel->btnMap[j][0] == (i + base)) {
-			base++;
-			clear = 0;
-			break;
-		    }
-		    if (state->rel->btnMap[j][1] == (i + base)) {
-			base++;
-			clear = 0;
-			break;
-		    }
-		}
-	    } while (!clear);
-	}
-#endif
-
-	if (!fake && base != 1)
-	    fake = i;
-
-	/*
-	 * See if the button is ignored for mapping purposes.
-	 */
-	if (btn->ignore[i] & EV_BTN_IGNORE_MAP)
-	    continue;
-
-	/*
-	 * See if the button actually exists, otherwise don't bother.
-	 */
-	bit = i;
-	bit += BTN_MISC;
-	if ((bit >= BTN_MOUSE) && (bit < BTN_JOYSTICK)) {
-	    bit -= BTN_MOUSE - BTN_MISC;
-	} else if ((bit >= BTN_MISC) && (bit < BTN_MOUSE)) {
-	    bit += BTN_MOUSE - BTN_MISC;
-	}
-	if (!test_bit (bit, pEvdev->bits.key))
-	    continue;
-
-	btn->buttons = btn->map[i] = i + base;
-    }
-
-    if ((!fake || fake >= 3) &&
-	    test_bit(BTN_RIGHT, pEvdev->bits.key) &&
-	    test_bit(BTN_MIDDLE, pEvdev->bits.key)) {
-	base = btn->map[1];
-	btn->map[1] = btn->map[2];
-	btn->map[2] = base;
-    }
-
-#if 0
-    if (state->rel) {
-	for (i = 0; i < REL_MAX; i++) {
-	    if (state->rel->btnMap[i][0] > btn->buttons)
-		btn->buttons = state->rel->btnMap[i][0];
-	    if (state->rel->btnMap[i][1] > btn->buttons)
-		btn->buttons = state->rel->btnMap[i][1];
-	}
-    }
-#endif
-}
-#endif
-
 
 int
-EvdevBtnNew0(InputInfoPtr pInfo)
+EvdevBtnNew0(InputInfoRec *pInfo)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-    char option[64];
-    int i, j, btn;
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
 
     state->btn = Xcalloc (sizeof (evdevBtnRec));
 
-    /*
-     * XXX: This is evil.
-     * For reasons related to handling pathological remapping cases, and
-     * differences between HID and X, pretend a middle button exists
-     * whenever a right button exists.
-     */
-    if (test_bit (BTN_RIGHT, pEvdev->bits.key))
-	set_bit (BTN_MIDDLE, pEvdev->bits.key);
+    return Success;
+}
 
-    for (i = BTN_MISC; i < (KEY_OK - 1); i++) {
-	btn = i;
-	if ((btn >= BTN_MOUSE) && (btn < BTN_JOYSTICK)) {
-	    btn -= BTN_MOUSE - BTN_MISC;
-	} else if ((btn >= BTN_MISC) && (btn < BTN_MOUSE)) {
-	    btn += BTN_MOUSE - BTN_MISC;
-	}
-	btn -= BTN_MISC;
+int
+EvdevBtnNew1(InputInfoRec *pInfo)
+{
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
+    evdevBtnRec *btn = state->btn;
+    char option[128], value[128];
+    int i, b, j;
 
-	snprintf(option, sizeof(option), "%sIgnoreX", button_names[btn]);
-	if (i >= BTN_DIGI && i < BTN_WHEEL)
-	    j = xf86SetIntOption(pInfo->options, option, 1);
-	else
-	    j = xf86SetIntOption(pInfo->options, option, 0);
-	if (j)
-	    state->btn->ignore[btn] |= EV_BTN_IGNORE_X;
+    if (!btn)
+	return !Success;
 
-	snprintf(option, sizeof(option), "%sIgnoreEvdev", button_names[btn]);
-	j = xf86SetIntOption(pInfo->options, option, 0);
-	if (j) {
-	    state->btn->ignore[btn] |= EV_BTN_IGNORE_EVDEV;
+    for (i = 0; i < BTN_MAX; i++) {
+	b = i + BTN_MISC;
+	if (!test_bit (b, pEvdev->bits.key))
 	    continue;
-	}
 
-	if (test_bit (i, pEvdev->bits.key))
-	    state->btn->real_buttons = btn + 1;
+	btn->real_buttons++;
+
+	snprintf(option, sizeof(option), "Button%sMapTo", button_names[i]);
+	if (b >= BTN_DIGI && b < BTN_WHEEL)
+	    snprintf (value, sizeof (value), "null");
+	else if (b == BTN_RIGHT)
+	    snprintf (value, sizeof (value), "Button 3");
+	else if (b == BTN_MIDDLE)
+	    snprintf (value, sizeof (value), "Button 2");
+	else if (b >= BTN_MOUSE && b < BTN_JOYSTICK)
+	    snprintf (value, sizeof (value), "Button %d", 1 + i - (BTN_MOUSE - BTN_MISC));
+	else if (b >= BTN_MISC && b < BTN_MOUSE)
+	    snprintf (value, sizeof (value), "Button %d", 1 + i + (BTN_MOUSE - BTN_MISC));
+	else if (btn->b_flags[i] & EV_BTN_B_PRESENT) {
+	    for (j = i; j < BTN_MAX; j++)
+		if (!(btn->b_flags[j] & EV_BTN_B_PRESENT)) {
+		    snprintf (value, sizeof (value), "Button %d", j + 1);
+		    break;
+		}
+	} else
+	    snprintf (value, sizeof (value), "Button %d", i + 1);
+
+	EvdevParseMapOption (pInfo, option, value, &btn->b_map_data[i], &btn->b_map[i]);
     }
 
     if (state->btn->real_buttons)
         xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name, state->btn->real_buttons);
 
-    return Success;
-}
-
-int
-EvdevBtnNew1(InputInfoPtr pInfo)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-
-    if (!state->btn)
-	return !Success;
-
-#if 1
-    EvdevBtnCalcRemap (pInfo);
-#else
-    state->btn->buttons = state->btn->real_buttons;
-#endif
+    for (i = 0; i < BTN_MAX; i++)
+	if (btn->b_flags[i] & EV_BTN_B_PRESENT)
+	    btn->buttons = i + 1;
 
     if (state->btn->buttons)
-	xf86Msg(X_INFO, "%s: Configured %d mouse buttons\n", pInfo->name, state->btn->buttons);
+	xf86Msg(X_INFO, "%s: Configured %d mouse buttons.\n", pInfo->name, state->btn->buttons);
     else {
 	Xfree (state->btn);
 	state->btn = NULL;
@@ -381,10 +423,10 @@ EvdevBtnNew1(InputInfoPtr pInfo)
 }
 
 void
-EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
+EvdevBtnProcess (InputInfoRec *pInfo, struct input_event *ev)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
+    evdevDeviceRec *pEvdev = pInfo->private;
+    evdevStateRec *state = &pEvdev->state;
     int button;
 
     if (!state->btn)
@@ -392,29 +434,17 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
 
     button = ev->code;
 
-    if ((ev->code >= BTN_MOUSE) && (ev->code < BTN_JOYSTICK)) {
-	button -= BTN_MOUSE - BTN_MISC;
-    } else if ((ev->code >= BTN_MISC) && (ev->code < BTN_MOUSE)) {
-	button += BTN_MOUSE - BTN_MISC;
-    }
-
     button -= BTN_MISC;
-
-    if (state->btn->ignore[button] & EV_BTN_IGNORE_EVDEV)
-	return;
 
     if (state->btn->callback[button])
 	state->btn->callback[button](pInfo, button, ev->value);
 
-    if (state->btn->ignore[button] & EV_BTN_IGNORE_X)
-	return;
-
-    button = state->btn->map[button];
-    xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
+    if (state->btn->b_map[button])
+	state->btn->b_map[button](pInfo, ev->value, -1, state->btn->b_map_data[button]);
 }
 
 int
-EvdevBtnFind (InputInfoPtr pInfo, const char *button)
+EvdevBtnFind (InputInfoRec *pInfo, const char *button)
 {
     int i;
 
@@ -426,19 +456,13 @@ EvdevBtnFind (InputInfoPtr pInfo, const char *button)
 }
 
 int
-EvdevBtnExists (InputInfoPtr pInfo, int button)
+EvdevBtnExists (InputInfoRec *pInfo, int button)
 {
-    evdevDevicePtr pEvdev = pInfo->private;
+    evdevDeviceRec *pEvdev = pInfo->private;
+
+    xf86Msg(X_INFO, "%s: Checking button %s (%d)\n", pInfo->name, button_names[button], button);
 
     button += BTN_MISC;
-
-    xf86Msg(X_INFO, "%s: Checking button %s (%d)\n", pInfo->name, button_names[button - BTN_MISC], button);
-
-    if ((button >= BTN_MOUSE) && (button < BTN_JOYSTICK)) {
-	button -= BTN_MOUSE - BTN_MISC;
-    } else if ((button >= BTN_MISC) && (button < BTN_MOUSE)) {
-	button += BTN_MOUSE - BTN_MISC;
-    }
 
     xf86Msg(X_INFO, "%s: Checking bit %d\n", pInfo->name, button);
     return test_bit(button, pEvdev->bits.key);

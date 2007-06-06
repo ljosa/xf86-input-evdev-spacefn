@@ -99,22 +99,59 @@ evdev_map_parsers_t evdev_map_parsers[] = {
 	.func = EvdevParseMapToAbsAxis,
     },
     {
+	.name = "Button",
+	.func = EvdevParseMapToButton,
+    },
+    {
+	.name = "Buttons",
+	.func = EvdevParseMapToButtons,
+    },
+    {
 	.name = NULL,
 	.func = NULL,
     }
 };
 
+Bool
+EvdevParseMapOption (InputInfoRec *pInfo, char *option, char *def, void **map_data, evdev_map_func_f *map_func)
+{
+    evdev_option_token_t *tokens;
+    const char *s;
+    int i;
+
+    s = xf86SetStrOption(pInfo->options, option, def);
+    tokens = EvdevTokenize (s, " ="); 
+    if (tokens->next) {
+	for (i = 0; evdev_map_parsers[i].name; i++) {
+	    if (!strcasecmp (tokens->str, evdev_map_parsers[i].name)) {
+		if (!evdev_map_parsers[i].func (pInfo, option, tokens->next, map_data, map_func)) {
+		    xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier.\n", pInfo->name, s);
+		    EvdevFreeTokens (tokens);
+		    return 0;
+		}
+		return 1;
+	    }
+	}
+
+	if (!evdev_map_parsers[i].name)
+	    xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
+    } else {
+	xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier string.\n", pInfo->name, s);
+    }
+    EvdevFreeTokens (tokens);
+    return 0;
+}
+
 evdev_option_token_t *
-EvdevTokenize (const char *option, const char *tokens, const char *first)
+EvdevTokenize (const char *option, const char *tokens)
 {
     evdev_option_token_t *head = NULL, *token = NULL, *prev = NULL;
     const char *ctmp;
+    const char *first;
     char *tmp = NULL;
     int len;
 
-    if (!first) {
-	first = strchr (option, tokens[0]);
-    }
+    first = strchr (option, tokens[0]);
 
     while (1) {
 	if (first)
@@ -145,12 +182,11 @@ EvdevTokenize (const char *option, const char *tokens, const char *first)
 	if (tokens[1]) {
 	    ctmp = strchr (tmp, tokens[1]);
 	    if (ctmp) {
-		token->is_chain = 1;
-		token->u.chain = EvdevTokenize (tmp, tokens + 1, ctmp);
+		token->chain = EvdevTokenize (ctmp+1, tokens + 1);
 	    } else
-		token->u.str = tmp;
+		token->str = tmp;
 	} else
-	    token->u.str = tmp;
+	    token->str = tmp;
 
 	if (!first)
 	    break;
@@ -168,10 +204,9 @@ EvdevFreeTokens (evdev_option_token_t *token)
     evdev_option_token_t *next;
 
     while (token) {
-	if (token->is_chain)
-	    EvdevFreeTokens (token->u.chain);
-	else
-	    free (token->u.str);
+	if (token->chain)
+	    EvdevFreeTokens (token->chain);
+	free (token->str);
 	next = token->next;
 	free (token);
 	token = next;
@@ -191,7 +226,7 @@ EvdevReadInput(InputInfoPtr pInfo)
         if (len != sizeof(ev)) {
             /* The kernel promises that we always only read a complete
              * event, so len != sizeof ev is an error. */
-            xf86Msg(X_ERROR, "Read error: %s (%d, %d != %ld)\n",
+            xf86Msg(X_ERROR, "Read error: %s (%d, %d != %zd)\n",
 		    strerror(errno), errno, len, sizeof (ev));
 	    if (len < 0)
             {
@@ -412,8 +447,8 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
 
     /* XXX: Note, the order of these is (maybe) still important. */
-    EvdevAxesNew0 (pInfo);
     EvdevBtnNew0 (pInfo);
+    EvdevAxesNew0 (pInfo);
 
     EvdevAxesNew1 (pInfo);
     EvdevBtnNew1 (pInfo);

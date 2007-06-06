@@ -80,7 +80,7 @@
 #define AXES_MAX	ABS_MAX
 
 
-#define EVDEV_MAXBUTTONS	96
+#define BTN_MAX	96
 
 struct _evdevDevice;
 
@@ -104,16 +104,15 @@ typedef struct {
     unsigned long	ff[NBITS(FF_MAX)];
 } evdevBitsRec, *evdevBitsPtr;
 
-#define EV_BTN_IGNORE_X   	1
-#define EV_BTN_IGNORE_EVDEV   	2
-#define EV_BTN_IGNORE_MAP	(EV_BTN_IGNORE_X | EV_BTN_IGNORE_EVDEV)
+#define EV_BTN_B_PRESENT   	(1<<0)
 
 typedef struct {
     int		real_buttons;
     int		buttons;
-    CARD8	ignore[EVDEV_MAXBUTTONS];
-    CARD8	map[EVDEV_MAXBUTTONS];
-    void	(*callback[EVDEV_MAXBUTTONS])(InputInfoPtr pInfo, int button, int value);
+    int		b_flags[BTN_MAX];
+    void	*b_map_data[ABS_MAX];
+    evdev_map_func_f b_map[BTN_MAX];
+    void	(*callback[BTN_MAX])(InputInfoPtr pInfo, int button, int value);
 } evdevBtnRec, *evdevBtnPtr;
 
 #define EV_ABS_V_PRESENT	(1<<0)
@@ -132,8 +131,6 @@ typedef struct {
     int		axes;
     int		v[ABS_MAX];
     int		v_flags[ABS_MAX];
-    int		v_min[ABS_MAX];
-    int		v_max[ABS_MAX];
     void	*v_map_data[ABS_MAX];
     evdev_map_func_f v_map[ABS_MAX];
 } evdevAbsRec, *evdevAbsPtr;
@@ -233,11 +230,8 @@ void EvdevKeyProcess (InputInfoPtr pInfo, struct input_event *ev);
  */
 
 typedef struct evdev_option_token_s {
-    int is_chain;
-    union {
-	const char *str;
-	struct evdev_option_token_s *chain;
-    } u;
+    const char *str;
+    struct evdev_option_token_s *chain;
     struct evdev_option_token_s *next;
 } evdev_option_token_t;
 
@@ -247,13 +241,23 @@ typedef Bool (*evdev_parse_map_func_f)(InputInfoPtr pInfo,
 	evdev_option_token_t *option,
 	void **map_data, evdev_map_func_f *map_func);
 
-evdev_option_token_t *EvdevTokenize (const char *option, const char *tokens, const char *first);
+evdev_option_token_t *EvdevTokenize (const char *option, const char *tokens);
 void EvdevFreeTokens (evdev_option_token_t *token);
 Bool EvdevParseMapToRelAxis (InputInfoPtr pInfo,
 	const char *name,
 	evdev_option_token_t *option,
 	void **map_data, evdev_map_func_f *map_func);
 Bool EvdevParseMapToAbsAxis (InputInfoPtr pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func);
+Bool
+EvdevParseMapToButton (InputInfoRec *pInfo,
+	const char *name,
+	evdev_option_token_t *option,
+	void **map_data, evdev_map_func_f *map_func);
+Bool
+EvdevParseMapToButtons (InputInfoRec *pInfo,
 	const char *name,
 	evdev_option_token_t *option,
 	void **map_data, evdev_map_func_f *map_func);
@@ -264,5 +268,6 @@ typedef struct {
 } evdev_map_parsers_t;
 
 extern evdev_map_parsers_t evdev_map_parsers[];
+Bool EvdevParseMapOption (InputInfoRec *pInfo, char *option, char *def, void **map_data, evdev_map_func_f *map_func);
 
 #endif	/* __EVDEV_H */
