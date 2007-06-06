@@ -161,13 +161,6 @@ EvdevBtnPostFakeClicks(InputInfoRec *pInfo, int button, int count)
     }
 }
 
-typedef struct {
-    int button_plus;
-    int button_minus;
-    int step;
-    int count;
-} MapButtons_t;
-
 static void
 EvdevMapButton (InputInfoRec *pInfo, int value, int mode, void *map_data)
 {
@@ -208,6 +201,13 @@ EvdevParseMapToButton (InputInfoRec *pInfo,
 
     return 1;
 }
+
+typedef struct {
+    int button_plus;
+    int button_minus;
+    int step;
+    int count;
+} MapButtons_t;
 
 static void
 EvdevMapButtons (InputInfoRec *pInfo, int value, int mode, void *map_data)
