@@ -214,7 +214,7 @@ EvdevBtnOff (DeviceIntPtr device)
     return Success;
 }
 
-#if 0
+#if 1
 /*
  * Warning, evil lives here.
  */
@@ -227,6 +227,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
     int i, j, base, clear, fake, bit;
 
     for (i = 0, base = 1, fake = 0; i < pEvdev->state.btn->real_buttons; i++) {
+#if 0
 	if (state->rel) {
 	    do {
 		clear = 1;
@@ -244,6 +245,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 		}
 	    } while (!clear);
 	}
+#endif
 
 	if (!fake && base != 1)
 	    fake = i;
@@ -278,6 +280,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 	btn->map[2] = base;
     }
 
+#if 0
     if (state->rel) {
 	for (i = 0; i < REL_MAX; i++) {
 	    if (state->rel->btnMap[i][0] > btn->buttons)
@@ -286,6 +289,7 @@ EvdevBtnCalcRemap (InputInfoPtr pInfo)
 		btn->buttons = state->rel->btnMap[i][1];
 	}
     }
+#endif
 }
 #endif
 
@@ -352,7 +356,7 @@ EvdevBtnNew1(InputInfoPtr pInfo)
     if (!state->btn)
 	return !Success;
 
-#if 0
+#if 1
     EvdevBtnCalcRemap (pInfo);
 #else
     state->btn->buttons = state->btn->real_buttons;
@@ -405,9 +409,7 @@ EvdevBtnProcess (InputInfoPtr pInfo, struct input_event *ev)
     if (state->btn->ignore[button] & EV_BTN_IGNORE_X)
 	return;
 
-#if 0
     button = state->btn->map[button];
-#endif
     xf86PostButtonEvent (pInfo->dev, 0, button, ev->value, 0, 0);
 }
 

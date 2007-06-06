@@ -371,7 +371,7 @@ EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
  * after a cleanup.
  */
 static void
-EvdevAxesDoRotation (InputInfoPtr pInfo, float x, float y)
+EvdevAxesDoRotation (InputInfoPtr pInfo)
 {
     evdevDevicePtr pEvdev = pInfo->private;
     evdevStatePtr state = &pEvdev->state;
@@ -390,18 +390,16 @@ EvdevAxesDoRotation (InputInfoPtr pInfo, float x, float y)
     }
 
     if (axes->rotation) {
+	float x = axes->v[0], y = axes->v[1];
 	axes->v[0] = (x * axes->rot_cos) - (y * axes->rot_sin);
 	axes->v[1] = (y * axes->rot_cos) + (x * axes->rot_sin);
 
 	axes->v_flags[0] |= EV_AXES_V_UPDATED;
 	axes->v_flags[1] |= EV_AXES_V_UPDATED;
 #if DEBUG
-	xf86Msg(X_ERROR, "%s %d (%s): cos=%f, sin=%f, x=%f, y=%f, v[0]=%d, v[1]=%d\n", __FILE__, __LINE__, __FUNCTION__,
-		axes->rot_cos, axes->rot_sin, x, y, axes->v[0], axes->v[1]);
+	xf86Msg(X_ERROR, "%s %d (%s): rotation=%d, cos=%f, sin=%f, x=%f, y=%f, v[0]=%d, v[1]=%d\n", __FILE__, __LINE__, __FUNCTION__,
+		axes->rotation, axes->rot_cos, axes->rot_sin, x, y, axes->v[0], axes->v[1]);
 #endif
-    } else {
-	axes->v[0] = x;
-	axes->v[1] = y;
     }
 }
 
@@ -521,7 +519,7 @@ EvdevAxesSynRep (InputInfoPtr pInfo)
 		max_y = dabs->max_y;
 	    }
 
-	    EvdevAxesDoRotation (pInfo, axes->v[0], axes->v[1]);
+	    EvdevAxesDoRotation (pInfo);
 
 	    axes->v[0] = EvdevScaleAxis (axes->v[0], 0, width, min_x, max_x);
 	    axes->v[1] = EvdevScaleAxis (axes->v[1], 0, height, min_y, max_y);
@@ -546,15 +544,31 @@ EvdevAxesSynRep (InputInfoPtr pInfo)
 	    if (dabs->flip_y)
 		axes->v[1] = -axes->v[1];
 
-	    EvdevAxesDoRotation (pInfo, axes->v[0], axes->v[1]);
+	    EvdevAxesDoRotation (pInfo);
 	}
     }
 
+#if DEBUG
+    xf86Msg(X_ERROR, "%s %d (%s): v[0]=%d%s%s, v[1]=%d%s%s, v[2]=%d%s%s\n", __FILE__, __LINE__, __FUNCTION__,
+	    axes->v[0],
+	    axes->v_flags[0] & EV_AXES_V_M_ABS ? "!" : "",
+	    axes->v_flags[0] & EV_AXES_V_UPDATED ? "*" : "",
+	    axes->v[1],
+	    axes->v_flags[1] & EV_AXES_V_M_ABS ? "!" : "",
+	    axes->v_flags[1] & EV_AXES_V_UPDATED ? "*" : "",
+	    axes->v[2],
+	    axes->v_flags[2] & EV_AXES_V_M_ABS ? "!" : "",
+	    axes->v_flags[2] & EV_AXES_V_UPDATED ? "*" : "");
+#endif
     for (i = 0; i < axes->axes; i++) {
 	if (axes->v_flags[i] & EV_AXES_V_UPDATED) {
 	    if (run) {
 		if (mode != (axes->v_flags[i] & EV_AXES_V_M_MASK)) {
 		    mode = (mode == EV_AXES_V_M_ABS);
+#if DEBUG
+    xf86Msg(X_ERROR, "%s %d (%s): mode=%d, start=%d, i - start=%d\n", __FILE__, __LINE__, __FUNCTION__,
+	    mode, start, i - start);
+#endif
 		    xf86PostMotionEventP (pInfo->dev, mode, start, i - start, axes->v + start);
 		    start = i;
 		    mode = axes->v_flags[i] & EV_AXES_V_M_MASK;
@@ -568,6 +582,7 @@ EvdevAxesSynRep (InputInfoPtr pInfo)
 	} else if (run) {
 	    mode = (mode == EV_AXES_V_M_ABS);
 	    xf86PostMotionEventP (pInfo->dev, mode, start, i - start, axes->v + start);
+	    run = 0;
 	}
     }
     if (run) {
