@@ -367,9 +367,7 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
 	case Absolute:
 	case Relative:
 	    xf86Msg(X_INFO, "%s: Switching mode to %d.\n", pInfo->name, mode);
-	    if (state->abs)
-		state->mode = mode;
-	    else
+	    if (!state->abs)
 		return !Success;
 	    break;
 	default:
@@ -378,11 +376,6 @@ EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
 
     return Success;
 }
-
-/*
-static Bool
-EvdevNew(evdevDriverPtr driver, evdevDevicePtr device)
-*/
 
 InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
@@ -407,9 +400,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->device_control = EvdevProc;
     pInfo->read_input = EvdevReadInput;
     pInfo->switch_mode = EvdevSwitchMode;
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 0
-    pInfo->motion_history_proc = xf86GetMotionEvents;
-#endif
     pInfo->conf_idev = dev;
 
     pInfo->private = pEvdev;

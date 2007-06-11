@@ -331,22 +331,6 @@ static KeySym map[] = {
     /* 0xf7 */  NoSymbol,	NoSymbol,
 };
 
-/*
- * FIXME: We have no way of ringing the bell ourselves.
- *
- * And recent versions of X don't have the system call.
- * Who cares.
- */
-static void
-EvdevKbdBell (int percent, DeviceIntPtr device, pointer arg, int unused)
-{
-#if 0
-    KeybdCtrl *ctrl = arg;
-
-    xf86OSRingBell(percent, ctrl->bell_pitch, ctrl->bell_duration);
-#endif
-}
-
 static void
 EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
 {
@@ -440,7 +424,7 @@ EvdevKeyInit (DeviceIntPtr device)
 	    state->key->xkb_options);
 
     XkbInitKeyboardDeviceStruct (device, &state->key->xkbnames, &keySyms, modMap,
-	    EvdevKbdBell, EvdevKbdCtrl);
+	    NULL, EvdevKbdCtrl);
 
     return Success;
 }
@@ -467,17 +451,11 @@ EvdevKeyNew (InputInfoPtr pInfo)
     evdevStatePtr state = &pEvdev->state;
     int i, keys = 0;
 
-    for (i = 0; i <= KEY_UNKNOWN; i++)
+    for (i = 0; i <= 0xF7; i++)
 	if (test_bit (i, pEvdev->bits.key)) {
 	    keys = 1;
 	    break;
 	}
-    if (!keys)
-	for (i = KEY_OK; i <= KEY_MAX; i++)
-	    if (test_bit (i, pEvdev->bits.key)) {
-		keys = 1;
-		break;
-	    }
 
     if (!keys)
 	return !Success;

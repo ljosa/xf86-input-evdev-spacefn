@@ -181,7 +181,6 @@ typedef struct {
 typedef struct _evdevState {
     Bool	can_grab;
     Bool	sync;
-    int		mode;	/* Either Absolute or Relative. */
 
     evdevBtnPtr	btn;
     evdevAbsPtr	abs;

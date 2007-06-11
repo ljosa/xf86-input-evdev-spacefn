@@ -581,7 +581,7 @@ EvdevAxesAbsProcess (InputInfoPtr pInfo, struct input_event *ev)
 
     if (v_flags & EV_ABS_V_M_REL)
 	is_rel = 1;
-    else if ((v_flags & EV_ABS_V_M_AUTO) && state->mode == Relative)
+    else if ((v_flags & EV_ABS_V_M_AUTO) && pInfo->dev->valuator->mode == Relative)
 	is_rel = 1;
     else
 	is_rel = 0;
@@ -728,13 +728,13 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 
     s = xf86SetStrOption(pInfo->options, "Mode", "Absolute");
     if (!strcasecmp(s, "Absolute")) {
-	state->mode = Absolute;
+	pInfo->dev->valuator->mode = Absolute;
 	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
     } else if (!strcasecmp(s, "Relative")) {
-	state->mode = Relative;
+	pInfo->dev->valuator->mode = Relative;
 	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
     } else {
-	state->mode = Absolute;
+	pInfo->dev->valuator->mode = Absolute;
 	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
     }
 
