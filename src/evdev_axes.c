@@ -726,18 +726,6 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 	}
     }
 
-    s = xf86SetStrOption(pInfo->options, "Mode", "Absolute");
-    if (!strcasecmp(s, "Absolute")) {
-	pInfo->dev->valuator->mode = Absolute;
-	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
-    } else if (!strcasecmp(s, "Relative")) {
-	pInfo->dev->valuator->mode = Relative;
-	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
-    } else {
-	pInfo->dev->valuator->mode = Absolute;
-	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
-    }
-
     return Success;
 }
 
@@ -861,6 +849,7 @@ EvdevAxesInit (DeviceIntPtr device)
     evdevAxesRec *axes = state->axes;
     AbsoluteClassRec *dev_abs;
     int i;
+    const char *s;
 
     if (!axes || !axes->axes)
 	return Success;
@@ -873,6 +862,23 @@ EvdevAxesInit (DeviceIntPtr device)
                                        GetMotionHistorySize(),
                                        0))
         return !Success;
+
+
+    /*
+     * This has to go in Init, because until now there is no valuator struct
+     * allocated.
+     */
+    s = xf86SetStrOption(pInfo->options, "Mode", "Absolute");
+    if (!strcasecmp(s, "Absolute")) {
+	pInfo->dev->valuator->mode = Absolute;
+	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
+    } else if (!strcasecmp(s, "Relative")) {
+	pInfo->dev->valuator->mode = Relative;
+	xf86Msg(X_CONFIG, "%s: Configuring in %s mode.\n", pInfo->name, s);
+    } else {
+	pInfo->dev->valuator->mode = Absolute;
+	xf86Msg(X_CONFIG, "%s: Unknown Mode: %s.\n", pInfo->name, s);
+    }
 
     /*
      * Yes, we want to do this for relative devices too.
