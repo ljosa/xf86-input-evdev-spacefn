@@ -267,12 +267,6 @@ EvdevReadInput(InputInfoPtr pInfo)
     }
 }
 
-static void
-EvdevSigioReadInput (int fd, void *data)
-{
-    EvdevReadInput ((InputInfoPtr) data);
-}
-
 static int
 EvdevProc(DeviceIntPtr device, int what)
 {
@@ -315,8 +309,8 @@ EvdevProc(DeviceIntPtr device, int what)
 		xf86Msg(X_ERROR, "%s: Unable to grab device (%s).\n", pInfo->name, strerror(errno));
 
 	xf86FlushInput (pInfo->fd);
-	if (!xf86InstallSIGIOHandler (pInfo->fd, EvdevSigioReadInput, pInfo))
-	    AddEnabledDevice (pInfo->fd);
+
+        xf86AddEnabledDevice(pInfo);
 
 	device->public.on = TRUE;
 
