@@ -29,4 +29,4 @@
 @DRIVER_NAME@_drv_la_CFLAGS = -Wall
 @DRIVER_NAME@_drv_ladir = @inputdir@
 
-@DRIVER_NAME@_drv_la_SOURCES = evdev.c evdev.h evdev_axes.c evdev_btn.c evdev_key.c inotify.h inotify-syscalls.h
+@DRIVER_NAME@_drv_la_SOURCES = evdev.c evdev.h evdev_axes.c evdev_btn.c evdev_key.c
