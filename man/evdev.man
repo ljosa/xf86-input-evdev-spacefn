@@ -110,7 +110,7 @@ This option uses globbing.
 .BI "Option \*qPhys\*q \*q" string \*q
 Specifies the device phys string for the device you wish to use.
 .fi
-The phys string is generally consistant to the USB port a device is plugged 
+The phys string is generally consistent to the USB port a device is plugged 
 into.
 .fi
 A list of currently plugged in devices and associated device names can be 
@@ -127,7 +127,7 @@ Specifies device capability bits which must be set, possibly set, or unset.
 ff.
 .fi
 The bit specifier format is a string consisting of +<n>, -<n>, and ~<n>
-space sepirated specifiers, where <n> is a positive integer or integer range.
+space separated specifiers, where <n> is a positive integer or integer range.
 (The latter given in the format of 2-6.)
 .fi
 + specifies bits which must be set.
@@ -195,9 +195,9 @@ device itself.
 Specifies the order in which evdev will scan for devices.
 .fi
 This is in the range of 0 to 3, and is used for the case
-where more then one evdev inputsection matches the same device.
+where more then one evdev input section matches the same device.
 .fi
-An inputsection with a lower pass number will always beat out
+An input section with a lower pass number will always beat out
 one with a higher pass number.  Order when both sections are
 the same number is undefined.
 .fi
@@ -206,14 +206,14 @@ The default is 0.
 
 .PP
 .SS RELATIVE AXIS CONFIGURATION
-The relative axis portion of this driver handle all reported relative axies.
+The relative axis portion of this driver handle all reported relative axes.
 .fi
-The axies are named X, Y, Z, RX, RY, RZ, HWHEEL, DIAL, WHEEL, MISC, 10, 11,
+The axes are named X, Y, Z, RX, RY, RZ, HWHEEL, DIAL, WHEEL, MISC, 10, 11,
 12, 13, 14, and 15.
 .fi
-The axies are reported to X as valuators, with the default mapping of axies
-to valuators being the first axies found to the first valuator, the second
-found to the second valuator, and so on, so that if you have axies X, Y,
+The axes are reported to X as valuators, with the default mapping of axes
+to valuators being the first axes found to the first valuator, the second
+found to the second valuator, and so on, so that if you have axes X, Y,
 HWHEEL, and WHEEL, you would have X=0, Y=1, HWHEEL=2, WHEEL=3.
 .fi
 If the driver is reporting core events, valuators 0 and 1 are always mapped
@@ -236,15 +236,15 @@ and map the Wheel axis to buttons 4 5, you get buttons 1 2 3
 6 7, with buttons 6 and 7 being physical buttons 4 and 5.
 .PP
 .SS ABSOLUTE AXIS CONFIGURATION
-The relative axis portion of this driver handle all reported relative axies.
+The relative axis portion of this driver handle all reported relative axes.
 .fi
-The axies are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BREAK,
+The axes are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BREAK,
 <11-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
 TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29-39>, MISC, <41-62>.
 .fi
-The axies are reported to X as valuators, with the default mapping of axies
-to valuators being the first axies found to the first valuator, the second
-found to the second valuator, and so on, so that if you have axies X, Y,
+The axes are reported to X as valuators, with the default mapping of axes
+to valuators being the first axes found to the first valuator, the second
+found to the second valuator, and so on, so that if you have axes X, Y,
 TILT_X, and TILT_Y, you would have X=0, Y=1, TILT_X=2, TILT_Y=3.
 .fi
 If the driver is reporting core events, valuators 0 and 1 are always mapped
@@ -279,7 +279,7 @@ This can be set at run time per actual device with the xinput utility.
 At the moment, the button portion of this driver only handles buttons
 reported as mouse buttons, that is from BTN_MOUSE to BTN_JOYSTICK - 1.
 .fi
-At this time there are no configuration options for buttens.
+At this time there are no configuration options for buttons.
 .SS KEYBOARD CONFIGURATION
 The keyboard portion of this driver handles all keys reported and requires 
 XKB support.
