@@ -398,7 +398,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     pInfo->private = pEvdev;
 
-    pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    pEvdev->device = xf86CheckStrOption(dev->commonOptions, "path", NULL);
+    if (!pEvdev->device)
+        pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
 
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);

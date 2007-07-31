@@ -466,11 +466,22 @@ EvdevKeyNew (InputInfoPtr pInfo)
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
 
-    SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__, &state->key->xkb_rules);
-    SetXkbOption (pInfo, "XkbModel", "evdev", &state->key->xkb_model);
-    SetXkbOption (pInfo, "XkbLayout", "us", &state->key->xkb_layout);
-    SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
-    SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
+    SetXkbOption (pInfo, "xkb_rules", NULL, &state->key->xkb_rules);
+    if (!state->key->xkb_rules)
+        SetXkbOption (pInfo, "XkbRules", __XKBDEFRULES__,
+                      &state->key->xkb_rules);
+    SetXkbOption (pInfo, "xkb_model", NULL, &state->key->xkb_model);
+    if (!state->key->xkb_model)
+        SetXkbOption (pInfo, "XkbModel", "evdev", &state->key->xkb_model);
+    SetXkbOption (pInfo, "xkb_layout", NULL, &state->key->xkb_layout);
+    if (!state->key->xkb_layout)
+        SetXkbOption (pInfo, "XkbLayout", "us", &state->key->xkb_layout);
+    SetXkbOption (pInfo, "xkb_variant", NULL, &state->key->xkb_variant);
+    if (!state->key->xkb_variant)
+        SetXkbOption (pInfo, "XkbVariant", NULL, &state->key->xkb_variant);
+    SetXkbOption (pInfo, "xkb_options", NULL, &state->key->xkb_options);
+    if (!state->key->xkb_options)
+        SetXkbOption (pInfo, "XkbOptions", NULL, &state->key->xkb_options);
 
     return Success;
 }
