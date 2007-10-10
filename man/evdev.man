@@ -14,7 +14,7 @@ evdev \- Generic Linux input driver
 .fi
 .SH DESCRIPTION
 .B evdev 
-is an __xservername__ input driver for Linux\'s generic event devices.  It
+is an __xservername__ input driver for Linux's generic event devices.  It
 therefore supports all input devices that the kernel knows about, including
 most mice and keyboards.
 .PP
@@ -46,7 +46,7 @@ all QWERTY keyboards:
 .BI "  Identifier \*q" keyboard \*q
 .B  "  Driver \*qevdev\*q"
 .BI  "  Option \*qevBits\*q  \*q" "+1" \*q
-.BI  "  Option \*qkeyBits\*q \*q" "~1-255 ~352-511" \*q
+.BI  "  Option \*qkeyBits\*q \*q" "~1\-255 ~352\-511" \*q
 .BI  "  Option \*qPass\*q    \*q" "3" \*q
 \ \ ...
 .B EndSection
@@ -58,9 +58,9 @@ And the following for all mice:
 .B "Section \*qInputDevice\*q"
 .BI "  Identifier \*q" mouse \*q
 .B  "  Driver \*qevdev\*q"
-.BI  "  Option \*qevBits\*q  \*q" "+1-2" \*q
-.BI  "  Option \*qkeyBits\*q \*q" "~272-287" \*q
-.BI  "  Option \*qrelBits\*q \*q" "~0-2 ~6 ~8" \*q
+.BI  "  Option \*qevBits\*q  \*q" "+1\-2" \*q
+.BI  "  Option \*qkeyBits\*q \*q" "~272\-287" \*q
+.BI  "  Option \*qrelBits\*q \*q" "~0\-2 ~6 ~8" \*q
 .BI  "  Option \*qPass\*q    \*q" "3" \*q
 \ \ ...
 .B EndSection
@@ -86,8 +86,11 @@ control what devices are accepted:
 .TP 7
 .BI "Option \*qDevice\*q \*q" string \*q
 Specifies the device note through which the device can be accessed.
-At this time ONLY /dev/input/event<N>, where <N> is an integer, are
-matched against this this field.
+At this time ONLY
+.RI /dev/input/event n ,
+where
+.I n
+is an integer, are matched against this this field.
 .fi
 This option uses globbing.
 .fi
@@ -120,25 +123,29 @@ is the value you want for this option.
 This option uses globbing.
 
 .TP 7
-.BI "Option \*q<map>Bits\*q \*q" "bit specifier" \*q
+.BI "Option \*q" map "Bits\*q \*q" "bit specifier" \*q
 Specifies device capability bits which must be set, possibly set, or unset.
 .fi
-<map>Bits: Where map is one of ev, key, rel, abs, msc, led, snd, or
-ff.
+.IR map "Bits: Where " map
+is one of
+.BR ev ", " key ", " rel ", " abs ,
+.BR msc ", " led ", " snd ", or " ff .
 .fi
-The bit specifier format is a string consisting of +<n>, -<n>, and ~<n>
-space separated specifiers, where <n> is a positive integer or integer range.
-(The latter given in the format of 2-6.)
+The bit specifier format is a string consisting of
+.RI + n ", \-" n ", and ~" n
+space-separated specifiers, where
+.I n
+is a positive integer or integer range.  (The latter given in the format of 2\-6.)
 .fi
 + specifies bits which must be set.
 .fi
-- specifies bits which must not be set.
+\- specifies bits which must not be set.
 .fi
 ~ is a little more complex, it specifies that at least one of the bits given
 with ~ for the field in question must be set, but it doesn't matter how many
 or which of the bits. (It is actually the most useful of the 3 specifiers.)
 .fi
-As an example '+0 +3 -1-2 ~5-10', requires bits 0 and 3 be set,
+As an example, \*q+0 +3 \-1\-2 ~5\-10\*q requires bits 0 and 3 be set,
 bits 1 and 2 to not be set, and at least one bit in the range of 5 to
 10 be set.
 .fi
@@ -148,20 +155,24 @@ by typing \*qcat /proc/bus/input/devices\*q, and
 should contain the defines which declare what bits are what for each field.
 
 .TP 7
-.BI "Option \*qbustype\*q \*q" integer \*q
+.BI "Option \*qbustype\*q \*q" n \*q
 Specifies the bus ID for the device you wish to use.
 .fi
-This is either 0 (the default, matches anything), or the Bus=<n> field in
+This is either 0 (the default, matches anything), or the
+.BI Bus= n
+field in
 .B /proc/bus/input/devices
 for your device.
 .fi
 This value depends on what type of bus your device is connected to.
 
 .TP 7
-.BI "Option \*qvendor\*q \*q" integer \*q
+.BI "Option \*qvendor\*q \*q" n \*q
 Specifies the vendor ID for the device you wish to use.
 .fi
-This is either 0 (the default, matches anything), or the Vendor=<n> field in
+This is either 0 (the default, matches anything), or the
+.BI Vendor= n
+field in
 .B /proc/bus/input/devices
 for your device.
 .fi
@@ -169,10 +180,12 @@ This value should remain constant barring perhaps firmware updates to the
 device itself.
 
 .TP 7
-.BI "Option \*qversion\*q \*q" integer \*q
+.BI "Option \*qversion\*q \*q" n \*q
 Specifies the version for the device you wish to use.
 .fi
-This is either 0 (the default, matches anything), or the Version=<n> field in
+This is either 0 (the default, matches anything), or the
+.BI Version= n
+field in
 .B /proc/bus/input/devices
 for your device.
 .fi
@@ -180,10 +193,12 @@ This value should remain constant barring perhaps firmware updates to the
 device itself.
 
 .TP 7
-.BI "Option \*qproduct\*q \*q" integer \*q
+.BI "Option \*qproduct\*q \*q" n \*q
 Specifies the product ID for the device you wish to use.
 .fi
-This is either 0 (the default, matches anything), or the Product=<n> field in
+This is either 0 (the default, matches anything), or the
+.BI Product= n
+field in
 .B /proc/bus/input/devices
 for your device.
 .fi
@@ -191,7 +206,7 @@ This value should remain constant barring perhaps firmware updates to the
 device itself.
 
 .TP 7
-.BI "Option \*qPass\*q \*q" integer \*q
+.BI "Option \*qPass\*q \*q" n \*q
 Specifies the order in which evdev will scan for devices.
 .fi
 This is in the range of 0 to 3, and is used for the case
@@ -223,13 +238,13 @@ The following driver
 .B Options
 control the relative axis portion of the driver:
 .TP 7
-.BI "Option \*q<axis>RelativeAxisMap\*q \*q" number \*q
+.BI "Option \*q" axis "RelativeAxisMap\*q \*q" n \*q
 This remaps the axis specified to the specified valuator.
 .TP 7
-.BI "Option \*q<axis>RelativeAxisButtons\*q \*q" number " number\*q
+.BI "Option \*q" axis "RelativeAxisButtons\*q \*q" "n n" \*q
 This remaps the axis specified to the specified buttons.
 .fi
-Note that the physical buttons are always remapped around 'fake' buttons 
+Note that the physical buttons are always remapped around \*qfake\*q buttons
 created by this option, so that if you have physical buttons 1 2 3 4 5,
 and map the Wheel axis to buttons 4 5, you get buttons 1 2 3
 .B 4 5
@@ -239,8 +254,8 @@ and map the Wheel axis to buttons 4 5, you get buttons 1 2 3
 The relative axis portion of this driver handle all reported relative axes.
 .fi
 The axes are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BREAK,
-<11-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
-TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29-39>, MISC, <41-62>.
+<11\-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
+TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29\-39>, MISC, <41\-62>.
 .fi
 The axes are reported to X as valuators, with the default mapping of axes
 to valuators being the first axes found to the first valuator, the second
@@ -254,21 +269,21 @@ The following driver
 .B Options
 control the relative axis portion of the driver:
 .TP 7
-.BI "Option \*q<axis>AbsoluteAxisMap\*q \*q" number \*q
+.BI "Option \*q" axis "AbsoluteAxisMap\*q \*q" n \*q
 This remaps the axis specified to the specified valuator.
 .TP 7
-.BI "Option \*qAbsoluteScreen\*q \*q" number \*q
+.BI "Option \*qAbsoluteScreen\*q \*q" n \*q
 This binds the device to a specific screen, scaling it to
 the coordinate space of that screen.
 .fi
-The number can either be -1, or a valid screen number.
+The number can either be \-1, or a valid screen number.
 .fi
-If -1 or if in relative mode no scaling or screen fixing is done.
+If \-1 or if in relative mode no scaling or screen fixing is done.
 .fi
 This is of most use for digitizers, where the screen and the input
 device are the same surface.
 .TP 7
-.BI "Option \*qMode\*q \*q" <mode>\*q
+.BI "Option \*qMode\*q \*q" mode \*q
 This selects the default mode for the device.
 .fi
 Valid values are \*qabsolute\*q and \*qrelative\*q.
@@ -277,7 +292,7 @@ This can be set at run time per actual device with the xinput utility.
 .PP
 .SS BUTTON CONFIGURATION
 At the moment, the button portion of this driver only handles buttons
-reported as mouse buttons, that is from BTN_MOUSE to BTN_JOYSTICK - 1.
+reported as mouse buttons, that is from BTN_MOUSE to BTN_JOYSTICK \- 1.
 .fi
 At this time there are no configuration options for buttons.
 .SS KEYBOARD CONFIGURATION
@@ -295,15 +310,15 @@ specifies which XKB rules file to use for interpreting the
 .BR XkbVariant ,
 and
 .B XkbOptions
-settings.  Default: "xorg" for most platforms, but "xfree98" for the
+settings.  Default: \*qxorg\*q for most platforms, but \*qxfree98\*q for the
 Japanese PC-98 platforms.
 .TP 7
 .BI "Option \*qXkbModel\*q \*q" modelname \*q
-specifies the XKB keyboard model name.  Default: "evdev".
+specifies the XKB keyboard model name.  Default: \*qevdev\*q.
 .TP 7
 .BI "Option \*qXkbLayout\*q \*q" layoutname \*q
 specifies the XKB keyboard layout name.  This is usually the country or
-language type of the keyboard.  Default: "us".
+language type of the keyboard.  Default: \*qus\*q.
 .TP 7
 .BI "Option \*qXkbVariant\*q \*q" variants \*q
 specifies the XKB keyboard variant components.  These can be used to
@@ -317,6 +332,6 @@ enhance the keyboard behaviour.  Default: not set.
 .SH AUTHORS
 Zephaniah E. Hull.
 .fi
-Kristian Høgsberg.
+Kristian H\(/ogsberg.
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__).
