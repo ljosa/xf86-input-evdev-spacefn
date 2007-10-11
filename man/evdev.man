@@ -253,7 +253,7 @@ and map the Wheel axis to buttons 4 5, you get buttons 1 2 3
 .SS ABSOLUTE AXIS CONFIGURATION
 The relative axis portion of this driver handle all reported relative axes.
 .fi
-The axes are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BREAK,
+The axes are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BRAKE,
 <11\-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
 TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29\-39>, MISC, <41\-62>.
 .fi
