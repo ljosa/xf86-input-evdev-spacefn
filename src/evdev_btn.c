@@ -322,18 +322,6 @@ EvdevBtnInit (DeviceIntRec *device)
 int
 EvdevBtnOn (DeviceIntRec *device)
 {
-    InputInfoRec *pInfo = device->public.devicePrivate;
-    evdevDeviceRec *pEvdev = pInfo->private;
-    int i, blocked;
-
-    if (!pEvdev->state.btn)
-	return Success;
-
-    blocked = xf86BlockSIGIO ();
-    for (i = 1; i <= pEvdev->state.btn->buttons; i++)
-	xf86PostButtonEvent (device, 0, i, 0, 0, 0);
-    xf86UnblockSIGIO (blocked);
-
     return Success;
 }
 
