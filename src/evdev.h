@@ -110,7 +110,7 @@ typedef struct {
     int		real_buttons;
     int		buttons;
     int		b_flags[BTN_MAX];
-    void	*b_map_data[ABS_MAX];
+    void	*b_map_data[BTN_MAX];
     evdev_map_func_f b_map[BTN_MAX];
     void	(*callback[BTN_MAX])(InputInfoPtr pInfo, int button, int value);
 } evdevBtnRec, *evdevBtnPtr;
