@@ -709,6 +709,7 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 
     {
 	int btn;
+        int i;
 
 	s = xf86SetStrOption(pInfo->options, "AbsoluteTouch", "DIGI_Touch");
 	btn = EvdevBtnFind (pInfo, s);
@@ -719,6 +720,18 @@ EvdevAxisAbsNew1(InputInfoPtr pInfo)
 		xf86Msg(X_ERROR, "%s: state->btn: %p.\n", pInfo->name, state->btn);
 		state->btn->callback[btn] = &EvdevAxesTouchCallback;
 	    } else {
+
+                /*
+                 * If the device does not have a touch button, then clear
+                 * EV_ABS_V_USE_TOUCH which we may have set for the X and Y
+                 * axes in EvdevAxisAbsNew.
+                 */
+                for (i = 0; i < ABS_MAX; i++) {
+                    if ((i == ABS_X || i == ABS_Y) &&
+                        state->abs->v_flags[i] & EV_ABS_V_PRESENT) {
+                        state->abs->v_flags[i] &= ~EV_ABS_V_USE_TOUCH;
+                    }
+                }
 		xf86Msg(X_ERROR, "%s: AbsoluteTouch: '%s' does not exist.\n", pInfo->name, s);
 	    }
 	} else {
