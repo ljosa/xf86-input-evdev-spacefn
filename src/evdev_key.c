@@ -533,8 +533,35 @@ EvdevKeyProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     int keycode = ev->code + MIN_KEYCODE;
 
-    /* filter all repeat events */
-    if (ev->value == 2) return;
+    /* filter repeat events for chording keys */
+    if (ev->value == 2) {
+	DeviceIntPtr device = pInfo->dev;
+	KeyClassRec  *keyc = device->key;
+	KbdFeedbackClassRec *kbdfeed = device->kbdfeed;
+
+	/* See xkb/ddxCtrls.c: XkbDDXUsesSoftRepeat
+	   Xorg-server will only generate soft autorepeats, when
+	   inverval/delay are NOT set to the default values of 40/660.
+	   
+	   We let the kernel autorepeat events pass, when we hit the
+	   default value and the key is not a modifier. */
+	if (device->key &&
+	    device->key->xkbInfo &&
+	    device->key->xkbInfo->desc &&
+    	    device->key->xkbInfo->desc->ctrls)
+	{
+    	    if ((device->key->xkbInfo->desc->ctrls->repeat_interval != 40) ||
+	        (device->key->xkbInfo->desc->ctrls->repeat_delay != 660))
+	    return;
+	}
+	
+	int num = keycode >> 3;
+	int bit = 1 << (keycode & 7);
+
+	if (keyc->modifierMap[keycode] ||
+               !(kbdfeed->ctrl.autoRepeats[num] & bit))
+    	    return;
+    }
 
     xf86PostKeyboardEvent(pInfo->dev, keycode, ev->value);
 }
