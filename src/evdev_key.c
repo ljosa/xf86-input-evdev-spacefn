@@ -75,6 +75,10 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
+/* Exported by xorg-server, xkb/xkbAccessX.c */
+extern int XkbDfltRepeatDelay;
+extern int XkbDfltRepeatInterval;
+
 /* FIXME: this map works with evdev keyboards, but all the xkb maps
  * probably don't.  The easiest is to remap the event keycodes.  */
 
@@ -410,6 +414,18 @@ EvdevKeyInit (DeviceIntPtr device)
 
     XkbInitKeyboardDeviceStruct (device, &state->key->xkbnames, &keySyms, modMap,
 	    NULL, EvdevKbdCtrl);
+
+
+    if (device->key &&
+        device->key->xkbInfo &&
+        device->key->xkbInfo->desc &&
+        device->key->xkbInfo->desc->ctrls)
+    {
+        XkbControlsPtr ctrls = device->key->xkbInfo->desc->ctrls;
+        ctrls->repeat_delay = XkbDfltRepeatDelay;
+        ctrls->repeat_interval = XkbDfltRepeatInterval;
+    }
+
 
     return Success;
 }
