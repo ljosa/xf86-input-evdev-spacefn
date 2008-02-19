@@ -517,18 +517,8 @@ EvdevKeyProcess (InputInfoPtr pInfo, struct input_event *ev)
 {
     int keycode = ev->code + MIN_KEYCODE;
 
-    /* filter repeat events for chording keys */
-    if (ev->value == 2) {
-	DeviceIntPtr device = pInfo->dev;
-	KeyClassRec  *keyc = device->key;
-	KbdFeedbackClassRec *kbdfeed = device->kbdfeed;
-	int num = keycode >> 3;
-	int bit = 1 << (keycode & 7);
-
-	if (keyc->modifierMap[keycode] ||
-		!(kbdfeed->ctrl.autoRepeats[num] & bit))
-	    return;
-    }
+    /* filter all repeat events */
+    if (ev->value == 2) return;
 
     xf86PostKeyboardEvent(pInfo->dev, keycode, ev->value);
 }
