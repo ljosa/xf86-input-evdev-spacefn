@@ -353,21 +353,6 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
         ev[i].value = (ctrl->leds & bits[i].xbit) > 0;
     }
     write(pInfo->fd, ev, sizeof(ev));
-
-    if (device->key && device->key->xkbInfo && device->key->xkbInfo->desc
-	    && device->key->xkbInfo->desc->ctrls) {
-	XkbControlsRec *ctrls = device->key->xkbInfo->desc->ctrls;
-
-	ev[0].type = EV_REP;
-	ev[0].code = REP_DELAY;
-	ev[0].value = ctrls->repeat_delay;
-
-	ev[1].type = EV_REP;
-	ev[1].code = REP_PERIOD;
-	ev[1].value = ctrls->repeat_interval;
-
-	write(pInfo->fd, ev, sizeof(ev[0]) * 2);
-    }
 }
 
 int
