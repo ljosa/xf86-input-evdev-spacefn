@@ -401,13 +401,21 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pEvdev->device = xf86CheckStrOption(dev->commonOptions, "path", NULL);
     if (!pEvdev->device)
         pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    if (!pEvdev->device) {
+	xf86Msg(X_ERROR, "%s: No Device specified.\n", pInfo->name);
+	pInfo->private = NULL;
+	xfree(pEvdev);
+	xf86DeleteInput (pInfo, 0);
+	return NULL;
+    }
 
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
     SYSCALL(pInfo->fd = open (pEvdev->device, O_RDWR | O_NONBLOCK));
     if (pInfo->fd  == -1) {
-	xf86Msg(X_ERROR, "%s: cannot open input pEvdev\n", pInfo->name);
+	xf86Msg(X_ERROR, "%s: cannot open device '%s': %s\n",
+		pInfo->name, pEvdev->device, strerror(errno));
 	pInfo->private = NULL;
 	xfree(pEvdev);
 	xf86DeleteInput (pInfo, 0);
