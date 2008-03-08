@@ -405,12 +405,6 @@ static KeySym map[] = {
 };
 
 static void
-EvdevKbdBell(int percent, DeviceIntPtr dev, pointer ctrl, int unused)
-{
-    /* hat */
-}
-
-static void
 EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
 {
     static struct { int xbit, code; } bits[] = {
@@ -488,7 +482,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
     {
         xf86Msg(X_CONFIG, "XKB: disabled\n");
         if (!InitKeyboardDeviceStruct((DevicePtr)device, &keySyms, modMap,
-                                      EvdevKbdBell, EvdevKbdCtrl))
+                                      NULL, EvdevKbdCtrl))
             return !Success;
     }
 #ifdef XKB
@@ -507,7 +501,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
                          pEvdev->xkb_layout, pEvdev->xkb_variant,
                          pEvdev->xkb_options);
         if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
-                                         &keySyms, modMap, EvdevKbdBell,
+                                         &keySyms, modMap, NULL,
                                          EvdevKbdCtrl))
             return !Success;
     }
