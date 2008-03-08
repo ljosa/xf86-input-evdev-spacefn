@@ -1,5 +1,5 @@
 /*
- * Copyright © 2004 Red Hat, Inc.
+ * Copyright © 2004-2008 Red Hat, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without
@@ -12,9 +12,9 @@
  * for any purpose.  It is provided "as is" without express or implied
  * warranty.
  *
- * RED HAT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+ * THE AUTHORS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN
- * NO EVENT SHALL RED HAT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+ * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
  * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
  * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
  * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
@@ -31,23 +31,20 @@
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
 
-/* The libc wrapper just blows... linux/input.h must be included
- * before xf86_ansic.h and xf86_libc.h so we avoid defining ioctl
- * twice. */
-
 #include <linux/input.h>
 
 #include <misc.h>
 #include <xf86.h>
 #include <xf86str.h>
 #include <xf86_OSproc.h>
-#include <xf86_ansic.h>
-#include <xf86_libc.h>
 #include <xf86Xinput.h>
 #include <exevents.h>
 #include <mipointer.h>
 
 #include <xf86Module.h>
+
+#include <errno.h>
+#include <fcntl.h>
 
 /* 2.4 compatibility */
 #ifndef EVIOCGRAB
