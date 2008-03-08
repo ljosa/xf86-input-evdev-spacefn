@@ -676,7 +676,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     xf86CollectInputOptions(pInfo, NULL, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options); 
 
-    device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
+    if (!device)
+	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
         xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
         xfree(pEvdev);
