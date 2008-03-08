@@ -20,7 +20,9 @@
  * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * Author:  Kristian Høgsberg (krh@redhat.com)
+ * Authors:
+ *	Kristian Høgsberg (krh@redhat.com)
+ *	Adam Jackson (ajax@redhat.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -40,6 +42,11 @@
 #include <xf86Xinput.h>
 #include <exevents.h>
 #include <mipointer.h>
+
+#if defined(XKB)
+/* XXX VERY WRONG.  this is a client side header. */
+#include <X11/extensions/XKBstr.h>
+#endif
 
 #include <xf86Module.h>
 
@@ -78,7 +85,60 @@
 
 typedef struct {
     int kernel24;
+    int     noXkb;
+
+    /* XKB stuff has to be per-device rather than per-driver */
+#ifdef XKB
+    char                    *xkb_rules;
+    char                    *xkb_model;
+    char                    *xkb_layout;
+    char                    *xkb_variant;
+    char                    *xkb_options;
+    XkbComponentNamesRec    xkbnames;
+#endif
 } EvdevRec, *EvdevPtr;
+
+typedef enum {
+    OPTION_XKB_DISABLE,
+    OPTION_XKB_RULES,
+    OPTION_XKB_MODEL,
+    OPTION_XKB_LAYOUT,
+    OPTION_XKB_VARIANT,
+    OPTION_XKB_OPTIONS
+} EvdevOpts;
+
+static const OptionInfoRec EvdevOptions[] = {
+    { OPTION_XKB_DISABLE,   "XkbDisable",   OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_XKB_RULES,     "XkbRules",     OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_MODEL,     "XkbModel",     OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_LAYOUT,    "XkbLayout",    OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_VARIANT,   "XkbVariant",   OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_OPTIONS,   "XkbOptions",   OPTV_STRING,  {0}, FALSE },
+    { -1,                   NULL,           OPTV_NONE,    {0}, FALSE }
+};
+
+static const char *evdevDefaults[] = {
+    "XkbRules",     "xfree86",
+    "XkbModel",     "evdev",
+    "XkbLayout",    "us",
+    NULL
+};
+
+static void
+SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
+{
+    char *s;
+
+    if ((s = xf86SetStrOption(pInfo->options, name, NULL))) {
+        if (!s[0]) {
+            xfree(s);
+            *option = NULL;
+        } else {
+            *option = s;
+            xf86Msg(X_CONFIG, "%s: %s: \"%s\"\n", pInfo->name, name, s);
+        }
+    }
+}
 
 static int wheel_up_button = 4;
 static int wheel_down_button = 5;
@@ -383,6 +443,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
     CARD8 modMap[MAP_LENGTH];
     KeySym sym;
     int i, j;
+    EvdevPtr pEvdev;
 
     static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
         { XK_Shift_L,		ShiftMask },
@@ -399,11 +460,11 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
     /* TODO:
      * Ctrl-Alt-Backspace and other Ctrl-Alt-stuff should work
-     * XKB, let's try without the #ifdef nightmare
      * Get keyboard repeat under control (right now caps lock repeats!)
      */
 
     pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
      /* Compute the modifier map */
     memset(modMap, 0, sizeof modMap);
@@ -421,14 +482,36 @@ EvdevAddKeyClass(DeviceIntPtr device)
     keySyms.minKeyCode = MIN_KEYCODE;
     keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
 
-    if (!InitKeyClassDeviceStruct(device, &keySyms, modMap))
-        return !Success;
+#ifdef XKB
+    if (pEvdev->noXkb)
+#endif
+    {
+        xf86Msg(X_CONFIG, "XKB: disabled\n");
+        if (!InitKeyboardDeviceStruct((DevicePtr)device, &keySyms, modMap,
+                                      EvdevKbdBell, EvdevKbdCtrl))
+            return !Success;
+    }
+#ifdef XKB
+    else
+    {
+        SetXkbOption(pInfo, "XkbRules", &pEvdev->xkb_rules);
+        SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
+        SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
+        SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
+        SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
 
-    if (!InitFocusClassDeviceStruct(device))
-        return !Success;
+        if (pEvdev->xkbnames.keymap)
+            pEvdev->xkb_rules = NULL;
 
-    if (!InitKbdFeedbackClassDeviceStruct(device, EvdevKbdBell, EvdevKbdCtrl))
-        return !Success;
+        XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
+                         pEvdev->xkb_layout, pEvdev->xkb_variant,
+                         pEvdev->xkb_options);
+        if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
+                                         &keySyms, modMap, EvdevKbdBell,
+                                         EvdevKbdCtrl))
+            return !Success;
+    }
+#endif
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE;
 
@@ -673,7 +756,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         return pInfo;
     pInfo->private = pEvdev;
 
-    xf86CollectInputOptions(pInfo, NULL, NULL);
+    if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))
+        return pInfo;
+
+    pInfo->private = pEvdev;
+
+    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options); 
 
     device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
@@ -696,6 +784,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         xfree(pEvdev);
         return pInfo;
     }
+
+    pEvdev->noXkb = noXkbExtension;
+    /* parse the XKB options during kbd setup */
 
     if (EvdevProbe(pInfo))
         xfree(pEvdev);
