@@ -183,6 +183,9 @@ EvdevReadInput(InputInfoPtr pInfo)
                 break;
 
             default:
+		if (ev.code > BTN_TASK && ev.code < KEY_OK)
+		    break;
+
                 PostKbdEvent(pInfo, &ev, value);
             }
             break;
