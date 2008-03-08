@@ -439,9 +439,8 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     pInfo = device->public.devicePrivate;
 
-    if (!InitValuatorClassDeviceStruct(device, 2, 
-                                       miPointerGetMotionEvents,
-                                       miPointerGetMotionBufferSize(), 0))
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
+                                       GetMotionHistorySize(), 0))
         return !Success;
 
     /* X valuator */
@@ -455,6 +454,8 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
+
+    xf86MotionHistoryAllocate(pInfo);
 
     return Success;
 }
@@ -654,7 +655,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->type_name = "UNKNOWN";
     pInfo->device_control = EvdevProc;
     pInfo->read_input = EvdevReadInput;
-    pInfo->motion_history_proc = xf86GetMotionEvents;
     pInfo->history_size = 0;
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
