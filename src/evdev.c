@@ -130,7 +130,7 @@ static const OptionInfoRec EvdevOptions[] = {
 };
 
 static const char *evdevDefaults[] = {
-    "XkbRules",     "xfree86",
+    "XkbRules",     "base",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
     NULL
