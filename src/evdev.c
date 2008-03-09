@@ -69,6 +69,13 @@
 
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
+/* evdev flags */
+#define EVDEV_KEYBOARD_EVENTS	(1 << 0)
+#define EVDEV_BUTTON_EVENTS	(1 << 1)
+#define EVDEV_RELATIVE_EVENTS	(1 << 2)
+#define EVDEV_ABSOLUTE_EVENTS	(1 << 3)
+#define EVDEV_TOUCHPAD		(1 << 4)
+
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
 #define AltMask		Mod1Mask
@@ -85,9 +92,14 @@
 
 typedef struct {
     int kernel24;
-    int     noXkb;
+    int screen;
+    int min_x, min_y, max_x, max_y;
+    int abs_x, abs_y, old_x, old_y;
+    int flags;
+    int tool;
 
     /* XKB stuff has to be per-device rather than per-driver */
+    int noXkb;
 #ifdef XKB
     char                    *xkb_rules;
     char                    *xkb_model;
@@ -178,9 +190,13 @@ EvdevReadInput(InputInfoPtr pInfo)
     struct input_event ev;
     int len, value;
     int dx, dy;
+    unsigned int abs;
+    Bool do_touchpad_motion = FALSE;
+    EvdevPtr pEvdev = pInfo->private;
 
     dx = 0;
     dy = 0;
+    abs = 0;
 
     while (xf86WaitForInput (pInfo->fd, 0) > 0) {
         len = read(pInfo->fd, &ev, sizeof ev);
@@ -195,7 +211,7 @@ EvdevReadInput(InputInfoPtr pInfo)
         value = ev.value;
 
         switch (ev.type) {
-        case EV_REL:
+	case EV_REL:
             switch (ev.code) {
             case REL_X:
                 dx += value;
@@ -221,8 +237,18 @@ EvdevReadInput(InputInfoPtr pInfo)
             }
             break;
 
-        case EV_ABS:
-            break;
+	case EV_ABS:
+	    switch (ev.code) {
+	    case ABS_X:
+		pEvdev->abs_x = value;
+		abs = 1;
+		break;
+	    case ABS_Y:
+		pEvdev->abs_y = value;
+		abs = 1;
+		break;
+	    }
+	    break;
 
         case EV_KEY:
             switch (ev.code) {
@@ -242,11 +268,24 @@ EvdevReadInput(InputInfoPtr pInfo)
                                     value, 0, 0);
                 break;
 
+	    case BTN_TOUCH:
+ 	    case BTN_TOOL_PEN:
+ 	    case BTN_TOOL_RUBBER:
+ 	    case BTN_TOOL_BRUSH:
+ 	    case BTN_TOOL_PENCIL:
+ 	    case BTN_TOOL_AIRBRUSH:
+ 	    case BTN_TOOL_FINGER:
+ 	    case BTN_TOOL_MOUSE:
+ 	    case BTN_TOOL_LENS:
+		pEvdev->tool = value ? ev.code : 0;
+		break;
+
             default:
 		if (ev.code > BTN_TASK && ev.code < KEY_OK)
 		    break;
 
                 PostKbdEvent(pInfo, &ev, value);
+		break;
             }
             break;
 
@@ -255,8 +294,37 @@ EvdevReadInput(InputInfoPtr pInfo)
         }
     }
 
+    /* convert to relative motion for touchpads */
+    if (pEvdev->flags & EVDEV_TOUCHPAD) {
+	abs = 0;
+	if (pEvdev->tool) { /* meaning, touch is active */
+	    if (pEvdev->old_x != -1)
+		dx = pEvdev->abs_x - pEvdev->old_x;
+	    if (pEvdev->old_x != -1)
+		dy = pEvdev->abs_y - pEvdev->old_y;
+	    pEvdev->old_x = pEvdev->abs_x;
+	    pEvdev->old_y = pEvdev->abs_y;
+	} else {
+	    pEvdev->old_x = pEvdev->old_y = -1;
+	}
+    }
+
     if (dx != 0 || dy != 0)
-        xf86PostMotionEvent(pInfo->dev, 0, 0, 2, dx, dy);
+        xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
+
+    /*
+     * Some devices only generate valid abs coords when BTN_DIGI is
+     * pressed.  On wacom tablets, this means that the pen is in
+     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * released, and a (0, 0) absolute event is generated.  Checking
+     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+     * initialized to 1 so devices that doesn't use this scheme still
+     * just works.
+     */
+    if (abs && pEvdev->tool) {
+	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2,
+			    pEvdev->abs_x, pEvdev->abs_y);
+    }
 }
 
 #define TestBit(bit, array) (array[(bit) / 8] & (1 << ((bit) % 8)))
@@ -513,6 +581,56 @@ EvdevAddKeyClass(DeviceIntPtr device)
 }
 
 static int
+EvdevAddAbsClass(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+    struct input_absinfo absinfo_x, absinfo_y;
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+    if (ioctl(pInfo->fd,
+	      EVIOCGABS(ABS_X), &absinfo_x) < 0) {
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	return !Success;
+    }
+
+    if (ioctl(pInfo->fd,
+	      EVIOCGABS(ABS_Y), &absinfo_y) < 0) {
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	return !Success;
+    }
+
+    pEvdev->min_x = absinfo_x.minimum;
+    pEvdev->max_x = absinfo_x.maximum;
+    pEvdev->min_y = absinfo_y.minimum;
+    pEvdev->max_y = absinfo_y.maximum;
+
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
+                                       GetMotionHistorySize(), Absolute))
+        return !Success;
+
+    /* X valuator */
+    xf86InitValuatorAxisStruct(device, 0, pEvdev->min_x, pEvdev->max_x,
+			       10000, 0, 10000);
+    xf86InitValuatorDefaults(device, 0);
+
+    /* Y valuator */
+    xf86InitValuatorAxisStruct(device, 1, pEvdev->min_y, pEvdev->max_y,
+			       10000, 0, 10000);
+    xf86InitValuatorDefaults(device, 1);
+    xf86MotionHistoryAllocate(pInfo);
+
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+        return !Success;
+
+    pInfo->flags |= XI86_POINTER_CAPABLE;
+
+    return Success;
+}
+
+static int
 EvdevAddRelClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
@@ -520,7 +638,7 @@ EvdevAddRelClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
 
     if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
-                                       GetMotionHistorySize(), 0))
+                                       GetMotionHistorySize(), Relative))
         return !Success;
 
     /* X valuator */
@@ -534,6 +652,8 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
+
+    pInfo->flags |= XI86_POINTER_CAPABLE;
 
     xf86MotionHistoryAllocate(pInfo);
 
@@ -562,8 +682,6 @@ EvdevAddButtonClass(DeviceIntPtr device)
     if (!InitButtonClassDeviceStruct(device, ArrayLength(map), map))
         return !Success;
 
-    pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS;
-
     return Success;
 }
 
@@ -571,20 +689,21 @@ static int
 EvdevInit(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
-    /* FIXME: This doesn't add buttons for keyboards with
-     * scrollwheels. */
+    /* FIXME: This doesn't add buttons for keyboards with scrollwheels. */
 
-    if (pInfo->flags & XI86_KEYBOARD_CAPABLE) {
+    if (pEvdev->flags & EVDEV_KEYBOARD_EVENTS)
 	EvdevAddKeyClass(device);
-    }
-
-    if (pInfo->flags & XI86_POINTER_CAPABLE) {
+    if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
 	EvdevAddButtonClass(device);
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
 	EvdevAddRelClass(device);
-    }
+    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+	EvdevAddAbsClass(device);
 
     return Success;
 }
@@ -631,13 +750,24 @@ static Bool
 EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
 	     int v3, int v4, int v5, int *x, int *y)
 {
-    if (first == 0 && num == 2) {
-        *x = v0;
-        *y = v1;
-        return TRUE;
+    EvdevPtr pEvdev = pInfo->private;
+    int screenWidth = screenInfo.screens[pEvdev->screen]->width;
+    int screenHeight = screenInfo.screens[pEvdev->screen]->height;
+
+    if (first != 0 || num != 2)
+	return FALSE;
+
+    /* on absolute touchpads, don't warp on initial touch */
+    if (pEvdev->flags & EVDEV_TOUCHPAD) {
+	*x = v0;
+	*y = v0;
+	return TRUE;
     }
-    else
-        return FALSE;
+
+    *x = (v0 - pEvdev->min_x) * screenWidth / (pEvdev->max_x - pEvdev->min_x);
+    *y = (v1 - pEvdev->min_y) * screenHeight / (pEvdev->max_y - pEvdev->min_y);
+
+    return TRUE;
 }
 
 static int
@@ -645,6 +775,7 @@ EvdevProbe(InputInfoPtr pInfo)
 {
     char key_bitmask[(KEY_MAX + 7) / 8];
     char rel_bitmask[(REL_MAX + 7) / 8];
+    char abs_bitmask[(ABS_MAX + 7) / 8];
     int i, has_axes, has_buttons, has_keys;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -662,6 +793,12 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (ioctl(pInfo->fd,
+              EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask) < 0) {
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
         xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
         return 1;
@@ -673,12 +810,24 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 	has_axes = TRUE;
     }
       
+    if (TestBit(ABS_X, abs_bitmask) && TestBit(REL_Y, abs_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
+	if (TestBit(BTN_TOUCH, key_bitmask)) {
+	    xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
+	    pEvdev->flags |= EVDEV_TOUCHPAD;
+	    pEvdev->old_x = pEvdev->old_y = -1;
+	}
+	has_axes = TRUE;
+    }
 
     if (TestBit(BTN_LEFT, key_bitmask)) {
         xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
+	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
 	has_buttons = TRUE;
     }
 
@@ -688,6 +837,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (i < BTN_MISC) {
         xf86Msg(X_INFO, "%s: Found keys\n", pInfo->name);
+	pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
 	has_keys = TRUE;
     }
 
@@ -758,13 +908,20 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options); 
 
+    pEvdev->screen = xf86SetIntOption(pInfo->options, "ScreenNumber", 0);
+    /*
+     * We initialize pEvdev->tool to 1 so that device that doesn't use
+     * proximity will still report events.
+     */
+    pEvdev->tool = 1;
+
     device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
     if (!device)
 	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
         xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
-        xfree(pEvdev);
-        return pInfo;
+	xf86DeleteInput(pInfo, 0);
+        return NULL;
     }
 	
     xf86Msg(deviceFrom, "%s: Device: \"%s\"\n", pInfo->name, device);
@@ -775,15 +932,17 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (pInfo->fd < 0) {
         xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
-        xfree(pEvdev);
-        return pInfo;
+	xf86DeleteInput(pInfo, 0);
+        return NULL;
     }
 
     pEvdev->noXkb = noXkbExtension;
     /* parse the XKB options during kbd setup */
 
-    if (EvdevProbe(pInfo))
-        xfree(pEvdev);
+    if (EvdevProbe(pInfo)) {
+	xf86DeleteInput(pInfo, 0);
+        return NULL;
+    }
 
     return pInfo;
 }
