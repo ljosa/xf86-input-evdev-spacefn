@@ -1,35 +1,28 @@
 /*
- * Copyright © 2006-2007 Zephaniah E. Hull
- * Copyright © 2004 Red Hat, Inc.
+ * Copyright © 2004-2008 Red Hat, Inc.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Soft-
- * ware"), to deal in the Software without restriction, including without
- * limitation the rights to use, copy, modify, merge, publish, distribute,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, provided that the above copyright
- * notice(s) and this permission notice appear in all copies of the Soft-
- * ware and that both the above copyright notice(s) and this permission
- * notice appear in supporting documentation.
+ * Permission to use, copy, modify, distribute, and sell this software
+ * and its documentation for any purpose is hereby granted without
+ * fee, provided that the above copyright notice appear in all copies
+ * and that both that copyright notice and this permission notice
+ * appear in supporting documentation, and that the name of Red Hat
+ * not be used in advertising or publicity pertaining to distribution
+ * of the software without specific, written prior permission.  Red
+ * Hat makes no representations about the suitability of this software
+ * for any purpose.  It is provided "as is" without express or implied
+ * warranty.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABIL-
- * ITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY
- * RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN
- * THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSE-
- * QUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
- * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFOR-
- * MANCE OF THIS SOFTWARE.
- *
- * Except as contained in this notice, the name of a copyright holder shall
- * not be used in advertising or otherwise to promote the sale, use or
- * other dealings in this Software without prior written authorization of
- * the copyright holder.
+ * THE AUTHORS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN
+ * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+ * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * Authors:
- *   Zephaniah E. Hull (warp@aehallh.com),
- *   Kristian Høgsberg (krh@redhat.com)
+ *	Kristian Høgsberg (krh@redhat.com)
+ *	Adam Jackson (ajax@redhat.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -40,506 +33,1045 @@
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
 
-#include "evdev.h"
+#include <linux/input.h>
 
+#include <misc.h>
 #include <xf86.h>
+#include <xf86str.h>
+#include <xf86_OSproc.h>
+#include <xf86Xinput.h>
+#include <exevents.h>
+#include <mipointer.h>
+
+#if defined(XKB)
+/* XXX VERY WRONG.  this is a client side header. */
+#include <X11/extensions/XKBstr.h>
+#endif
 
 #include <xf86Module.h>
-#include <mipointer.h>
-#include <xf86_OSlib.h>
 
+#include <errno.h>
+#include <fcntl.h>
 
-#include <xf86_OSproc.h>
+/* 2.4 compatibility */
+#ifndef EVIOCGRAB
+#define EVIOCGRAB _IOW('E', 0x90, int)
+#endif
 
-static int EvdevProc(DeviceIntPtr device, int what);
+#ifndef BTN_TASK
+#define BTN_TASK 0x117
+#endif
 
-/**
- * Obtain various information using ioctls on the given socket. This
- * information is used to determine if a device has axis, buttons or keys.
- *
- * @return TRUE on success or FALSE on error.
- */
-static Bool
-evdevGetBits (int fd, evdevBitsPtr bits)
-{
-#define get_bitmask(fd, which, where) \
-    if (ioctl(fd, EVIOCGBIT(which, sizeof (where)), where) < 0) {			\
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT %s failed: %s\n", #which, strerror(errno));	\
-        return FALSE;									\
-    }
+#ifndef EV_SYN
+#define EV_SYN EV_RST
+#endif
+/* end compat */
 
-    get_bitmask (fd, 0, bits->ev);
-    get_bitmask (fd, EV_KEY, bits->key);
-    get_bitmask (fd, EV_REL, bits->rel);
-    get_bitmask (fd, EV_ABS, bits->abs);
-    get_bitmask (fd, EV_MSC, bits->msc);
-    get_bitmask (fd, EV_LED, bits->led);
-    get_bitmask (fd, EV_SND, bits->snd);
-    get_bitmask (fd, EV_FF, bits->ff);
+#define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
-#undef get_bitmask
+/* evdev flags */
+#define EVDEV_KEYBOARD_EVENTS	(1 << 0)
+#define EVDEV_BUTTON_EVENTS	(1 << 1)
+#define EVDEV_RELATIVE_EVENTS	(1 << 2)
+#define EVDEV_ABSOLUTE_EVENTS	(1 << 3)
+#define EVDEV_TOUCHPAD		(1 << 4)
 
-    return TRUE;
-}
+#define MIN_KEYCODE 8
+#define GLYPHS_PER_KEY 2
+#define AltMask		Mod1Mask
+#define NumLockMask	Mod2Mask
+#define AltLangMask	Mod3Mask
+#define KanaMask	Mod4Mask
+#define ScrollLockMask	Mod5Mask
 
-/*
- * Evdev option handling stuff.
- *
- * We should probably move this all off to it's own file, but for now it lives
- * hereish.
- */
+#define CAPSFLAG	1
+#define NUMFLAG		2
+#define SCROLLFLAG	4
+#define MODEFLAG	8
+#define COMPOSEFLAG	16
 
-evdev_map_parsers_t evdev_map_parsers[] = {
-    {
-	.name = "RelAxis",
-	.func = EvdevParseMapToRelAxis,
-    },
-    {
-	.name = "AbsAxis",
-	.func = EvdevParseMapToAbsAxis,
-    },
-    {
-	.name = "Button",
-	.func = EvdevParseMapToButton,
-    },
-    {
-	.name = "Buttons",
-	.func = EvdevParseMapToButtons,
-    },
-    {
-	.name = NULL,
-	.func = NULL,
-    }
+typedef struct {
+    int kernel24;
+    int screen;
+    int min_x, min_y, max_x, max_y;
+    int abs_x, abs_y, old_x, old_y;
+    int flags;
+    int tool;
+
+    /* XKB stuff has to be per-device rather than per-driver */
+    int noXkb;
+#ifdef XKB
+    char                    *xkb_rules;
+    char                    *xkb_model;
+    char                    *xkb_layout;
+    char                    *xkb_variant;
+    char                    *xkb_options;
+    XkbComponentNamesRec    xkbnames;
+#endif
+} EvdevRec, *EvdevPtr;
+
+typedef enum {
+    OPTION_XKB_DISABLE,
+    OPTION_XKB_RULES,
+    OPTION_XKB_MODEL,
+    OPTION_XKB_LAYOUT,
+    OPTION_XKB_VARIANT,
+    OPTION_XKB_OPTIONS
+} EvdevOpts;
+
+static const OptionInfoRec EvdevOptions[] = {
+    { OPTION_XKB_DISABLE,   "XkbDisable",   OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_XKB_RULES,     "XkbRules",     OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_MODEL,     "XkbModel",     OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_LAYOUT,    "XkbLayout",    OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_VARIANT,   "XkbVariant",   OPTV_STRING,  {0}, FALSE },
+    { OPTION_XKB_OPTIONS,   "XkbOptions",   OPTV_STRING,  {0}, FALSE },
+    { -1,                   NULL,           OPTV_NONE,    {0}, FALSE }
 };
 
-Bool
-EvdevParseMapOption (InputInfoRec *pInfo, char *option, char *def, void **map_data, evdev_map_func_f *map_func)
+static const char *evdevDefaults[] = {
+    "XkbRules",     "xfree86",
+    "XkbModel",     "evdev",
+    "XkbLayout",    "us",
+    NULL
+};
+
+static void
+SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
 {
-    evdev_option_token_t *tokens;
-    const char *s;
+    char *s;
+
+    if ((s = xf86SetStrOption(pInfo->options, name, NULL))) {
+        if (!s[0]) {
+            xfree(s);
+            *option = NULL;
+        } else {
+            *option = s;
+            xf86Msg(X_CONFIG, "%s: %s: \"%s\"\n", pInfo->name, name, s);
+        }
+    }
+}
+
+static int wheel_up_button = 4;
+static int wheel_down_button = 5;
+static int wheel_left_button = 6;
+static int wheel_right_button = 7;
+
+static void
+PostButtonClicks(InputInfoPtr pInfo, int button, int count)
+{
     int i;
 
-    s = xf86SetStrOption(pInfo->options, option, def);
-    tokens = EvdevTokenize (s, " ="); 
-    if (tokens->next) {
-	for (i = 0; evdev_map_parsers[i].name; i++) {
-	    if (!strcasecmp (tokens->str, evdev_map_parsers[i].name)) {
-		if (!evdev_map_parsers[i].func (pInfo, option, tokens->next, map_data, map_func)) {
-		    xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier.\n", pInfo->name, s);
-		    EvdevFreeTokens (tokens);
-		    return 0;
-		}
-		return 1;
-	    }
-	}
-
-	if (!evdev_map_parsers[i].name)
-	    xf86Msg (X_ERROR, "%s: Unable to find parser for '%s' as a map specifier.\n", pInfo->name, s);
-    } else {
-	xf86Msg (X_ERROR, "%s: Unable to parse '%s' as a map specifier string.\n", pInfo->name, s);
+    for (i = 0; i < count; i++) {
+        xf86PostButtonEvent(pInfo->dev, 0, button, 1, 0, 0);
+        xf86PostButtonEvent(pInfo->dev, 0, button, 0, 0, 0);
     }
-    EvdevFreeTokens (tokens);
-    return 0;
 }
 
-evdev_option_token_t *
-EvdevTokenize (const char *option, const char *tokens)
+static void
+PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
-    evdev_option_token_t *head = NULL, *token = NULL, *prev = NULL;
-    const char *ctmp;
-    const char *first;
-    char *tmp = NULL;
-    int len;
+    /* filter repeat events for chording keys */
+    if (value == 2 &&
+        (ev->code == KEY_LEFTCTRL || ev->code == KEY_RIGHTCTRL ||
+         ev->code == KEY_LEFTSHIFT || ev->code == KEY_RIGHTSHIFT ||
+         ev->code == KEY_LEFTALT || ev->code == KEY_RIGHTALT ||
+         ev->code == KEY_LEFTMETA || ev->code == KEY_RIGHTMETA ||
+         ev->code == KEY_CAPSLOCK || ev->code == KEY_NUMLOCK ||
+         ev->code == KEY_SCROLLLOCK)) /* XXX windows keys? */
+        return;
 
-    first = strchr (option, tokens[0]);
-
-    while (1) {
-	if (first)
-	    len = first - option;
-	else {
-	    len = strlen(option);
-	    if (!len)
-		break;
-	}
-
-	if (!len) {
-	    option++;
-	    first = strchr (option, tokens[0]);
-	    continue;
-	}
-
-	token = calloc (1, sizeof(evdev_option_token_t));
-	if (!head)
-	    head = token;
-	if (prev)
-	    prev->next = token;
-
-	prev = token;
-
-	tmp = calloc(1, len + 1);
-	strncpy (tmp, option, len);
-
-	if (tokens[1]) {
-	    ctmp = strchr (tmp, tokens[1]);
-	    if (ctmp) {
-		token->chain = EvdevTokenize (ctmp+1, tokens + 1);
-	    } else
-		token->str = tmp;
-	} else
-	    token->str = tmp;
-
-	if (!first)
-	    break;
-
-	option = first + 1;
-	first = strchr (option, tokens[0]);
-    }
-
-    return head;
+    xf86PostKeyboardEvent(pInfo->dev, ev->code + MIN_KEYCODE, value);
 }
-
-void
-EvdevFreeTokens (evdev_option_token_t *token)
-{
-    evdev_option_token_t *next;
-
-    while (token) {
-	if (token->chain)
-	    EvdevFreeTokens (token->chain);
-	free (token->str);
-	next = token->next;
-	free (token);
-	token = next;
-    }
-}
-
-
 
 static void
 EvdevReadInput(InputInfoPtr pInfo)
 {
     struct input_event ev;
-    int len;
+    int len, value;
+    int dx, dy;
+    unsigned int abs;
+    Bool do_touchpad_motion = FALSE;
+    EvdevPtr pEvdev = pInfo->private;
+
+    dx = 0;
+    dy = 0;
+    abs = 0;
 
     while (xf86WaitForInput (pInfo->fd, 0) > 0) {
-        len = read(pInfo->fd, &ev, sizeof(ev));
-        if (len != sizeof(ev)) {
+        len = read(pInfo->fd, &ev, sizeof ev);
+        if (len != sizeof ev) {
             /* The kernel promises that we always only read a complete
              * event, so len != sizeof ev is an error. */
-            xf86Msg(X_ERROR, "Read error: %s (%d, %d != %zd)\n",
-		    strerror(errno), errno, len, sizeof (ev));
-	    if (len < 0)
-            {
-                xf86DisableDevice(pInfo->dev, TRUE);
-                return;
-            }
+            xf86Msg(X_ERROR, "Read error: %s\n", strerror(errno));
             break;
         }
 
-        switch (ev.type) {
-        case EV_REL:
-	    EvdevAxesRelProcess (pInfo, &ev);
-	    break;
+        /* Get the signed value, earlier kernels had this as unsigned */
+        value = ev.value;
 
-        case EV_ABS:
-	    EvdevAxesAbsProcess (pInfo, &ev);
+        switch (ev.type) {
+	case EV_REL:
+            switch (ev.code) {
+            case REL_X:
+                dx += value;
+                break;
+
+            case REL_Y:
+                dy += value;
+                break;
+
+            case REL_WHEEL:
+                if (value > 0)
+                    PostButtonClicks(pInfo, wheel_up_button, value);
+                if (value < 0)
+                    PostButtonClicks(pInfo, wheel_down_button, -value);
+                break;
+
+            case REL_HWHEEL:
+                if (value > 0)
+                    PostButtonClicks(pInfo, wheel_right_button, value);
+                if (value < 0)
+                    PostButtonClicks(pInfo, wheel_left_button, -value);
+                break;
+            }
             break;
 
-        case EV_KEY:
-	    if ((ev.code >= BTN_MISC) && (ev.code < KEY_OK))
-		EvdevBtnProcess (pInfo, &ev);
-	    else
-		EvdevKeyProcess (pInfo, &ev);
+	case EV_ABS:
+	    switch (ev.code) {
+	    case ABS_X:
+		pEvdev->abs_x = value;
+		abs = 1;
+		break;
+	    case ABS_Y:
+		pEvdev->abs_y = value;
+		abs = 1;
+		break;
+	    }
 	    break;
 
+        case EV_KEY:
+            switch (ev.code) {
+            case BTN_LEFT:
+            case BTN_RIGHT:
+            case BTN_MIDDLE:
+                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 1,
+                                    value, 0, 0);
+                break;
+
+            case BTN_SIDE:
+            case BTN_EXTRA:
+            case BTN_FORWARD:
+            case BTN_BACK:
+            case BTN_TASK:
+                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 5,
+                                    value, 0, 0);
+                break;
+
+	    case BTN_TOUCH:
+ 	    case BTN_TOOL_PEN:
+ 	    case BTN_TOOL_RUBBER:
+ 	    case BTN_TOOL_BRUSH:
+ 	    case BTN_TOOL_PENCIL:
+ 	    case BTN_TOOL_AIRBRUSH:
+ 	    case BTN_TOOL_FINGER:
+ 	    case BTN_TOOL_MOUSE:
+ 	    case BTN_TOOL_LENS:
+		pEvdev->tool = value ? ev.code : 0;
+		break;
+
+            default:
+		if (ev.code > BTN_TASK && ev.code < KEY_OK)
+		    break;
+
+                PostKbdEvent(pInfo, &ev, value);
+		break;
+            }
+            break;
+
         case EV_SYN:
-	    if (ev.code == SYN_REPORT) {
-		EvdevAxesSynRep (pInfo);
-		/* EvdevBtnSynRep (pInfo); */
-		/* EvdevKeySynRep (pInfo); */
-	    } else if (ev.code == SYN_CONFIG) {
-		EvdevAxesSynCfg (pInfo);
-		/* EvdevBtnSynCfg (pInfo); */
-		/* EvdevKeySynCfg (pInfo); */
-	    }
             break;
         }
     }
+
+    /* convert to relative motion for touchpads */
+    if (pEvdev->flags & EVDEV_TOUCHPAD) {
+	abs = 0;
+	if (pEvdev->tool) { /* meaning, touch is active */
+	    if (pEvdev->old_x != -1)
+		dx = pEvdev->abs_x - pEvdev->old_x;
+	    if (pEvdev->old_x != -1)
+		dy = pEvdev->abs_y - pEvdev->old_y;
+	    pEvdev->old_x = pEvdev->abs_x;
+	    pEvdev->old_y = pEvdev->abs_y;
+	} else {
+	    pEvdev->old_x = pEvdev->old_y = -1;
+	}
+    }
+
+    if (dx != 0 || dy != 0)
+        xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
+
+    /*
+     * Some devices only generate valid abs coords when BTN_DIGI is
+     * pressed.  On wacom tablets, this means that the pen is in
+     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * released, and a (0, 0) absolute event is generated.  Checking
+     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+     * initialized to 1 so devices that doesn't use this scheme still
+     * just works.
+     */
+    if (abs && pEvdev->tool) {
+	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2,
+			    pEvdev->abs_x, pEvdev->abs_y);
+    }
+}
+
+#define TestBit(bit, array) (array[(bit) / 8] & (1 << ((bit) % 8)))
+
+static void
+EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
+{
+    /* Nothing to do, dix handles all settings */
+}
+
+/* FIXME: this map works with evdev keyboards, but all the xkb maps
+ * probably don't.  The easiest is to remap the event keycodes.  */
+
+static KeySym map[] = {
+    /* 0x00 */  NoSymbol,       NoSymbol,
+    /* 0x01 */  XK_Escape,      NoSymbol,
+    /* 0x02 */  XK_1,           XK_exclam,
+    /* 0x03 */  XK_2,           XK_at,
+    /* 0x04 */  XK_3,           XK_numbersign,
+    /* 0x05 */  XK_4,           XK_dollar,
+    /* 0x06 */  XK_5,           XK_percent,
+    /* 0x07 */  XK_6,           XK_asciicircum,
+    /* 0x08 */  XK_7,           XK_ampersand,
+    /* 0x09 */  XK_8,           XK_asterisk,
+    /* 0x0a */  XK_9,           XK_parenleft,
+    /* 0x0b */  XK_0,           XK_parenright,
+    /* 0x0c */  XK_minus,       XK_underscore,
+    /* 0x0d */  XK_equal,       XK_plus,
+    /* 0x0e */  XK_BackSpace,   NoSymbol,
+    /* 0x0f */  XK_Tab,         XK_ISO_Left_Tab,
+    /* 0x10 */  XK_Q,           NoSymbol,
+    /* 0x11 */  XK_W,           NoSymbol,
+    /* 0x12 */  XK_E,           NoSymbol,
+    /* 0x13 */  XK_R,           NoSymbol,
+    /* 0x14 */  XK_T,           NoSymbol,
+    /* 0x15 */  XK_Y,           NoSymbol,
+    /* 0x16 */  XK_U,           NoSymbol,
+    /* 0x17 */  XK_I,           NoSymbol,
+    /* 0x18 */  XK_O,           NoSymbol,
+    /* 0x19 */  XK_P,           NoSymbol,
+    /* 0x1a */  XK_bracketleft, XK_braceleft,
+    /* 0x1b */  XK_bracketright,XK_braceright,
+    /* 0x1c */  XK_Return,      NoSymbol,
+    /* 0x1d */  XK_Control_L,   NoSymbol,
+    /* 0x1e */  XK_A,           NoSymbol,
+    /* 0x1f */  XK_S,           NoSymbol,
+    /* 0x20 */  XK_D,           NoSymbol,
+    /* 0x21 */  XK_F,           NoSymbol,
+    /* 0x22 */  XK_G,           NoSymbol,
+    /* 0x23 */  XK_H,           NoSymbol,
+    /* 0x24 */  XK_J,           NoSymbol,
+    /* 0x25 */  XK_K,           NoSymbol,
+    /* 0x26 */  XK_L,           NoSymbol,
+    /* 0x27 */  XK_semicolon,   XK_colon,
+    /* 0x28 */  XK_quoteright,  XK_quotedbl,
+    /* 0x29 */  XK_quoteleft,	XK_asciitilde,
+    /* 0x2a */  XK_Shift_L,     NoSymbol,
+    /* 0x2b */  XK_backslash,   XK_bar,
+    /* 0x2c */  XK_Z,           NoSymbol,
+    /* 0x2d */  XK_X,           NoSymbol,
+    /* 0x2e */  XK_C,           NoSymbol,
+    /* 0x2f */  XK_V,           NoSymbol,
+    /* 0x30 */  XK_B,           NoSymbol,
+    /* 0x31 */  XK_N,           NoSymbol,
+    /* 0x32 */  XK_M,           NoSymbol,
+    /* 0x33 */  XK_comma,       XK_less,
+    /* 0x34 */  XK_period,      XK_greater,
+    /* 0x35 */  XK_slash,       XK_question,
+    /* 0x36 */  XK_Shift_R,     NoSymbol,
+    /* 0x37 */  XK_KP_Multiply, NoSymbol,
+    /* 0x38 */  XK_Alt_L,	XK_Meta_L,
+    /* 0x39 */  XK_space,       NoSymbol,
+    /* 0x3a */  XK_Caps_Lock,   NoSymbol,
+    /* 0x3b */  XK_F1,          NoSymbol,
+    /* 0x3c */  XK_F2,          NoSymbol,
+    /* 0x3d */  XK_F3,          NoSymbol,
+    /* 0x3e */  XK_F4,          NoSymbol,
+    /* 0x3f */  XK_F5,          NoSymbol,
+    /* 0x40 */  XK_F6,          NoSymbol,
+    /* 0x41 */  XK_F7,          NoSymbol,
+    /* 0x42 */  XK_F8,          NoSymbol,
+    /* 0x43 */  XK_F9,          NoSymbol,
+    /* 0x44 */  XK_F10,         NoSymbol,
+    /* 0x45 */  XK_Num_Lock,    NoSymbol,
+    /* 0x46 */  XK_Scroll_Lock,	NoSymbol,
+    /* These KP keys should have the KP_7 keysyms in the numlock
+     * modifer... ? */
+    /* 0x47 */  XK_KP_Home,	XK_KP_7,
+    /* 0x48 */  XK_KP_Up,	XK_KP_8,
+    /* 0x49 */  XK_KP_Prior,	XK_KP_9,
+    /* 0x4a */  XK_KP_Subtract, NoSymbol,
+    /* 0x4b */  XK_KP_Left,	XK_KP_4,
+    /* 0x4c */  XK_KP_Begin,	XK_KP_5,
+    /* 0x4d */  XK_KP_Right,	XK_KP_6,
+    /* 0x4e */  XK_KP_Add,      NoSymbol,
+    /* 0x4f */  XK_KP_End,	XK_KP_1,
+    /* 0x50 */  XK_KP_Down,	XK_KP_2,
+    /* 0x51 */  XK_KP_Next,	XK_KP_3,
+    /* 0x52 */  XK_KP_Insert,	XK_KP_0,
+    /* 0x53 */  XK_KP_Delete,	XK_KP_Decimal,
+    /* 0x54 */  NoSymbol,	NoSymbol,
+    /* 0x55 */  XK_F13,		NoSymbol,
+    /* 0x56 */  XK_less,	XK_greater,
+    /* 0x57 */  XK_F11,		NoSymbol,
+    /* 0x58 */  XK_F12,		NoSymbol,
+    /* 0x59 */  XK_F14,		NoSymbol,
+    /* 0x5a */  XK_F15,		NoSymbol,
+    /* 0x5b */  XK_F16,		NoSymbol,
+    /* 0x5c */  XK_F17,		NoSymbol,
+    /* 0x5d */  XK_F18,		NoSymbol,
+    /* 0x5e */  XK_F19,		NoSymbol,
+    /* 0x5f */  XK_F20,		NoSymbol,
+    /* 0x60 */  XK_KP_Enter,	NoSymbol,
+    /* 0x61 */  XK_Control_R,	NoSymbol,
+    /* 0x62 */  XK_KP_Divide,	NoSymbol,
+    /* 0x63 */  XK_Print,	XK_Sys_Req,
+    /* 0x64 */  XK_Alt_R,	XK_Meta_R,
+    /* 0x65 */  NoSymbol,	NoSymbol, /* KEY_LINEFEED */
+    /* 0x66 */  XK_Home,	NoSymbol,
+    /* 0x67 */  XK_Up,		NoSymbol,
+    /* 0x68 */  XK_Prior,	NoSymbol,
+    /* 0x69 */  XK_Left,	NoSymbol,
+    /* 0x6a */  XK_Right,	NoSymbol,
+    /* 0x6b */  XK_End,		NoSymbol,
+    /* 0x6c */  XK_Down,	NoSymbol,
+    /* 0x6d */  XK_Next,	NoSymbol,
+    /* 0x6e */  XK_Insert,	NoSymbol,
+    /* 0x6f */  XK_Delete,	NoSymbol,
+    /* 0x70 */  NoSymbol,	NoSymbol, /* KEY_MACRO */
+    /* 0x71 */  NoSymbol,	NoSymbol,
+    /* 0x72 */  NoSymbol,	NoSymbol,
+    /* 0x73 */  NoSymbol,	NoSymbol,
+    /* 0x74 */  NoSymbol,	NoSymbol,
+    /* 0x75 */  XK_KP_Equal,	NoSymbol,
+    /* 0x76 */  NoSymbol,	NoSymbol,
+    /* 0x77 */  NoSymbol,	NoSymbol,
+    /* 0x78 */  XK_F21,		NoSymbol,
+    /* 0x79 */  XK_F22,		NoSymbol,
+    /* 0x7a */  XK_F23,		NoSymbol,
+    /* 0x7b */  XK_F24,		NoSymbol,
+    /* 0x7c */  XK_KP_Separator, NoSymbol,
+    /* 0x7d */  XK_Meta_L,	NoSymbol,
+    /* 0x7e */  XK_Meta_R,	NoSymbol,
+    /* 0x7f */  XK_Multi_key,	NoSymbol,
+    /* 0x80 */  NoSymbol,	NoSymbol,
+    /* 0x81 */  NoSymbol,	NoSymbol,
+    /* 0x82 */  NoSymbol,	NoSymbol,
+    /* 0x83 */  NoSymbol,	NoSymbol,
+    /* 0x84 */  NoSymbol,	NoSymbol,
+    /* 0x85 */  NoSymbol,	NoSymbol,
+    /* 0x86 */  NoSymbol,	NoSymbol,
+    /* 0x87 */  NoSymbol,	NoSymbol,
+    /* 0x88 */  NoSymbol,	NoSymbol,
+    /* 0x89 */  NoSymbol,	NoSymbol,
+    /* 0x8a */  NoSymbol,	NoSymbol,
+    /* 0x8b */  NoSymbol,	NoSymbol,
+    /* 0x8c */  NoSymbol,	NoSymbol,
+    /* 0x8d */  NoSymbol,	NoSymbol,
+    /* 0x8e */  NoSymbol,	NoSymbol,
+    /* 0x8f */  NoSymbol,	NoSymbol,
+    /* 0x90 */  NoSymbol,	NoSymbol,
+    /* 0x91 */  NoSymbol,	NoSymbol,
+    /* 0x92 */  NoSymbol,	NoSymbol,
+    /* 0x93 */  NoSymbol,	NoSymbol,
+    /* 0x94 */  NoSymbol,	NoSymbol,
+    /* 0x95 */  NoSymbol,	NoSymbol,
+    /* 0x96 */  NoSymbol,	NoSymbol,
+    /* 0x97 */  NoSymbol,	NoSymbol,
+    /* 0x98 */  NoSymbol,	NoSymbol,
+    /* 0x99 */  NoSymbol,	NoSymbol,
+    /* 0x9a */  NoSymbol,	NoSymbol,
+    /* 0x9b */  NoSymbol,	NoSymbol,
+    /* 0x9c */  NoSymbol,	NoSymbol,
+    /* 0x9d */  NoSymbol,	NoSymbol,
+    /* 0x9e */  NoSymbol,	NoSymbol,
+    /* 0x9f */  NoSymbol,	NoSymbol,
+    /* 0xa0 */  NoSymbol,	NoSymbol,
+    /* 0xa1 */  NoSymbol,	NoSymbol,
+    /* 0xa2 */  NoSymbol,	NoSymbol,
+    /* 0xa3 */  NoSymbol,	NoSymbol,
+    /* 0xa4 */  NoSymbol,	NoSymbol,
+    /* 0xa5 */  NoSymbol,	NoSymbol,
+    /* 0xa6 */  NoSymbol,	NoSymbol,
+    /* 0xa7 */  NoSymbol,	NoSymbol,
+    /* 0xa8 */  NoSymbol,	NoSymbol,
+    /* 0xa9 */  NoSymbol,	NoSymbol,
+    /* 0xaa */  NoSymbol,	NoSymbol,
+    /* 0xab */  NoSymbol,	NoSymbol,
+    /* 0xac */  NoSymbol,	NoSymbol,
+    /* 0xad */  NoSymbol,	NoSymbol,
+    /* 0xae */  NoSymbol,	NoSymbol,
+    /* 0xaf */  NoSymbol,	NoSymbol,
+    /* 0xb0 */  NoSymbol,	NoSymbol,
+    /* 0xb1 */  NoSymbol,	NoSymbol,
+    /* 0xb2 */  NoSymbol,	NoSymbol,
+    /* 0xb3 */  NoSymbol,	NoSymbol,
+    /* 0xb4 */  NoSymbol,	NoSymbol,
+    /* 0xb5 */  NoSymbol,	NoSymbol,
+    /* 0xb6 */  NoSymbol,	NoSymbol,
+    /* 0xb7 */  NoSymbol,	NoSymbol,
+    /* 0xb8 */  NoSymbol,	NoSymbol,
+    /* 0xb9 */  NoSymbol,	NoSymbol,
+    /* 0xba */  NoSymbol,	NoSymbol,
+    /* 0xbb */  NoSymbol,	NoSymbol,
+    /* 0xbc */  NoSymbol,	NoSymbol,
+    /* 0xbd */  NoSymbol,	NoSymbol,
+    /* 0xbe */  NoSymbol,	NoSymbol,
+    /* 0xbf */  NoSymbol,	NoSymbol,
+    /* 0xc0 */  NoSymbol,	NoSymbol,
+    /* 0xc1 */  NoSymbol,	NoSymbol,
+    /* 0xc2 */  NoSymbol,	NoSymbol,
+    /* 0xc3 */  NoSymbol,	NoSymbol,
+    /* 0xc4 */  NoSymbol,	NoSymbol,
+    /* 0xc5 */  NoSymbol,	NoSymbol,
+    /* 0xc6 */  NoSymbol,	NoSymbol,
+    /* 0xc7 */  NoSymbol,	NoSymbol,
+    /* 0xc8 */  NoSymbol,	NoSymbol,
+    /* 0xc9 */  NoSymbol,	NoSymbol,
+    /* 0xca */  NoSymbol,	NoSymbol,
+    /* 0xcb */  NoSymbol,	NoSymbol,
+    /* 0xcc */  NoSymbol,	NoSymbol,
+    /* 0xcd */  NoSymbol,	NoSymbol,
+    /* 0xce */  NoSymbol,	NoSymbol,
+    /* 0xcf */  NoSymbol,	NoSymbol,
+    /* 0xd0 */  NoSymbol,	NoSymbol,
+    /* 0xd1 */  NoSymbol,	NoSymbol,
+    /* 0xd2 */  NoSymbol,	NoSymbol,
+    /* 0xd3 */  NoSymbol,	NoSymbol,
+    /* 0xd4 */  NoSymbol,	NoSymbol,
+    /* 0xd5 */  NoSymbol,	NoSymbol,
+    /* 0xd6 */  NoSymbol,	NoSymbol,
+    /* 0xd7 */  NoSymbol,	NoSymbol,
+    /* 0xd8 */  NoSymbol,	NoSymbol,
+    /* 0xd9 */  NoSymbol,	NoSymbol,
+    /* 0xda */  NoSymbol,	NoSymbol,
+    /* 0xdb */  NoSymbol,	NoSymbol,
+    /* 0xdc */  NoSymbol,	NoSymbol,
+    /* 0xdd */  NoSymbol,	NoSymbol,
+    /* 0xde */  NoSymbol,	NoSymbol,
+    /* 0xdf */  NoSymbol,	NoSymbol,
+    /* 0xe0 */  NoSymbol,	NoSymbol,
+    /* 0xe1 */  NoSymbol,	NoSymbol,
+    /* 0xe2 */  NoSymbol,	NoSymbol,
+    /* 0xe3 */  NoSymbol,	NoSymbol,
+    /* 0xe4 */  NoSymbol,	NoSymbol,
+    /* 0xe5 */  NoSymbol,	NoSymbol,
+    /* 0xe6 */  NoSymbol,	NoSymbol,
+    /* 0xe7 */  NoSymbol,	NoSymbol,
+    /* 0xe8 */  NoSymbol,	NoSymbol,
+    /* 0xe9 */  NoSymbol,	NoSymbol,
+    /* 0xea */  NoSymbol,	NoSymbol,
+    /* 0xeb */  NoSymbol,	NoSymbol,
+    /* 0xec */  NoSymbol,	NoSymbol,
+    /* 0xed */  NoSymbol,	NoSymbol,
+    /* 0xee */  NoSymbol,	NoSymbol,
+    /* 0xef */  NoSymbol,	NoSymbol,
+    /* 0xf0 */  NoSymbol,	NoSymbol,
+    /* 0xf1 */  NoSymbol,	NoSymbol,
+    /* 0xf2 */  NoSymbol,	NoSymbol,
+    /* 0xf3 */  NoSymbol,	NoSymbol,
+    /* 0xf4 */  NoSymbol,	NoSymbol,
+    /* 0xf5 */  NoSymbol,	NoSymbol,
+    /* 0xf6 */  NoSymbol,	NoSymbol,
+    /* 0xf7 */  NoSymbol,	NoSymbol,
+};
+
+static void
+EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
+{
+    static struct { int xbit, code; } bits[] = {
+        { CAPSFLAG,	LED_CAPSL },
+        { NUMFLAG,	LED_NUML },
+        { SCROLLFLAG,	LED_SCROLLL },
+        { MODEFLAG,	LED_KANA },
+        { COMPOSEFLAG,	LED_COMPOSE }
+    };
+
+    InputInfoPtr pInfo;
+    struct input_event ev[ArrayLength(bits)];
+    int i;
+
+    pInfo = device->public.devicePrivate;
+    for (i = 0; i < ArrayLength(bits); i++) {
+        ev[i].type = EV_LED;
+        ev[i].code = bits[i].code;
+        ev[i].value = (ctrl->leds & bits[i].xbit) > 0;
+    }
+
+    write(pInfo->fd, ev, sizeof ev);
+}
+
+static int
+EvdevAddKeyClass(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+    KeySymsRec keySyms;
+    CARD8 modMap[MAP_LENGTH];
+    KeySym sym;
+    int i, j;
+    EvdevPtr pEvdev;
+
+    static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
+        { XK_Shift_L,		ShiftMask },
+        { XK_Shift_R, 		ShiftMask },
+        { XK_Control_L,		ControlMask },
+        { XK_Control_R,		ControlMask },
+        { XK_Caps_Lock,		LockMask },
+        { XK_Alt_L,		AltMask },
+        { XK_Alt_R,		AltMask },
+        { XK_Num_Lock,		NumLockMask },
+        { XK_Scroll_Lock,	ScrollLockMask },
+        { XK_Mode_switch,	AltLangMask }
+    };
+
+    /* TODO:
+     * Ctrl-Alt-Backspace and other Ctrl-Alt-stuff should work
+     * Get keyboard repeat under control (right now caps lock repeats!)
+     */
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+     /* Compute the modifier map */
+    memset(modMap, 0, sizeof modMap);
+
+    for (i = 0; i < ArrayLength(map) / GLYPHS_PER_KEY; i++) {
+        sym = map[i * GLYPHS_PER_KEY];
+        for (j = 0; j < ArrayLength(modifiers); j++) {
+            if (modifiers[j].keysym == sym)
+                modMap[i + MIN_KEYCODE] = modifiers[j].mask;
+        }
+    }
+
+    keySyms.map        = map;
+    keySyms.mapWidth   = GLYPHS_PER_KEY;
+    keySyms.minKeyCode = MIN_KEYCODE;
+    keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
+
+#ifdef XKB
+    if (pEvdev->noXkb)
+#endif
+    {
+        xf86Msg(X_CONFIG, "XKB: disabled\n");
+        if (!InitKeyboardDeviceStruct((DevicePtr)device, &keySyms, modMap,
+                                      NULL, EvdevKbdCtrl))
+            return !Success;
+    }
+#ifdef XKB
+    else
+    {
+        SetXkbOption(pInfo, "XkbRules", &pEvdev->xkb_rules);
+        SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
+        SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
+        SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
+        SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
+
+        if (pEvdev->xkbnames.keymap)
+            pEvdev->xkb_rules = NULL;
+
+        XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
+                         pEvdev->xkb_layout, pEvdev->xkb_variant,
+                         pEvdev->xkb_options);
+        if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
+                                         &keySyms, modMap, NULL,
+                                         EvdevKbdCtrl))
+            return !Success;
+    }
+#endif
+
+    pInfo->flags |= XI86_KEYBOARD_CAPABLE;
+
+    return Success;
+}
+
+static int
+EvdevAddAbsClass(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+    struct input_absinfo absinfo_x, absinfo_y;
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+    if (ioctl(pInfo->fd,
+	      EVIOCGABS(ABS_X), &absinfo_x) < 0) {
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	return !Success;
+    }
+
+    if (ioctl(pInfo->fd,
+	      EVIOCGABS(ABS_Y), &absinfo_y) < 0) {
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	return !Success;
+    }
+
+    pEvdev->min_x = absinfo_x.minimum;
+    pEvdev->max_x = absinfo_x.maximum;
+    pEvdev->min_y = absinfo_y.minimum;
+    pEvdev->max_y = absinfo_y.maximum;
+
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
+                                       GetMotionHistorySize(), Absolute))
+        return !Success;
+
+    /* X valuator */
+    xf86InitValuatorAxisStruct(device, 0, pEvdev->min_x, pEvdev->max_x,
+			       10000, 0, 10000);
+    xf86InitValuatorDefaults(device, 0);
+
+    /* Y valuator */
+    xf86InitValuatorAxisStruct(device, 1, pEvdev->min_y, pEvdev->max_y,
+			       10000, 0, 10000);
+    xf86InitValuatorDefaults(device, 1);
+    xf86MotionHistoryAllocate(pInfo);
+
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+        return !Success;
+
+    pInfo->flags |= XI86_POINTER_CAPABLE;
+
+    return Success;
+}
+
+static int
+EvdevAddRelClass(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+
+    pInfo = device->public.devicePrivate;
+
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
+                                       GetMotionHistorySize(), Relative))
+        return !Success;
+
+    /* X valuator */
+    xf86InitValuatorAxisStruct(device, 0, 0, -1, 1, 0, 1);
+    xf86InitValuatorDefaults(device, 0);
+
+    /* Y valuator */
+    xf86InitValuatorAxisStruct(device, 1, 0, -1, 1, 0, 1);
+    xf86InitValuatorDefaults(device, 1);
+    xf86MotionHistoryAllocate(pInfo);
+
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+        return !Success;
+
+    pInfo->flags |= XI86_POINTER_CAPABLE;
+
+    xf86MotionHistoryAllocate(pInfo);
+
+    return Success;
+}
+
+static int
+EvdevAddButtonClass(DeviceIntPtr device)
+{
+    CARD8 map[32];
+    InputInfoPtr pInfo;
+    int i;
+
+    pInfo = device->public.devicePrivate;
+
+    /* FIXME: count number of actual buttons */
+
+    for (i = 0; i < ArrayLength(map); i++)
+        map[i] = i;
+
+    /* Linux reports BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, which should map
+     * to buttons 1, 2 and 3, so swap 2 and 3 in the map */
+    map[2] = 3;
+    map[3] = 2;
+
+    if (!InitButtonClassDeviceStruct(device, ArrayLength(map), map))
+        return !Success;
+
+    return Success;
+}
+
+static int
+EvdevInit(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+    /* FIXME: This doesn't add buttons for keyboards with scrollwheels. */
+
+    if (pEvdev->flags & EVDEV_KEYBOARD_EVENTS)
+	EvdevAddKeyClass(device);
+    if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+	EvdevAddButtonClass(device);
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+	EvdevAddRelClass(device);
+    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+	EvdevAddAbsClass(device);
+
+    return Success;
 }
 
 static int
 EvdevProc(DeviceIntPtr device, int what)
 {
-    InputInfoPtr pInfo = device->public.devicePrivate;
-    evdevDevicePtr pEvdev = pInfo->private;
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
 
-    if (!pEvdev->device)
-	return BadRequest;
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
     switch (what)
     {
     case DEVICE_INIT:
-	if (pEvdev->state.axes)
-	    EvdevAxesInit (device);
-	if (pEvdev->state.btn)
-	    EvdevBtnInit (device);
-	if (pEvdev->state.key)
-	    EvdevKeyInit (device);
-	xf86Msg(X_INFO, "%s: Init\n", pInfo->name);
-	break;
+	return EvdevInit(device);
 
     case DEVICE_ON:
-	xf86Msg(X_INFO, "%s: On\n", pInfo->name);
-	if (device->public.on)
-	    break;
-
-	SYSCALL(pInfo->fd = open (pEvdev->device, O_RDWR | O_NONBLOCK));
-	if (pInfo->fd == -1) {
-	    xf86Msg(X_ERROR, "%s: cannot open input device.\n", pInfo->name);
-
-	    if (pEvdev->device)
-		xfree(pEvdev->device);
-	    pEvdev->device = NULL;
-
-	    return BadRequest;
-	}
-
-	if (pEvdev->state.can_grab)
-	    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
-		xf86Msg(X_ERROR, "%s: Unable to grab device (%s).\n", pInfo->name, strerror(errno));
-
-	xf86FlushInput (pInfo->fd);
-
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
+            xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
+                    strerror(errno));
         xf86AddEnabledDevice(pInfo);
-
 	device->public.on = TRUE;
-
-	if (pEvdev->state.axes)
-	    EvdevAxesOn (device);
-	if (pEvdev->state.btn)
-	    EvdevBtnOn (device);
-	if (pEvdev->state.key)
-	    EvdevKeyOn (device);
+	break;
+	    
+    case DEVICE_OFF:
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+            xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
+                    strerror(errno));
+        xf86RemoveEnabledDevice(pInfo);
+	device->public.on = FALSE;
 	break;
 
     case DEVICE_CLOSE:
-    case DEVICE_OFF:
-	xf86Msg(X_INFO, "%s: Off\n", pInfo->name);
-	if (pInfo->fd != -1) {
-	    if (pEvdev->state.can_grab)
-		ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
-
-	    RemoveEnabledDevice (pInfo->fd);
-	    xf86RemoveSIGIOHandler (pInfo->fd);
-	    close (pInfo->fd);
-	    pInfo->fd = -1;
-
-	    if (pEvdev->state.axes)
-		EvdevAxesOff (device);
-	    if (pEvdev->state.btn)
-		EvdevBtnOff (device);
-	    if (pEvdev->state.key)
-		EvdevKeyOff (device);
-	}
-
-	device->public.on = FALSE;
+	xf86Msg(X_INFO, "%s: Close\n", pInfo->name);
 	break;
     }
 
     return Success;
 }
 
-static int
-EvdevSwitchMode (ClientPtr client, DeviceIntPtr device, int mode)
+static Bool
+EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
+	     int v3, int v4, int v5, int *x, int *y)
 {
-    InputInfoPtr pInfo = device->public.devicePrivate;
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
+    EvdevPtr pEvdev = pInfo->private;
+    int screenWidth = screenInfo.screens[pEvdev->screen]->width;
+    int screenHeight = screenInfo.screens[pEvdev->screen]->height;
 
-    switch (mode)
-    {
-	case Absolute:
-	case Relative:
-	    xf86Msg(X_INFO, "%s: Switching mode to %d.\n", pInfo->name, mode);
-	    if (!state->abs)
-		return !Success;
-	    break;
-	default:
-	    return !Success;
+    if (first != 0 || num != 2)
+	return FALSE;
+
+    /* on absolute touchpads, don't warp on initial touch */
+    if (pEvdev->flags & EVDEV_TOUCHPAD) {
+	*x = v0;
+	*y = v0;
+	return TRUE;
     }
 
-    return Success;
+    *x = (v0 - pEvdev->min_x) * screenWidth / (pEvdev->max_x - pEvdev->min_x);
+    *y = (v1 - pEvdev->min_y) * screenHeight / (pEvdev->max_y - pEvdev->min_y);
+
+    return TRUE;
 }
 
-InputInfoPtr
+static int
+EvdevProbe(InputInfoPtr pInfo)
+{
+    char key_bitmask[(KEY_MAX + 7) / 8];
+    char rel_bitmask[(REL_MAX + 7) / 8];
+    char abs_bitmask[(ABS_MAX + 7) / 8];
+    int i, has_axes, has_buttons, has_keys;
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1) && errno == EINVAL) {
+        /* keyboards are unsafe in 2.4 */
+        pEvdev->kernel24 = 1;
+    } else {
+        ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
+    }
+
+    if (ioctl(pInfo->fd, 
+              EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask) < 0) {
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    if (ioctl(pInfo->fd,
+              EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask) < 0) {
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    if (ioctl(pInfo->fd,
+              EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
+        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        return 1;
+    }
+
+    has_axes = FALSE;
+    has_buttons = FALSE;
+    has_keys = FALSE;
+
+    if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
+	has_axes = TRUE;
+    }
+      
+    if (TestBit(ABS_X, abs_bitmask) && TestBit(REL_Y, abs_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
+	if (TestBit(BTN_TOUCH, key_bitmask)) {
+	    xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
+	    pEvdev->flags |= EVDEV_TOUCHPAD;
+	    pEvdev->old_x = pEvdev->old_y = -1;
+	}
+	has_axes = TRUE;
+    }
+
+    if (TestBit(BTN_LEFT, key_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
+	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+	has_buttons = TRUE;
+    }
+
+    for (i = 0; i < BTN_MISC; i++)
+        if (TestBit(i, key_bitmask))
+            break;
+
+    if (i < BTN_MISC) {
+        xf86Msg(X_INFO, "%s: Found keys\n", pInfo->name);
+	pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
+	has_keys = TRUE;
+    }
+
+    if (has_axes && has_buttons) {
+        xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
+	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS | 
+	    XI86_CONFIGURED;
+	pInfo->type_name = XI_MOUSE;
+    }
+
+    if (has_keys) {
+        if (pEvdev->kernel24) {
+            xf86Msg(X_INFO, "%s: Kernel < 2.6 is too old, ignoring keyboard\n",
+                    pInfo->name);
+        } else {
+            xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
+            pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
+	    pInfo->type_name = XI_KEYBOARD;
+        }
+    }
+
+    if ((pInfo->flags & XI86_CONFIGURED) == 0) {
+        xf86Msg(X_WARNING, "%s: Don't know how to use device\n",
+		pInfo->name);
+        return 1;
+    }
+
+    return 0;
+}
+
+static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    evdevDevicePtr pEvdev;
+    MessageType deviceFrom = X_CONFIG;
+    const char *device;
+    EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
 	return NULL;
 
-    pEvdev = Xcalloc (sizeof (evdevDeviceRec));
-    if (!pEvdev) {
-	pInfo->private = NULL;
-	xf86DeleteInput (pInfo, 0);
-	return NULL;
-    }
-
     /* Initialise the InputInfoRec. */
-    pInfo->name = xstrdup(dev->identifier);
+    pInfo->name = dev->identifier;
     pInfo->flags = 0;
     pInfo->type_name = "UNKNOWN";
     pInfo->device_control = EvdevProc;
     pInfo->read_input = EvdevReadInput;
-    pInfo->switch_mode = EvdevSwitchMode;
+    pInfo->history_size = 0;
+    pInfo->control_proc = NULL;
+    pInfo->close_proc = NULL;
+    pInfo->switch_mode = NULL;
+    pInfo->conversion_proc = EvdevConvert;
+    pInfo->reverse_conversion_proc = NULL;
+    pInfo->dev = NULL;
+    pInfo->private_flags = 0;
+    pInfo->always_core_feedback = 0;
     pInfo->conf_idev = dev;
+
+    if (!(pEvdev = xcalloc(sizeof(*pEvdev), 1)))
+        return pInfo;
+    pInfo->private = pEvdev;
+
+    if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))
+        return pInfo;
 
     pInfo->private = pEvdev;
 
-    pEvdev->device = xf86CheckStrOption(dev->commonOptions, "path", NULL);
-    if (!pEvdev->device)
-        pEvdev->device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
-    if (!pEvdev->device) {
-	xf86Msg(X_ERROR, "%s: No Device specified.\n", pInfo->name);
-	pInfo->private = NULL;
-	xfree(pEvdev);
-	xf86DeleteInput (pInfo, 0);
-	return NULL;
+    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
+    xf86ProcessCommonOptions(pInfo, pInfo->options); 
+
+    pEvdev->screen = xf86SetIntOption(pInfo->options, "ScreenNumber", 0);
+    /*
+     * We initialize pEvdev->tool to 1 so that device that doesn't use
+     * proximity will still report events.
+     */
+    pEvdev->tool = 1;
+
+    device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
+    if (!device)
+	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    if (!device) {
+        xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
+	xf86DeleteInput(pInfo, 0);
+        return NULL;
+    }
+	
+    xf86Msg(deviceFrom, "%s: Device: \"%s\"\n", pInfo->name, device);
+    do {
+        pInfo->fd = open(device, O_RDWR, 0);
+    }
+    while (pInfo->fd < 0 && errno == EINTR);
+
+    if (pInfo->fd < 0) {
+        xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
+	xf86DeleteInput(pInfo, 0);
+        return NULL;
     }
 
-    xf86CollectInputOptions(pInfo, NULL, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options);
+    pEvdev->noXkb = noXkbExtension;
+    /* parse the XKB options during kbd setup */
 
-    SYSCALL(pInfo->fd = open (pEvdev->device, O_RDWR | O_NONBLOCK));
-    if (pInfo->fd  == -1) {
-	xf86Msg(X_ERROR, "%s: cannot open device '%s': %s\n",
-		pInfo->name, pEvdev->device, strerror(errno));
-	pInfo->private = NULL;
-	xfree(pEvdev);
-	xf86DeleteInput (pInfo, 0);
-	return NULL;
-    }
-
-    if (!evdevGetBits (pInfo->fd, &pEvdev->bits)) {
-	xf86Msg(X_ERROR, "%s: cannot load bits\n", pInfo->name);
-	pInfo->private = NULL;
-	close (pInfo->fd);
-	xfree(pEvdev);
-	xf86DeleteInput (pInfo, 0);
-	return NULL;
-    }
-
-    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
-	xf86Msg(X_INFO, "%s: Unable to grab pEvdev (%s).  Cowardly refusing to check use as keyboard.\n", pInfo->name, strerror(errno));
-	pEvdev->state.can_grab = 0;
-    } else {
-	pEvdev->state.can_grab = 1;
-        ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
-    }
-
-
-    /* XXX: Note, the order of these is (maybe) still important. */
-    EvdevBtnNew0 (pInfo);
-    EvdevAxesNew0 (pInfo);
-
-    EvdevAxesNew1 (pInfo);
-    EvdevBtnNew1 (pInfo);
-
-    if (pEvdev->state.can_grab)
-	EvdevKeyNew (pInfo);
-
-    close (pInfo->fd);
-    pInfo->fd = -1;
-
-    pInfo->flags |= XI86_OPEN_ON_INIT;
-    if (!(pInfo->flags & XI86_CONFIGURED)) {
-        xf86Msg(X_ERROR, "%s: Don't know how to use pEvdev.\n", pInfo->name);
-	pInfo->private = NULL;
-	close (pInfo->fd);
-	xfree(pEvdev);
-	xf86DeleteInput (pInfo, 0);
+    if (EvdevProbe(pInfo)) {
+	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
 
     return pInfo;
 }
 
-static void
-EvdevUnInit (InputDriverRec *drv, InputInfoRec *pInfo, int flags)
-{
-    evdevDevicePtr pEvdev = pInfo->private;
-    evdevStatePtr state = &pEvdev->state;
-
-    if (pEvdev->device) {
-	xfree (pEvdev->device);
-	pEvdev->device = NULL;
-    }
-
-    if (state->btn) {
-	xfree (state->btn);
-	state->btn = NULL;
-    }
-
-    if (state->abs) {
-	xfree (state->abs);
-	state->abs = NULL;
-    }
-
-    if (state->rel) {
-	xfree (state->rel);
-	state->rel = NULL;
-    }
-
-    if (state->axes) {
-	xfree (state->axes);
-	state->axes = NULL;
-    }
-
-    if (state->key) {
-	evdevKeyRec *key = state->key;
-
-	if (key->xkb_rules) {
-	    xfree (key->xkb_rules);
-	    key->xkb_rules = NULL;
-	}
-
-	if (key->xkb_model) {
-	    xfree (key->xkb_model);
-	    key->xkb_model = NULL;
-	}
-
-	if (key->xkb_layout) {
-	    xfree (key->xkb_layout);
-	    key->xkb_layout = NULL;
-	}
-
-	if (key->xkb_variant) {
-	    xfree (key->xkb_variant);
-	    key->xkb_variant = NULL;
-	}
-
-	if (key->xkb_options) {
-	    xfree (key->xkb_options);
-	    key->xkb_options = NULL;
-	}
-
-	xfree (state->key);
-	state->key = NULL;
-    }
-
-
-    xf86DeleteInput (pInfo, 0);
-}
-
-
 _X_EXPORT InputDriverRec EVDEV = {
     1,
     "evdev",
     NULL,
     EvdevPreInit,
-    EvdevUnInit,
+    NULL,
     NULL,
     0
 };
@@ -565,8 +1097,8 @@ static XF86ModuleVersionInfo EvdevVersionRec =
     MODULEVENDORSTRING,
     MODINFOSTRING1,
     MODINFOSTRING2,
-    XORG_VERSION_CURRENT,
-    PACKAGE_VERSION_MAJOR, PACKAGE_VERSION_MINOR, PACKAGE_VERSION_PATCHLEVEL,
+    0, /* Missing from SDK: XORG_VERSION_CURRENT, */
+    1, 0, 0,
     ABI_CLASS_XINPUT,
     ABI_XINPUT_VERSION,
     MOD_CLASS_XINPUT,

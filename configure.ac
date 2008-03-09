@@ -22,7 +22,7 @@
 
 AC_PREREQ(2.57)
 AC_INIT([xf86-input-evdev],
-        1.2.0,
+        1.99.1,
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
         xf86-input-evdev)
 
@@ -71,8 +71,7 @@ inputdir=${moduledir}/input
 AC_SUBST(inputdir)
 
 # Checks for extensions
-#XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
-XORG_DRIVER_CHECK_EXT(XKB, kbproto)
+XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
 XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
 
 # Checks for pkg-config packages

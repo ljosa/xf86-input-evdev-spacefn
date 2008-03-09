@@ -14,7 +14,7 @@ evdev \- Generic Linux input driver
 .fi
 .SH DESCRIPTION
 .B evdev 
-is an __xservername__ input driver for Linux's generic event devices.  It
+is an __xservername__ input driver for Linux\'s generic event devices.  It
 therefore supports all input devices that the kernel knows about, including
 most mice and keyboards.
 .PP
@@ -22,7 +22,9 @@ The
 .B evdev
 driver can serve as both a pointer and a keyboard input device, and may be
 used as both the core keyboard and the core pointer.  Multiple input devices
-are supported by multiple instances of this driver.
+are supported by multiple instances of this driver, with one Load
+directive for evdev in the Module section of your __xconfigfile__ for each
+input device that will use this driver.
 .PP
 .SH SUPPORTED HARDWARE
 In general, any input device that the kernel has a driver for can be accessed
@@ -35,182 +37,17 @@ Please refer to __xconfigfile__(__filemansuffix__) for general configuration
 details and for options that can be used with all input drivers.  This
 section only covers configuration details specific to this driver.
 .PP
-.SH BASIC CONFIGURATIONS
-Most users of this driver will probably be quite happy with the following for
-all keyboards and mice:
-.PP
-.nf
-.B "Section \*qInputDevice\*q"
-.BI "  Identifier \*q" keyboard \*q
-.B  "  Driver \*qevdev\*q"
-.BI  "  Option \*qDevice\*q  \*q" "/dev/input/by-path/..." \*q
-\ \ ...
-.B EndSection
-.fi
-.PP
-.SH ADVANCED OPTIONS
-.SS DEVICE SPECIFICATION
-.TP 7
-.BI "Option \*qPath\*q \*q" string \*q
+The following driver 
+.B Options
+are supported:
 .TP 7
 .BI "Option \*qDevice\*q \*q" string \*q
-Specifies the device node through which the device can be accessed.
-You might want to use the more persistent symlinks provided in /dev/input/by-id
-or /dev/input/by-path.
-.fi
-This parameter is mandatory.
-.TP 7
-.BI "Option \*qMode\*q \*q" mode \*q
-This selects the default mode for the device.
-.fi
-Valid values are \*qabsolute\*q and \*qrelative\*q.
-.fi
-This can be set at run time per actual device with the xinput utility.
-.PP
-.SS RELATIVE AXIS CONFIGURATION
-The relative axis portion of this driver handle all reported relative axes.
-.fi
-The axes are named X, Y, Z, RX, RY, RZ, HWHEEL, DIAL, WHEEL, MISC, 10, 11,
-12, 13, 14, and 15.
-.fi
-The axes are reported to X as valuators, with the default mapping of axes
-to valuators being the first axes found to the first valuator, the second
-found to the second valuator, and so on, so that if you have axes X, Y,
-HWHEEL, and WHEEL, you would have X=0, Y=1, HWHEEL=2, WHEEL=3.
-.fi
-If the driver is reporting core events, valuators 0 and 1 are always mapped
-to x and y coordinates, respectively.
-.fi
-The following driver 
-.B Options
-control the relative axis portion of the driver:
-.TP 7
-.BI "Option \*qRel" "%s" "MapTo\*q \*q" string \*q
-This remaps the axis specified by
-.I "%s"
-to
-.IR string .
-See Section
-.B "AXIS MAPPING"
-for valid values.
-.TP 7
-.BI "Option \*qRel" "%s" "Options\*q \*q" "string" \*q
-This sets some options for the relative axis specified by
-.IR %s .
-Valid value
-is \*qinvert\*q.
-.fi
-<documentation needed>
-.PP
-.SS ABSOLUTE AXIS CONFIGURATION
-The absolute axis portion of this driver handles all reported absolute axes.
-.fi
-The axes are named X, Y, Z, RX, RY, RZ, THROTTLE, RUDDER, WHEEL, GAS, BRAKE,
-<11\-15>, HAT0X, HAT0Y, HAT1X, HAT1Y, HAT2X, HAT2Y, HAT3X, HAT3Y, PRESSURE,
-TILT_X, TILT_Y, TOOL_WIDTH, VOLUME, <29\-39>, MISC, <41\-62>.
-.fi
-The axes are reported to X as valuators, with the default mapping of axes
-to valuators being the first axes found to the first valuator, the second
-found to the second valuator, and so on, so that if you have axes X, Y,
-TILT_X, and TILT_Y, you would have X=0, Y=1, TILT_X=2, TILT_Y=3.
-.fi
-If the driver is reporting core events, valuators 0 and 1 are always mapped
-to x and y coordinates, respectively.
-.fi
-The following driver 
-.B Options
-control the absolute axis portion of the driver:
-.TP 7
-.BI "Option \*qAbs" "%s" "MapTo\*q \*q" string \*q
-This remaps the axis specified by
-.I "%s"
-to
-.IR string .
-See Section
-.B "AXIS MAPPING"
-for valid values.
-.TP 7
-.BI "Option \*qAbs" "%s" "Options\*q \*q" string \*q
-This sets some options for the absolute axis specified by
-.IR "%s" .
-.fi
-Valid values are \*qinvert\*q, \*quse_touch\*q, \*qmode_auto\*q,
-\*qmode_rel\*q.
-.fi
-<documentation needed>
-.TP 7
-.BI "Option \*qAbsoluteTouch\*q \*q" string \*q
-<documentation needed>
-.fi
-Default: DIGI_Touch
-.PP
-.SS AXIS MAPPING
-The following axis mappings are recognized:
-.TP 7
-.BI "\*qRelAxis " <axis> \*q
-Map the axis to the specified 
-.I <axis>
-in relative mode. This can be either a number or a name.
-.TP 7
-.BI "\*qAbsAxis " "<axis> <min> <max>" \*q
-Maps the axis to the specified
-.I <axis>
-in absolute mode. This can be either a number or a name.
-.TP 7
-.BI "\*qButton " "<button>" \*q
-Maps the button to the button specified with
-.IR <button> .
-This can be either a button number or a name.
-.TP 7
-.BI "\*qButtons " "<button+> <button->" \*q
-Maps the positive axis to the button specified with
-.I <button+>
-and the negative axis to the button specified with 
-.IR <button-> .
-These can be either button numbers or names.
-.PP
-.SS BUTTON CONFIGURATION
-At the moment, the button portion of this driver only handles buttons
-reported as mouse buttons, that is from BTN_MOUSE to BTN_JOYSTICK \- 1.
-.fi
-At this time there are no configuration options for buttons.
-.SS KEYBOARD CONFIGURATION
-The keyboard portion of this driver handles all keys reported and requires 
-XKB support.
-.fi
-The following driver 
-.B Options
-control the relative axis portion of the driver:
-.TP 7
-.BI "Option \*qXkbRules\*q \*q" rules \*q
-specifies which XKB rules file to use for interpreting the
-.BR XkbModel ,
-.BR XkbLayout ,
-.BR XkbVariant ,
-and
-.B XkbOptions
-settings.  Default: \*qxorg\*q for most platforms, but \*qxfree98\*q for the
-Japanese PC-98 platforms.
-.TP 7
-.BI "Option \*qXkbModel\*q \*q" modelname \*q
-specifies the XKB keyboard model name.  Default: \*qevdev\*q.
-.TP 7
-.BI "Option \*qXkbLayout\*q \*q" layoutname \*q
-specifies the XKB keyboard layout name.  This is usually the country or
-language type of the keyboard.  Default: \*qus\*q.
-.TP 7
-.BI "Option \*qXkbVariant\*q \*q" variants \*q
-specifies the XKB keyboard variant components.  These can be used to
-enhance the keyboard layout details.  Default: not set.
-.TP 7
-.BI "Option \*qXkbOptions\*q \*q" options \*q
-specifies the XKB keyboard option components.  These can be used to
-enhance the keyboard behaviour.  Default: not set.
-
-.PP
+Specifies the device through which the device can be accessed.  This will 
+generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
+The mapping from device node to hardware is system-dependent.  This option is
+mandatory, and there is no default setting.
 .SH AUTHORS
-Zephaniah E. Hull.
-.fi
-Kristian H\(/ogsberg.
+Kristian Høgsberg.
 .SH "SEE ALSO"
-__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__).
+__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), xorgconfig(__appmansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__),
+README.mouse.

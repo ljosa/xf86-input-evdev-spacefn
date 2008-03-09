@@ -1,13 +1,9 @@
 Makefile
 Makefile.in
-ChangeLog
-xf86-input-evdev-*.tar.bz2
-xf86-input-evdev-*.tar.gz
 *.la
 *.lo
 aclocal.m4
 autom4te.cache
-compile
 config.guess
 config.h
 config.h.in
@@ -21,5 +17,3 @@ libtool
 ltmain.sh
 missing
 stamp-h1
-.*.swp
-*~

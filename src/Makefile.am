@@ -26,7 +26,6 @@
 # TODO: -nostdlib/-Bstatic/-lgcc platform magic, not installing the .a, etc.
 @DRIVER_NAME@_drv_la_LTLIBRARIES = @DRIVER_NAME@_drv.la
 @DRIVER_NAME@_drv_la_LDFLAGS = -module -avoid-version
-@DRIVER_NAME@_drv_la_CFLAGS = -Wall
 @DRIVER_NAME@_drv_ladir = @inputdir@
 
-@DRIVER_NAME@_drv_la_SOURCES = evdev.c evdev.h evdev_axes.c evdev_btn.c evdev_key.c
+@DRIVER_NAME@_drv_la_SOURCES = @DRIVER_NAME@.c
