@@ -679,17 +679,17 @@ EvdevAddKeyClass(DeviceIntPtr device)
 	if (!pEvdev->xkb_rules)
 	    SetXkbOption(pInfo, "XkbRules", &pEvdev->xkb_rules);
         SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
-	if (!pEvdev->xkb_rules)
-	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_rules);
+	if (!pEvdev->xkb_model)
+	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
         SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
-	if (!pEvdev->xkb_rules)
-	    SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_rules);
+	if (!pEvdev->xkb_layout)
+	    SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
         SetXkbOption(pInfo, "xkb_variant", &pEvdev->xkb_variant);
-	if (!pEvdev->xkb_rules)
-	    SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_rules);
+	if (!pEvdev->xkb_variant)
+	    SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
         SetXkbOption(pInfo, "xkb_options", &pEvdev->xkb_options);
-	if (!pEvdev->xkb_rules)
-	    SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_rules);
+	if (!pEvdev->xkb_options)
+	    SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
 
         if (pEvdev->xkbnames.keymap)
             pEvdev->xkb_rules = NULL;
