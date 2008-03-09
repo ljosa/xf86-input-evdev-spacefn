@@ -300,7 +300,7 @@ EvdevReadInput(InputInfoPtr pInfo)
 	if (pEvdev->tool) { /* meaning, touch is active */
 	    if (pEvdev->old_x != -1)
 		dx = pEvdev->abs_x - pEvdev->old_x;
-	    if (pEvdev->old_x != -1)
+	    if (pEvdev->old_y != -1)
 		dy = pEvdev->abs_y - pEvdev->old_y;
 	    pEvdev->old_x = pEvdev->abs_x;
 	    pEvdev->old_y = pEvdev->abs_y;
