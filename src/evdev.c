@@ -252,11 +252,15 @@ EvdevReadInput(InputInfoPtr pInfo)
 
         case EV_KEY:
             switch (ev.code) {
+	    /* swap here, pretend we're an X-conformant device. */
             case BTN_LEFT:
+                xf86PostButtonEvent(pInfo->dev, 0, 1, value, 0, 0);
+                break;
             case BTN_RIGHT:
+                xf86PostButtonEvent(pInfo->dev, 0, 3, value, 0, 0);
+                break;
             case BTN_MIDDLE:
-                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 1,
-                                    value, 0, 0);
+                xf86PostButtonEvent(pInfo->dev, 0, 2, value, 0, 0);
                 break;
 
             case BTN_SIDE:
@@ -799,14 +803,8 @@ EvdevAddButtonClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
 
     /* FIXME: count number of actual buttons */
-
     for (i = 0; i < ArrayLength(map); i++)
         map[i] = i;
-
-    /* Linux reports BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, which should map
-     * to buttons 1, 2 and 3, so swap 2 and 3 in the map */
-    map[2] = 3;
-    map[3] = 2;
 
     if (!InitButtonClassDeviceStruct(device, ArrayLength(map), map))
         return !Success;
