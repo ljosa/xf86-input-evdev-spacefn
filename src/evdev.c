@@ -251,6 +251,11 @@ EvdevReadInput(InputInfoPtr pInfo)
 	    break;
 
         case EV_KEY:
+	    /* don't repeat mouse buttons */
+	    if (ev.code >= BTN_MOUSE && ev.code < KEY_OK)
+		if (value == 2)
+		    break;
+
             switch (ev.code) {
 	    /* swap here, pretend we're an X-conformant device. */
             case BTN_LEFT:
