@@ -228,6 +228,7 @@ EvdevReadInput(InputInfoPtr pInfo)
                     PostButtonClicks(pInfo, wheel_down_button, -value);
                 break;
 
+	    case REL_DIAL:
             case REL_HWHEEL:
                 if (value > 0)
                     PostButtonClicks(pInfo, wheel_right_button, value);
