@@ -701,9 +701,6 @@ EvdevAddKeyClass(DeviceIntPtr device)
 	if (!pEvdev->xkb_options)
 	    SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
 
-        if (pEvdev->xkbnames.keymap)
-            pEvdev->xkb_rules = NULL;
-
         XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
                          pEvdev->xkb_layout, pEvdev->xkb_variant,
                          pEvdev->xkb_options);
