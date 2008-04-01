@@ -644,6 +644,8 @@ EvdevAddKeyClass(DeviceIntPtr device)
         { XK_Caps_Lock,		LockMask },
         { XK_Alt_L,		AltMask },
         { XK_Alt_R,		AltMask },
+	{ XK_Meta_L,		Mod4Mask },
+	{ XK_Meta_R,		Mod4Mask },
         { XK_Num_Lock,		NumLockMask },
         { XK_Scroll_Lock,	ScrollLockMask },
         { XK_Mode_switch,	AltLangMask }
