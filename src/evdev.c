@@ -832,10 +832,19 @@ EvdevInit(DeviceIntPtr device)
 	EvdevAddKeyClass(device);
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
 	EvdevAddButtonClass(device);
+    /* We don't allow relative and absolute axes on the same device. Reason
+       Reason being that some devices (MS Optical Desktop 2000) register both
+       rel and abs axes for x/y.
+       The abs axes register min/max, this min/max then also applies to the
+       relative device (the mouse) and caps it at 0..255 for both axis.
+       So unless you have a small screen, you won't be enjoying it much.
+
+        FIXME: somebody volunteer to fix this.
+     */
     if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
 	EvdevAddRelClass(device);
-    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
-	EvdevAddAbsClass(device);
+    else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+        EvdevAddAbsClass(device);
 
     return Success;
 }
