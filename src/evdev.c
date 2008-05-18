@@ -110,25 +110,6 @@ typedef struct {
 #endif
 } EvdevRec, *EvdevPtr;
 
-typedef enum {
-    OPTION_XKB_DISABLE,
-    OPTION_XKB_RULES,
-    OPTION_XKB_MODEL,
-    OPTION_XKB_LAYOUT,
-    OPTION_XKB_VARIANT,
-    OPTION_XKB_OPTIONS
-} EvdevOpts;
-
-static const OptionInfoRec EvdevOptions[] = {
-    { OPTION_XKB_DISABLE,   "XkbDisable",   OPTV_BOOLEAN, {0}, FALSE },
-    { OPTION_XKB_RULES,     "XkbRules",     OPTV_STRING,  {0}, FALSE },
-    { OPTION_XKB_MODEL,     "XkbModel",     OPTV_STRING,  {0}, FALSE },
-    { OPTION_XKB_LAYOUT,    "XkbLayout",    OPTV_STRING,  {0}, FALSE },
-    { OPTION_XKB_VARIANT,   "XkbVariant",   OPTV_STRING,  {0}, FALSE },
-    { OPTION_XKB_OPTIONS,   "XkbOptions",   OPTV_STRING,  {0}, FALSE },
-    { -1,                   NULL,           OPTV_NONE,    {0}, FALSE }
-};
-
 static const char *evdevDefaults[] = {
     "XkbRules",     "base",
     "XkbModel",     "evdev",
