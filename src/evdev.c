@@ -34,6 +34,7 @@
 #include <X11/extensions/XIproto.h>
 
 #include <linux/input.h>
+#include <unistd.h>
 
 #include <misc.h>
 #include <xf86.h>
@@ -172,7 +173,6 @@ EvdevReadInput(InputInfoPtr pInfo)
     int len, value;
     int dx, dy;
     unsigned int abs;
-    Bool do_touchpad_motion = FALSE;
     EvdevPtr pEvdev = pInfo->private;
 
     dx = 0;
