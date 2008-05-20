@@ -936,7 +936,7 @@ EvdevProbe(InputInfoPtr pInfo)
 	has_axes = TRUE;
     }
       
-    if (TestBit(ABS_X, abs_bitmask) && TestBit(REL_Y, abs_bitmask)) {
+    if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 	if (TestBit(BTN_TOUCH, key_bitmask)) {
