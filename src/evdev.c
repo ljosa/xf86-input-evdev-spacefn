@@ -901,9 +901,14 @@ EvdevProbe(InputInfoPtr pInfo)
     int i, has_axes, has_buttons, has_keys;
     EvdevPtr pEvdev = pInfo->private;
 
-    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1) && errno == EINVAL) {
-        /* keyboards are unsafe in 2.4 */
-        pEvdev->kernel24 = 1;
+    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
+        if (errno == EINVAL) {
+            /* keyboards are unsafe in 2.4 */
+            pEvdev->kernel24 = 1;
+        } else {
+            xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
+            return 1;
+        }
     } else {
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
