@@ -726,10 +726,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     pEvdev->min_y = absinfo_y.minimum;
     pEvdev->max_y = absinfo_y.maximum;
 
-    if (!InitValuatorClassDeviceStruct(device, 2,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
-                                       GetMotionEvents(),
-#endif
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
                                        GetMotionHistorySize(), Absolute))
         return !Success;
 
@@ -759,10 +756,7 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     pInfo = device->public.devicePrivate;
 
-    if (!InitValuatorClassDeviceStruct(device, 2,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
-                                       GetMotionEvents(),
-#endif
+    if (!InitValuatorClassDeviceStruct(device, 2, GetMotionHistory,
                                        GetMotionHistorySize(), Relative))
         return !Success;
 
