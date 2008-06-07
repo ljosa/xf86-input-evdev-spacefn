@@ -767,11 +767,11 @@ EvdevAddRelClass(DeviceIntPtr device)
         return !Success;
 
     /* X valuator */
-    xf86InitValuatorAxisStruct(device, 0, 0, -1, 1, 0, 1);
+    xf86InitValuatorAxisStruct(device, 0, -1, -1, 1, 0, 1);
     xf86InitValuatorDefaults(device, 0);
 
     /* Y valuator */
-    xf86InitValuatorAxisStruct(device, 1, 0, -1, 1, 0, 1);
+    xf86InitValuatorAxisStruct(device, 1, -1, -1, 1, 0, 1);
     xf86InitValuatorDefaults(device, 1);
     xf86MotionHistoryAllocate(pInfo);
 
