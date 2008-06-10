@@ -1029,10 +1029,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->always_core_feedback = 0;
     pInfo->conf_idev = dev;
 
-    if (!(pEvdev = xcalloc(sizeof(*pEvdev), 1)))
-        return pInfo;
-    pInfo->private = pEvdev;
-
     if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))
         return pInfo;
 
