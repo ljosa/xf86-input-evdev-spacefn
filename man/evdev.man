@@ -10,6 +10,8 @@ evdev \- Generic Linux input driver
 .B  "  Driver \*qevdev\*q"
 .BI "  Option \*qDevice\*q   \*q" devpath \*q
 .BI "  Option \*qPath\*q     \*q" path \*q
+.BI "  Option \*qEmulate3Buttons\*q     \*q" True \*q
+.BI "  Option \*qEmulate3Timeout\*q     \*q" 50 \*q
 \ \ ...
 .B EndSection
 .fi
@@ -54,6 +56,17 @@ generally be of the form \*q/dev/input/by-path/xyz\*q, where xyz includes the
 name of the device. The mapping from device node to hardware is
 system-dependent. This option has precedence over the \*qDevice\*q option but
 one of \*qPath\*q or \*qDevice\*q must be given.
+.TP 7
+.BI "Option \*qEmulate3Buttons\*q \*q" boolean \*q
+Enable/disable the emulation of the third (middle) mouse button for mice
+which only have two physical buttons.  The third button is emulated by
+pressing both buttons simultaneously.  Default: on, unless the device reports
+the presence of a physical button 3.
+.TP 7
+.BI "Option \*qEmulate3Timeout\*q \*q" integer \*q
+Sets the timeout (in milliseconds) that the driver waits before deciding
+if two buttons where pressed "simultaneously" when 3 button emulation is
+enabled.  Default: 50.
 .SH AUTHORS
 Kristian Høgsberg.
 .SH "SEE ALSO"

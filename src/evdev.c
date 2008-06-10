@@ -33,7 +33,6 @@
 #include <X11/XF86keysym.h>
 #include <X11/extensions/XIproto.h>
 
-#include <linux/input.h>
 #include <unistd.h>
 
 #include <misc.h>
@@ -44,10 +43,7 @@
 #include <exevents.h>
 #include <mipointer.h>
 
-#if defined(XKB)
-/* XXX VERY WRONG.  this is a client side header. */
-#include <X11/extensions/XKBstr.h>
-#endif
+#include "evdev.h"
 
 #include <xf86Module.h>
 
@@ -91,25 +87,6 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
-typedef struct {
-    int kernel24;
-    int screen;
-    int min_x, min_y, max_x, max_y;
-    int abs_x, abs_y, old_x, old_y;
-    int flags;
-    int tool;
-
-    /* XKB stuff has to be per-device rather than per-driver */
-    int noXkb;
-#ifdef XKB
-    char                    *xkb_rules;
-    char                    *xkb_model;
-    char                    *xkb_layout;
-    char                    *xkb_variant;
-    char                    *xkb_options;
-    XkbComponentNamesRec    xkbnames;
-#endif
-} EvdevRec, *EvdevPtr;
 
 static const char *evdevDefaults[] = {
     "XkbRules",     "base",
@@ -241,10 +218,12 @@ EvdevReadInput(InputInfoPtr pInfo)
             switch (ev.code) {
 	    /* swap here, pretend we're an X-conformant device. */
             case BTN_LEFT:
-                xf86PostButtonEvent(pInfo->dev, 0, 1, value, 0, 0);
+                if (!EvdevMBEmuFilterEvent(pInfo, ev.code, value))
+                    xf86PostButtonEvent(pInfo->dev, 0, 1, value, 0, 0);
                 break;
             case BTN_RIGHT:
-                xf86PostButtonEvent(pInfo->dev, 0, 3, value, 0, 0);
+                if (!EvdevMBEmuFilterEvent(pInfo, ev.code, value))
+                    xf86PostButtonEvent(pInfo->dev, 0, 3, value, 0, 0);
                 break;
             case BTN_MIDDLE:
                 xf86PostButtonEvent(pInfo->dev, 0, 2, value, 0, 0);
@@ -964,6 +943,12 @@ EvdevProbe(InputInfoPtr pInfo)
 	has_buttons = TRUE;
     }
 
+    if (TestBit(BTN_MIDDLE, key_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found middle button. Disabling emulation.\n",
+                pInfo->name);
+        EvdevMBEmuEnable(pInfo, FALSE);
+    }
+
     for (i = 0; i < BTN_MISC; i++)
         if (TestBit(i, key_bitmask))
             break;
@@ -1044,6 +1029,8 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
      */
     pEvdev->tool = 1;
 
+    EvdevMBEmuPreInit(pInfo);
+
     device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
     if (!device)
 	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
@@ -1052,7 +1039,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
-	
+
     xf86Msg(deviceFrom, "%s: Device: \"%s\"\n", pInfo->name, device);
     do {
         pInfo->fd = open(device, O_RDWR, 0);
