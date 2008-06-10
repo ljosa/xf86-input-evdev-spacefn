@@ -226,6 +226,7 @@ EvdevReadInput(InputInfoPtr pInfo)
                     xf86PostButtonEvent(pInfo->dev, 0, 3, value, 0, 0);
                 break;
             case BTN_MIDDLE:
+                EvdevMBEmuEnable(pInfo, FALSE);
                 xf86PostButtonEvent(pInfo->dev, 0, 2, value, 0, 0);
                 break;
 
@@ -941,12 +942,6 @@ EvdevProbe(InputInfoPtr pInfo)
         xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
 	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
 	has_buttons = TRUE;
-    }
-
-    if (TestBit(BTN_MIDDLE, key_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found middle button. Disabling emulation.\n",
-                pInfo->name);
-        EvdevMBEmuEnable(pInfo, FALSE);
     }
 
     for (i = 0; i < BTN_MISC; i++)
