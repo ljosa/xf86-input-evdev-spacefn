@@ -36,6 +36,12 @@
 
 #include "evdev.h"
 
+enum {
+    MBEMU_DISABLED = 0,
+    MBEMU_ENABLED,
+    MBEMU_AUTO
+};
+
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
  *
@@ -288,9 +294,17 @@ void
 EvdevMBEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
+    pEvdev->emulateMB.enabled = MBEMU_AUTO;
 
-    pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
-                                                  "Emulate3Buttons", TRUE);
+    if (xf86FindOption(pInfo->options, "Emulate3Buttons"))
+    {
+        pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
+                                                      "Emulate3Buttons",
+                                                      MBEMU_ENABLED);
+        xf86Msg(X_INFO, "%s: Forcing middle mouse button emulation.\n",
+                        pInfo->name);
+    }
+
     pEvdev->emulateMB.timeout = xf86SetIntOption(pInfo->options,
                                                  "Emulate3Timeout", 50);
     RegisterBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
@@ -313,5 +327,6 @@ void
 EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    pEvdev->emulateMB.enabled = enable;
+    if (pEvdev->emulateMB.enabled == MBEMU_AUTO)
+        pEvdev->emulateMB.enabled = enable;
 }
