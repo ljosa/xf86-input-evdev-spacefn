@@ -843,6 +843,7 @@ EvdevProc(DeviceIntPtr device, int what)
             xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
                     strerror(errno));
         xf86RemoveEnabledDevice(pInfo);
+        EvdevMBEmuFinalize(pInfo);
 	device->public.on = FALSE;
 	break;
 

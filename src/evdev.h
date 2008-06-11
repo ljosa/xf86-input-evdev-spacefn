@@ -75,6 +75,7 @@ BOOL EvdevMBEmuFilterEvent(InputInfoPtr, int, BOOL);
 void EvdevMBEmuWakeupHandler(pointer, int, pointer);
 void EvdevMBEmuBlockHandler(pointer, struct timeval**, pointer);
 void EvdevMBEmuPreInit(InputInfoPtr);
+void EvdevMBEmuFinalize(InputInfoPtr);
 void EvdevMBEmuEnable(InputInfoPtr, BOOL);
 
 #endif

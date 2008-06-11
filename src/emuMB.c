@@ -299,6 +299,15 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
 
 }
 
+void
+EvdevMBEmuFinalize(InputInfoPtr pInfo)
+{
+    RemoveBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
+                                  EvdevMBEmuWakeupHandler,
+                                  (pointer)pInfo);
+
+}
+
 /* Enable/disable middle mouse button emulation. */
 void
 EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
