@@ -941,6 +941,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (TestBit(BTN_LEFT, key_bitmask)) {
         xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
+	EvdevMBEmuPreInit(pInfo);
 	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
 	has_buttons = TRUE;
     }
@@ -1025,8 +1026,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
      */
     pEvdev->tool = 1;
 
-    EvdevMBEmuPreInit(pInfo);
-
     device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
     if (!device)
 	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
@@ -1052,6 +1051,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     /* parse the XKB options during kbd setup */
 
     if (EvdevProbe(pInfo)) {
+	EvdevMBEmuFinalize(pInfo);
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
