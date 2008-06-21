@@ -1053,6 +1053,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (EvdevProbe(pInfo)) {
 	EvdevMBEmuFinalize(pInfo);
+	close(pInfo->fd);
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
