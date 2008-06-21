@@ -835,6 +835,8 @@ EvdevProc(DeviceIntPtr device, int what)
             xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
                     strerror(errno));
         xf86AddEnabledDevice(pInfo);
+	if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+	    EvdevMBEmuPreInit(pInfo);
 	device->public.on = TRUE;
 	break;
 	    
@@ -941,7 +943,6 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (TestBit(BTN_LEFT, key_bitmask)) {
         xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
-	EvdevMBEmuPreInit(pInfo);
 	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
 	has_buttons = TRUE;
     }
