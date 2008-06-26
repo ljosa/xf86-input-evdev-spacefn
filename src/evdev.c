@@ -252,8 +252,15 @@ EvdevReadInput(InputInfoPtr pInfo)
 		break;
 
             default:
-		if (ev.code > BTN_TASK && ev.code < KEY_OK)
+		if (ev.code > BTN_TASK && ev.code < KEY_OK) {
+		    /* Some fancy mice with a lot of buttons generate
+		     * button events between BTN_TASK and BTN_JOYSTICK */
+		    if (ev.code < BTN_JOYSTICK)
+			xf86PostButtonEvent(pInfo->dev, 0,
+			                    ev.code - BTN_LEFT + 5,
+			                    value, 0, 0);
 		    break;
+		}
 
                 PostKbdEvent(pInfo, &ev, value);
 		break;
