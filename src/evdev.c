@@ -887,7 +887,7 @@ EvdevProbe(InputInfoPtr pInfo)
     char key_bitmask[(KEY_MAX + 7) / 8];
     char rel_bitmask[(REL_MAX + 7) / 8];
     char abs_bitmask[(ABS_MAX + 7) / 8];
-    int i, has_axes, has_buttons, has_keys;
+    int i, has_axes, has_keys, num_buttons;
     EvdevPtr pEvdev = pInfo->private;
 
     if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
@@ -921,15 +921,15 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     has_axes = FALSE;
-    has_buttons = FALSE;
     has_keys = FALSE;
+    num_buttons = 0;
 
     if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 	has_axes = TRUE;
     }
-      
+
     if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
@@ -941,10 +941,19 @@ EvdevProbe(InputInfoPtr pInfo)
 	has_axes = TRUE;
     }
 
-    if (TestBit(BTN_LEFT, key_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found mouse buttons\n", pInfo->name);
-	pEvdev->flags |= EVDEV_BUTTON_EVENTS;
-	has_buttons = TRUE;
+    /* count all buttons */
+    for (i = BTN_MISC; i < BTN_JOYSTICK; i++)
+    {
+        if (TestBit(i, key_bitmask))
+            num_buttons++;
+    }
+
+    if (num_buttons)
+    {
+        pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+        pEvdev->buttons = num_buttons;
+        xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name,
+                num_buttons);
     }
 
     for (i = 0; i < BTN_MISC; i++)
@@ -957,7 +966,7 @@ EvdevProbe(InputInfoPtr pInfo)
 	has_keys = TRUE;
     }
 
-    if (has_axes && has_buttons) {
+    if (has_axes && num_buttons) {
         xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
 	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS | 
 	    XI86_CONFIGURED;

@@ -47,6 +47,7 @@ typedef struct {
     int abs_x, abs_y, old_x, old_y;
     int flags;
     int tool;
+    int buttons;            /* number of buttons */
 
     /* XKB stuff has to be per-device rather than per-driver */
     int noXkb;
