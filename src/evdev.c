@@ -864,30 +864,6 @@ EvdevProc(DeviceIntPtr device, int what)
     return Success;
 }
 
-static Bool
-EvdevConvert(InputInfoPtr pInfo, int first, int num, int v0, int v1, int v2,
-	     int v3, int v4, int v5, int *x, int *y)
-{
-    EvdevPtr pEvdev = pInfo->private;
-    int screenWidth = screenInfo.screens[pEvdev->screen]->width;
-    int screenHeight = screenInfo.screens[pEvdev->screen]->height;
-
-    if (first != 0 || num != 2)
-	return FALSE;
-
-    /* on absolute touchpads, don't warp on initial touch */
-    if (pEvdev->flags & EVDEV_TOUCHPAD) {
-	*x = v0;
-	*y = v0;
-	return TRUE;
-    }
-
-    *x = (v0 - pEvdev->min_x) * screenWidth / (pEvdev->max_x - pEvdev->min_x);
-    *y = (v1 - pEvdev->min_y) * screenHeight / (pEvdev->max_y - pEvdev->min_y);
-
-    return TRUE;
-}
-
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
@@ -1021,7 +997,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
     pInfo->switch_mode = NULL;
-    pInfo->conversion_proc = EvdevConvert;
+    pInfo->conversion_proc = NULL;
     pInfo->reverse_conversion_proc = NULL;
     pInfo->dev = NULL;
     pInfo->private_flags = 0;
