@@ -11,11 +11,11 @@
  * and its documentation for any purpose is hereby granted without
  * fee, provided that the above copyright notice appear in all copies
  * and that both that copyright notice and this permission notice
- * appear in supporting documentation, and that the name of Red Hat
- * not be used in advertising or publicity pertaining to distribution
- * of the software without specific, written prior permission.  Red
- * Hat makes no representations about the suitability of this software
- * for any purpose.  It is provided "as is" without express or implied
+ * appear in supporting documentation, and that the name of the authors
+ * not be used in advertising or publicity pertaining to distribution of the
+ * software without specific, written prior permission.  The authors make no
+ * representations about the suitability of this software for any
+ * purpose.  It is provided "as is" without express or implied
  * warranty.
  *
  * THE AUTHORS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,

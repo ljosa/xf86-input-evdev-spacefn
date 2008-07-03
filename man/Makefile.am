@@ -1,5 +1,3 @@
-# $Id$
-#
 # Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
 # 
 # Permission to use, copy, modify, distribute, and sell this software and its
