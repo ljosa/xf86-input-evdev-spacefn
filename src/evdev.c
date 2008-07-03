@@ -619,11 +619,6 @@ EvdevAddKeyClass(DeviceIntPtr device)
         { XK_Mode_switch,	AltLangMask }
     };
 
-    /* TODO:
-     * Ctrl-Alt-Backspace and other Ctrl-Alt-stuff should work
-     * Get keyboard repeat under control (right now caps lock repeats!)
-     */
-
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
