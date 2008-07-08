@@ -87,13 +87,28 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
-
 static const char *evdevDefaults[] = {
     "XkbRules",     "base",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
     NULL
 };
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+typedef struct _PropTable {
+    Atom prop;
+    char *prop_name;
+    Atom (*init)(DeviceIntPtr dev, char* name);
+    BOOL (*handler)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
+} PropTable, *PropTableEntryPtr;
+
+static PropTable evdevPropTable[] = {
+    { 0, "Middle Button Emulation", EvdevMBEmuInitProperty, EvdevMBEmuSetProperty },
+    { 0, "Middle Button Timeout", EvdevMBEmuInitPropertyTimeout, EvdevMBEmuSetProperty},
+    { 0, NULL, NULL, NULL }
+};
+
+#endif
 
 static void
 SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
@@ -142,6 +157,31 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 
     xf86PostKeyboardEvent(pInfo->dev, ev->code + MIN_KEYCODE, value);
 }
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+static Bool
+EvdevSetProperty(DeviceIntPtr dev, Atom property, XIPropertyValuePtr val)
+{
+    PropTableEntryPtr entry  = evdevPropTable;
+
+    while (entry && entry->prop_name)
+    {
+        if (entry->prop == property)
+            return entry->handler(dev, property, val);
+        entry++;
+    }
+
+    /* property not handled, report success */
+    return TRUE;
+}
+
+static Bool EvdevGetProperty(DeviceIntPtr dev,
+                             Atom property)
+{
+    /* XXX */
+    return TRUE;
+}
+#endif
 
 static void
 EvdevReadInput(InputInfoPtr pInfo)
@@ -786,6 +826,22 @@ EvdevAddButtonClass(DeviceIntPtr device)
     return Success;
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+static void
+EvdevInitProperties(DeviceIntPtr device)
+{
+    PropTableEntryPtr entry;
+
+    entry = evdevPropTable;
+    while(entry && entry->prop_name)
+    {
+        entry->prop = (*entry->init)(device, entry->prop_name);
+        entry++;
+    }
+
+}
+#endif
+
 static int
 EvdevInit(DeviceIntPtr device)
 {
@@ -814,6 +870,14 @@ EvdevInit(DeviceIntPtr device)
 	EvdevAddRelClass(device);
     else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
         EvdevAddAbsClass(device);
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+    /* We drop the return value, the only time we ever want the handlers to
+     * unregister is when the device dies. In which case we don't have to
+     * unregister anyway */
+    XIRegisterPropertyHandler(device, EvdevSetProperty, EvdevGetProperty);
+    EvdevInitProperties(device);
+#endif
 
     return Success;
 }
@@ -970,6 +1034,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     return 0;
 }
+
 
 static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)

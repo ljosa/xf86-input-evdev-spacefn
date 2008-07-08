@@ -34,7 +34,10 @@
 #include "config.h"
 #endif
 
+#include <X11/Xatom.h>
 #include <xf86.h>
+#include <xf86Xinput.h>
+#include <exevents.h>
 
 #include "evdev.h"
 
@@ -43,6 +46,9 @@ enum {
     MBEMU_ENABLED,
     MBEMU_AUTO
 };
+
+static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
+static Atom prop_mbtimeout = 0; /* Middle button timeout property */
 
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
@@ -313,6 +319,12 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
 
+    XIChangeDeviceProperty(pInfo->dev, prop_mbemu, XA_INTEGER, 8,
+                           PropModeReplace, 1, &pEvdev->emulateMB.enabled,
+                           TRUE, FALSE, FALSE);
+    XIChangeDeviceProperty(pInfo->dev, prop_mbtimeout, XA_INTEGER, 16,
+                           PropModeReplace, 1, &pEvdev->emulateMB.timeout,
+                           TRUE, FALSE, FALSE);
 }
 
 void
@@ -332,3 +344,63 @@ EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
     if (pEvdev->emulateMB.enabled == MBEMU_AUTO)
         pEvdev->emulateMB.enabled = enable;
 }
+
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+Atom
+EvdevMBEmuInitProperty(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+    INT32 valid_vals[]  = { MBEMU_DISABLED, MBEMU_ENABLED, MBEMU_AUTO };
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    prop_mbemu = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_mbemu, XA_INTEGER, 8,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateMB.enabled,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_mbemu, FALSE, FALSE, FALSE, 3, valid_vals);
+
+    if (rc != Success)
+        return 0;
+    return prop_mbemu;
+}
+
+Atom
+EvdevMBEmuInitPropertyTimeout(DeviceIntPtr dev, char *name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+
+    prop_mbtimeout = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_mbtimeout, XA_INTEGER, 16, PropModeReplace, 1,
+                                &pEvdev->emulateMB.timeout, FALSE, FALSE,
+                                FALSE);
+
+    if (rc != Success)
+        return 0;
+    return prop_mbtimeout;
+}
+
+BOOL
+EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (atom == prop_mbemu)
+        pEvdev->emulateMB.enabled = *((BOOL*)val->data);
+    else if (atom == prop_mbtimeout)
+        pEvdev->emulateMB.timeout = *((INT16*)val->data);
+
+    return TRUE;
+}
+#endif
