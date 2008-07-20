@@ -42,6 +42,7 @@
 #include <xf86Xinput.h>
 #include <exevents.h>
 #include <mipointer.h>
+#include <xorgVersion.h>
 
 #include "evdev.h"
 
@@ -1146,8 +1147,8 @@ static XF86ModuleVersionInfo EvdevVersionRec =
     MODULEVENDORSTRING,
     MODINFOSTRING1,
     MODINFOSTRING2,
-    0, /* Missing from SDK: XORG_VERSION_CURRENT, */
-    1, 0, 0,
+    XORG_VERSION_CURRENT,
+    PACKAGE_VERSION_MAJOR, PACKAGE_VERSION_MINOR, PACKAGE_VERSION_PATCHLEVEL,
     ABI_CLASS_XINPUT,
     ABI_XINPUT_VERSION,
     MOD_CLASS_XINPUT,
