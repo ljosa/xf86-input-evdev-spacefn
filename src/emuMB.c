@@ -319,12 +319,14 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
     XIChangeDeviceProperty(pInfo->dev, prop_mbemu, XA_INTEGER, 8,
                            PropModeReplace, 1, &pEvdev->emulateMB.enabled,
                            TRUE, FALSE, FALSE);
     XIChangeDeviceProperty(pInfo->dev, prop_mbtimeout, XA_INTEGER, 16,
                            PropModeReplace, 1, &pEvdev->emulateMB.timeout,
                            TRUE, FALSE, FALSE);
+#endif
 }
 
 void
