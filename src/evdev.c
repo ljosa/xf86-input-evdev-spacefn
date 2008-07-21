@@ -811,21 +811,71 @@ EvdevAddRelClass(DeviceIntPtr device)
 static int
 EvdevAddButtonClass(DeviceIntPtr device)
 {
-    CARD8 map[32];
     InputInfoPtr pInfo;
-    int i;
+    EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
     /* FIXME: count number of actual buttons */
-    for (i = 0; i < ArrayLength(map); i++)
-        map[i] = i;
-
-    if (!InitButtonClassDeviceStruct(device, ArrayLength(map), map))
+    if (!InitButtonClassDeviceStruct(device, ArrayLength(pEvdev->btnmap),
+                                     pEvdev->btnmap))
         return !Success;
 
     return Success;
 }
+
+/**
+ * Init the button mapping for the device. By default, this is a 1:1 mapping,
+ * i.e. Button 1 maps to Button 1, Button 2 to 2, etc.
+ *
+ * If a mapping has been specified, the mapping is the default, with the
+ * user-defined ones overwriting the defaults.
+ * i.e. a user-defined mapping of "3 2 1" results in a mapping of 3 2 1 4 5 6 ...
+ *
+ * Invalid button mappings revert to the default.
+ *
+ * Note that index 0 is unused, button 0 does not exist.
+ * This mapping is initialised for all devices, but only applied if the device
+ * has buttons (in EvdevAddButtonClass).
+ */
+static void
+EvdevInitButtonMapping(InputInfoPtr pInfo)
+{
+    int         i, nbuttons     = 1;
+    char       *mapping         = NULL;
+    EvdevPtr    pEvdev          = pInfo->private;
+
+    /* Check for user-defined button mapping */
+    if ((mapping = xf86CheckStrOption(pInfo->options, "ButtonMapping", NULL)))
+    {
+        char    *s  = " ";
+        int     btn = 0;
+
+        xf86Msg(X_CONFIG, "%s: ButtonMapping '%s'\n", pInfo->name, mapping);
+        while (s && *s != '\0' && nbuttons < 32)
+        {
+            btn = strtol(mapping, &s, 10);
+
+            if (s == mapping || btn < 0 || btn > 32)
+            {
+                xf86Msg(X_ERROR,
+                        "%s: ... Invalid button mapping. Using defaults\n",
+                        pInfo->name);
+                nbuttons = 1; /* ensure defaults start at 1 */
+                break;
+            }
+
+            pEvdev->btnmap[nbuttons++] = btn;
+            mapping = s;
+        }
+    }
+
+    for (i = nbuttons; i < ArrayLength(pEvdev->btnmap); i++)
+        pEvdev->btnmap[i] = i;
+
+}
+
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
 static void
@@ -1103,6 +1153,8 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
+
+    EvdevInitButtonMapping(pInfo);
 
     pEvdev->noXkb = noXkbExtension;
     /* parse the XKB options during kbd setup */

@@ -68,6 +68,8 @@ typedef struct {
         Time                expires;     /* time of expiry */
         Time                timeout;
     } emulateMB;
+
+    unsigned char btnmap[32];           /* config-file specified button mapping */
 } EvdevRec, *EvdevPtr;
 
 /* Middle Button emulation */
