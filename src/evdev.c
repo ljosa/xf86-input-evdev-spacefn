@@ -346,7 +346,9 @@ EvdevReadInput(InputInfoPtr pInfo)
     }
 }
 
-#define TestBit(bit, array) (array[(bit) / 8] & (1 << ((bit) % 8)))
+#define LONG_BITS (sizeof(long) * 8)
+#define NBITS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
+#define TestBit(bit, array) (array[(bit) / LONG_BITS]) & (1 << ((bit) % LONG_BITS))
 
 static void
 EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
@@ -980,9 +982,9 @@ EvdevProc(DeviceIntPtr device, int what)
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    char key_bitmask[(KEY_MAX + 7) / 8];
-    char rel_bitmask[(REL_MAX + 7) / 8];
-    char abs_bitmask[(ABS_MAX + 7) / 8];
+    long key_bitmask[NBITS(KEY_MAX)];
+    long rel_bitmask[NBITS(REL_MAX)];
+    long abs_bitmask[NBITS(ABS_MAX)];
     int i, has_axes, has_keys, num_buttons;
     EvdevPtr pEvdev = pInfo->private;
 
