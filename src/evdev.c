@@ -973,6 +973,7 @@ EvdevProc(DeviceIntPtr device, int what)
 
     case DEVICE_CLOSE:
 	xf86Msg(X_INFO, "%s: Close\n", pInfo->name);
+	close(pInfo->fd);
 	break;
     }
 
