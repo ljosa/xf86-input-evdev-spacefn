@@ -212,14 +212,14 @@ EvdevMBEmuTimer(InputInfoPtr pInfo)
 /**
  * Emulate a middle button on button press.
  *
- * @param code Evdev event code (BTN_LEFT or BTN_RIGHT)
+ * @param code button number (1 for left, 3 for right)
  * @param press TRUE if press, FALSE if release.
  *
  * @return TRUE if event was swallowed by middle mouse button emulation, FALSE
  * otherwise.
  */
 BOOL
-EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int code, BOOL press)
+EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
 {
     EvdevPtr pEvdev = pInfo->private;
     int id;
@@ -230,14 +230,14 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int code, BOOL press)
         return ret;
 
     /* don't care about other buttons */
-    if (code != BTN_LEFT && code != BTN_RIGHT)
+    if (button != 1 && button != 3)
         return ret;
 
     btstate = &pEvdev->emulateMB.buttonstate;
     if (press)
-        *btstate |= (code == BTN_LEFT) ? 0x1 : 0x2;
+        *btstate |= (button == 1) ? 0x1 : 0x2;
     else
-        *btstate &= (code == BTN_LEFT) ? ~0x1 : ~0x2;
+        *btstate &= (button == 1) ? ~0x1 : ~0x2;
 
     if ((id = stateTab[pEvdev->emulateMB.state][*btstate][0]) != 0)
     {

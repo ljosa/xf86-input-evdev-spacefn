@@ -191,6 +191,7 @@ EvdevReadInput(InputInfoPtr pInfo)
     int len, value;
     int dx, dy;
     unsigned int abs;
+    unsigned int button;
     EvdevPtr pEvdev = pInfo->private;
 
     dx = 0;
@@ -257,29 +258,6 @@ EvdevReadInput(InputInfoPtr pInfo)
 		    break;
 
             switch (ev.code) {
-	    /* swap here, pretend we're an X-conformant device. */
-            case BTN_LEFT:
-                if (!EvdevMBEmuFilterEvent(pInfo, ev.code, value))
-                    xf86PostButtonEvent(pInfo->dev, 0, 1, value, 0, 0);
-                break;
-            case BTN_RIGHT:
-                if (!EvdevMBEmuFilterEvent(pInfo, ev.code, value))
-                    xf86PostButtonEvent(pInfo->dev, 0, 3, value, 0, 0);
-                break;
-            case BTN_MIDDLE:
-                EvdevMBEmuEnable(pInfo, FALSE);
-                xf86PostButtonEvent(pInfo->dev, 0, 2, value, 0, 0);
-                break;
-
-            case BTN_SIDE:
-            case BTN_EXTRA:
-            case BTN_FORWARD:
-            case BTN_BACK:
-            case BTN_TASK:
-                xf86PostButtonEvent(pInfo->dev, 0, ev.code - BTN_LEFT + 5,
-                                    value, 0, 0);
-                break;
-
 	    case BTN_TOUCH:
  	    case BTN_TOOL_PEN:
  	    case BTN_TOOL_RUBBER:
@@ -293,17 +271,15 @@ EvdevReadInput(InputInfoPtr pInfo)
 		break;
 
             default:
-		if (ev.code > BTN_TASK && ev.code < KEY_OK) {
-		    /* Some fancy mice with a lot of buttons generate
-		     * button events between BTN_TASK and BTN_JOYSTICK */
-		    if (ev.code < BTN_JOYSTICK)
-			xf86PostButtonEvent(pInfo->dev, 0,
-			                    ev.code - BTN_LEFT + 5,
-			                    value, 0, 0);
-		    break;
-		}
+		button = EvdevUtilButtonEventToButtonNumber(ev.code);
 
-                PostKbdEvent(pInfo, &ev, value);
+		if (EvdevMBEmuFilterEvent(pInfo, button, value))
+		   break;
+
+		if (button)
+		    xf86PostButtonEvent(pInfo->dev, 0, button, value, 0, 0);
+		else
+		    PostKbdEvent(pInfo, &ev, value);
 		break;
             }
             break;
@@ -1216,3 +1192,46 @@ _X_EXPORT XF86ModuleData evdevModuleData =
     EvdevPlug,
     EvdevUnplug
 };
+
+
+/* Return an index value for a given button event code
+ * returns 0 on non-button event.
+ */
+unsigned int
+EvdevUtilButtonEventToButtonNumber(int code)
+{
+    unsigned int button = 0;
+
+    switch(code) {
+    case BTN_LEFT:
+	button = 1;
+	break;
+
+    case BTN_RIGHT:
+	button = 3;
+	break;
+
+    case BTN_MIDDLE:
+	button = 2;
+	break;
+
+    case BTN_SIDE:
+    case BTN_EXTRA:
+    case BTN_FORWARD:
+    case BTN_BACK:
+    case BTN_TASK:
+	button = (code - BTN_LEFT + 5);
+	break;
+
+    default:
+	if ((code > BTN_TASK) && (code < KEY_OK)) {
+	    if (code < BTN_JOYSTICK)
+		button = (code - BTN_LEFT + 5);
+	}
+    }
+
+    if (button > 32)
+	return 0;
+
+    return button;
+}

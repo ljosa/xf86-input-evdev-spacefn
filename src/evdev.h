@@ -80,6 +80,9 @@ void EvdevMBEmuBlockHandler(pointer, struct timeval**, pointer);
 void EvdevMBEmuPreInit(InputInfoPtr);
 void EvdevMBEmuFinalize(InputInfoPtr);
 void EvdevMBEmuEnable(InputInfoPtr, BOOL);
+
+unsigned int EvdevUtilButtonEventToButtonNumber(int code);
+
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
 Atom EvdevMBEmuInitProperty(DeviceIntPtr, char*);
 Atom EvdevMBEmuInitPropertyTimeout(DeviceIntPtr, char*);
