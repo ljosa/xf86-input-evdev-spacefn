@@ -146,6 +146,9 @@ PostButtonClicks(InputInfoPtr pInfo, int button, int count)
 static void
 PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
+    int code = ev->code + MIN_KEYCODE;
+    static char warned[KEY_MAX];
+
     /* filter repeat events for chording keys */
     if (value == 2 &&
         (ev->code == KEY_LEFTCTRL || ev->code == KEY_RIGHTCTRL ||
@@ -156,7 +159,14 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
          ev->code == KEY_SCROLLLOCK)) /* XXX windows keys? */
         return;
 
-    xf86PostKeyboardEvent(pInfo->dev, ev->code + MIN_KEYCODE, value);
+    if (code > 255 && ev->code < KEY_MAX) {
+	if (!warned[ev->code])
+	    xf86Msg(X_WARNING, "%s: unable to handle keycode %d\n",
+		    pInfo->name, ev->code);
+	warned[ev->code] = 1;
+    }
+
+    xf86PostKeyboardEvent(pInfo->dev, code, value);
 }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
