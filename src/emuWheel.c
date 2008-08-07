@@ -33,10 +33,21 @@
 #include "config.h"
 #endif
 
+#include <X11/Xatom.h>
+#include <xf86.h>
+#include <xf86Xinput.h>
+#include <exevents.h>
+
 #include "evdev.h"
 
 #define MSE_MAXBUTTONS 32
 #define WHEEL_NOT_CONFIGURED 0
+
+static Atom prop_wheel_emu;
+static Atom prop_wheel_xmap;
+static Atom prop_wheel_ymap;
+static Atom prop_wheel_inertia;
+static Atom prop_wheel_button;
 
 /* Local Funciton Prototypes */
 static BOOL EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char *axis_name);
@@ -188,6 +199,8 @@ void
 EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
+    int val[2];
+
     pEvdev->emulateWheel.enabled = FALSE;
 
     if (xf86SetBoolOption(pInfo->options, "EmulateWheel", FALSE)) {
@@ -252,6 +265,224 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 
 	xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, EmulateWheelInertia: %d\n",
 		pInfo->name, pEvdev->emulateWheel.button, inertia);
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+        XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,
+                               PropModeReplace, 1, &pEvdev->emulateWheel.enabled,
+                               TRUE, FALSE, FALSE);
+        XIChangeDeviceProperty(pInfo->dev, prop_wheel_button, XA_INTEGER, 8,
+                               PropModeReplace, 1,
+                               &pEvdev->emulateWheel.button,
+                               TRUE, FALSE, FALSE);
+        XIChangeDeviceProperty(pInfo->dev, prop_wheel_inertia, XA_INTEGER, 8,
+                               PropModeReplace, 1,
+                               &pEvdev->emulateWheel.inertia,
+                               TRUE, FALSE, FALSE);
+
+        val[0] = pEvdev->emulateWheel.X.up_button;
+        val[1] = pEvdev->emulateWheel.X.down_button;
+        XIChangeDeviceProperty(pInfo->dev, prop_wheel_xmap, XA_INTEGER, 8,
+                               PropModeReplace, 2, val,
+                               TRUE, FALSE, FALSE);
+
+        val[0] = pEvdev->emulateWheel.Y.up_button;
+        val[1] = pEvdev->emulateWheel.Y.down_button;
+        XIChangeDeviceProperty(pInfo->dev, prop_wheel_ymap, XA_INTEGER, 8,
+                               PropModeReplace, 2, val,
+                               TRUE, FALSE, FALSE);
+
+#endif
     }
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+Atom
+EvdevWheelEmuInitProperty(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+    INT32 valid_vals[]  = { TRUE, FALSE};
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    prop_wheel_emu = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_emu, XA_INTEGER, 8,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.enabled,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_wheel_emu, FALSE, FALSE,
+                                   FALSE, 2, valid_vals);
+
+    if (rc != Success)
+        return 0;
+    return prop_wheel_emu;
+}
+
+Atom
+EvdevWheelEmuInitPropertyXMap(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+    int          vals[2];
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    vals[0] = pEvdev->emulateWheel.X.up_button;
+    vals[1] = pEvdev->emulateWheel.X.down_button;
+
+    prop_wheel_xmap = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_xmap, XA_INTEGER, 8,
+                                PropModeReplace, 2, vals,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_wheel_xmap, FALSE, FALSE,
+                                   FALSE, 0, NULL);
+
+    if (rc != Success)
+        return 0;
+    return prop_wheel_xmap;
+}
+
+Atom
+EvdevWheelEmuInitPropertyYMap(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+    int          vals[2];
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    vals[0] = pEvdev->emulateWheel.Y.up_button;
+    vals[1] = pEvdev->emulateWheel.Y.down_button;
+
+    prop_wheel_ymap = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_ymap, XA_INTEGER, 8,
+                                PropModeReplace, 2, vals,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_wheel_ymap, FALSE, FALSE,
+                                   FALSE, 0, NULL);
+
+    if (rc != Success)
+        return 0;
+    return prop_wheel_ymap;
+}
+
+Atom
+EvdevWheelEmuInitPropertyInertia(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    prop_wheel_inertia = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER, 16,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.inertia,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_wheel_inertia, FALSE, FALSE,
+                                   FALSE, 0, NULL);
+
+    if (rc != Success)
+        return 0;
+    return prop_wheel_inertia;
+}
+
+Atom
+EvdevWheelEmuInitPropertyButton(DeviceIntPtr dev, char* name)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return 0;
+
+    prop_wheel_button = MakeAtom(name, strlen(name), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_button, XA_INTEGER, 8,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.button,
+                                FALSE, FALSE, FALSE);
+    if (rc != Success)
+        return 0;
+
+    rc = XIConfigureDeviceProperty(dev, prop_wheel_button, FALSE, FALSE,
+                                   FALSE, 0, NULL);
+
+    if (rc != Success)
+        return 0;
+    return prop_wheel_button;
+}
+
+
+BOOL
+EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (atom == prop_wheel_emu)
+    {
+        pEvdev->emulateWheel.enabled = *((BOOL*)val->data);
+        /* Don't enable with zero inertia, otherwise we may get stuck in an
+         * infinite loop */
+        if (pEvdev->emulateWheel.inertia <= 0)
+        {
+            pEvdev->emulateWheel.inertia = 10;
+            XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER, 16,
+                                   PropModeReplace, 1,
+                                   &pEvdev->emulateWheel.inertia,
+                                   TRUE, FALSE, FALSE);
+        }
+    }
+    else if (atom == prop_wheel_button)
+    {
+        int bt = *((CARD8*)val->data);
+        if (bt < 0 || bt >= MSE_MAXBUTTONS)
+            return FALSE;
+        pEvdev->emulateWheel.button = bt;
+    } else if (atom == prop_wheel_xmap)
+    {
+        if (val->size != 2)
+            return FALSE;
+
+        pEvdev->emulateWheel.X.up_button = *((CARD8*)val->data);
+        pEvdev->emulateWheel.X.down_button = *(((CARD8*)val->data) + 1);
+    } else if (atom == prop_wheel_ymap)
+    {
+        if (val->size != 2)
+            return FALSE;
+
+        pEvdev->emulateWheel.Y.up_button = *((CARD8*)val->data);
+        pEvdev->emulateWheel.Y.down_button = *(((CARD8*)val->data) + 1);
+    } else if (atom == prop_wheel_inertia)
+    {
+        int inertia = *((CARD16*)val->data);
+        if (inertia < 0)
+            return FALSE;
+
+        pEvdev->emulateWheel.inertia = inertia;
+    }
+    return TRUE;
+}
+
+#endif

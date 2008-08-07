@@ -102,11 +102,20 @@ unsigned int EvdevUtilButtonEventToButtonNumber(int code);
 Atom EvdevMBEmuInitProperty(DeviceIntPtr, char*);
 Atom EvdevMBEmuInitPropertyTimeout(DeviceIntPtr, char*);
 BOOL EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
+
+Atom EvdevWheelEmuInitProperty(DeviceIntPtr, char*);
+Atom EvdevWheelEmuInitPropertyXMap(DeviceIntPtr, char*);
+Atom EvdevWheelEmuInitPropertyYMap(DeviceIntPtr, char*);
+Atom EvdevWheelEmuInitPropertyInertia(DeviceIntPtr, char*);
+Atom EvdevWheelEmuInitPropertyButton(DeviceIntPtr, char*);
+
+BOOL EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 #endif
 
 /* Mouse Wheel emulation */
 void EvdevWheelEmuPreInit(InputInfoPtr pInfo);
 BOOL EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value);
 BOOL EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv);
+
 
 #endif

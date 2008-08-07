@@ -106,6 +106,11 @@ typedef struct _PropTable {
 static PropTable evdevPropTable[] = {
     { 0, "Middle Button Emulation", EvdevMBEmuInitProperty, EvdevMBEmuSetProperty },
     { 0, "Middle Button Timeout", EvdevMBEmuInitPropertyTimeout, EvdevMBEmuSetProperty},
+    { 0, "Wheel Emulation", EvdevWheelEmuInitProperty, EvdevWheelEmuSetProperty},
+    { 0, "Wheel Emulation X Axis", EvdevWheelEmuInitPropertyXMap, EvdevWheelEmuSetProperty},
+    { 0, "Wheel Emulation Y Axis", EvdevWheelEmuInitPropertyYMap, EvdevWheelEmuSetProperty},
+    { 0, "Wheel Emulation Inertia", EvdevWheelEmuInitPropertyInertia, EvdevWheelEmuSetProperty},
+    { 0, "Wheel Emulation Button", EvdevWheelEmuInitPropertyButton, EvdevWheelEmuSetProperty},
     { 0, NULL, NULL, NULL }
 };
 
