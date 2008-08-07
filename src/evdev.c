@@ -217,11 +217,16 @@ EvdevReadInput(InputInfoPtr pInfo)
             break;
         }
 
+
         /* Get the signed value, earlier kernels had this as unsigned */
         value = ev.value;
 
         switch (ev.type) {
 	case EV_REL:
+	    /* Handle mouse wheel emulation */
+	    if (EvdevWheelEmuFilterMotion(pInfo, &ev))
+		break;
+
             switch (ev.code) {
             case REL_X:
                 dx += value;
@@ -284,6 +289,9 @@ EvdevReadInput(InputInfoPtr pInfo)
 		button = EvdevUtilButtonEventToButtonNumber(ev.code);
 
 		if (EvdevMBEmuFilterEvent(pInfo, button, value))
+		   break;
+
+		if (EvdevWheelEmuFilterButton(pInfo, button, value))
 		   break;
 
 		if (button)
@@ -943,7 +951,10 @@ EvdevProc(DeviceIntPtr device, int what)
         {
             xf86AddEnabledDevice(pInfo);
             if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+            {
                 EvdevMBEmuPreInit(pInfo);
+                EvdevWheelEmuPreInit(pInfo);
+            }
             device->public.on = TRUE;
         }
 	break;

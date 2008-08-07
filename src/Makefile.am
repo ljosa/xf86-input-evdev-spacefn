@@ -30,4 +30,6 @@
 
 @DRIVER_NAME@_drv_la_SOURCES = @DRIVER_NAME@.c \
                                @DRIVER_NAME@.h \
-                               emuMB.c
+                               emuMB.c \
+                               emuWheel.c
+
