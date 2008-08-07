@@ -40,7 +40,6 @@
 
 #include "evdev.h"
 
-#define MSE_MAXBUTTONS 32
 #define WHEEL_NOT_CONFIGURED 0
 
 static Atom prop_wheel_emu;
@@ -162,8 +161,8 @@ EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char* axis_
 	char *msg = NULL;
 
 	if ((sscanf(option_string, "%d %d", &up_button, &down_button) == 2) &&
-	    ((up_button > 0) && (up_button <= MSE_MAXBUTTONS)) &&
-	    ((down_button > 0) && (down_button <= MSE_MAXBUTTONS))) {
+	    ((up_button > 0) && (up_button <= EVDEV_MAXBUTTONS)) &&
+	    ((down_button > 0) && (down_button <= EVDEV_MAXBUTTONS))) {
 
 	    /* Use xstrdup to allocate a string for us */
 	    msg = xstrdup("buttons XX and YY");
@@ -211,7 +210,7 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 	wheelButton = xf86SetIntOption(pInfo->options,
 				       "EmulateWheelButton", 4);
 
-	if ((wheelButton < 0) || (wheelButton > MSE_MAXBUTTONS)) {
+	if ((wheelButton < 0) || (wheelButton > EVDEV_MAXBUTTONS)) {
 	    xf86Msg(X_WARNING, "%s: Invalid EmulateWheelButton value: %d\n",
 		    pInfo->name, wheelButton);
             xf86Msg(X_WARNING, "%s: Wheel emulation disabled.\n", pInfo->name);
@@ -457,7 +456,7 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     else if (atom == prop_wheel_button)
     {
         int bt = *((CARD8*)val->data);
-        if (bt < 0 || bt >= MSE_MAXBUTTONS)
+        if (bt < 0 || bt >= EVDEV_MAXBUTTONS)
             return FALSE;
         pEvdev->emulateWheel.button = bt;
     } else if (atom == prop_wheel_xmap)

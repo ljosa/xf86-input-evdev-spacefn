@@ -40,6 +40,8 @@
 #include <X11/extensions/XKBstr.h>
 #endif
 
+#define EVDEV_MAXBUTTONS 32
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;

@@ -854,11 +854,11 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
         int     btn = 0;
 
         xf86Msg(X_CONFIG, "%s: ButtonMapping '%s'\n", pInfo->name, mapping);
-        while (s && *s != '\0' && nbuttons < 32)
+        while (s && *s != '\0' && nbuttons < EVDEV_MAXBUTTONS)
         {
             btn = strtol(mapping, &s, 10);
 
-            if (s == mapping || btn < 0 || btn > 32)
+            if (s == mapping || btn < 0 || btn > EVDEV_MAXBUTTONS)
             {
                 xf86Msg(X_ERROR,
                         "%s: ... Invalid button mapping. Using defaults\n",
@@ -1256,7 +1256,7 @@ EvdevUtilButtonEventToButtonNumber(int code)
 	}
     }
 
-    if (button > 32)
+    if (button > EVDEV_MAXBUTTONS)
 	return 0;
 
     return button;
