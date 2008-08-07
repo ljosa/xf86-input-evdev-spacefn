@@ -47,6 +47,9 @@ enum {
     MBEMU_AUTO
 };
 
+static const char *propname_mbemu = "Middle Button Emulation";
+static const char *propname_mbtimeout = "Middle Button Timeout";
+
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
 
@@ -349,8 +352,11 @@ EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
 
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-Atom
-EvdevMBEmuInitProperty(DeviceIntPtr dev, char* name)
+/**
+ * Initialise property for MB emulation on/off.
+ */
+void
+EvdevMBEmuInitProperty(DeviceIntPtr dev)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -358,38 +364,30 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev, char* name)
     INT32 valid_vals[]  = { MBEMU_DISABLED, MBEMU_ENABLED, MBEMU_AUTO };
 
     if (!dev->button) /* don't init prop for keyboards */
-        return 0;
+        return;
 
-    prop_mbemu = MakeAtom(name, strlen(name), TRUE);
+    prop_mbemu = MakeAtom((char*)propname_mbemu, strlen(propname_mbemu), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_mbemu, XA_INTEGER, 8,
                                 PropModeReplace, 1,
                                 &pEvdev->emulateMB.enabled,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_mbemu, FALSE, FALSE, FALSE, 3, valid_vals);
 
     if (rc != Success)
-        return 0;
-    return prop_mbemu;
-}
+        return;
 
-Atom
-EvdevMBEmuInitPropertyTimeout(DeviceIntPtr dev, char *name)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-
-    prop_mbtimeout = MakeAtom(name, strlen(name), TRUE);
+    prop_mbtimeout = MakeAtom((char*)propname_mbtimeout,
+                              strlen(propname_mbtimeout),
+                              TRUE);
     rc = XIChangeDeviceProperty(dev, prop_mbtimeout, XA_INTEGER, 16, PropModeReplace, 1,
                                 &pEvdev->emulateMB.timeout, FALSE, FALSE,
                                 FALSE);
 
     if (rc != Success)
-        return 0;
-    return prop_mbtimeout;
+        return;
 }
 
 BOOL

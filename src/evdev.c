@@ -96,22 +96,16 @@ static const char *evdevDefaults[] = {
 };
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-typedef struct _PropTable {
-    Atom prop;
-    char *prop_name;
-    Atom (*init)(DeviceIntPtr dev, char* name);
-    BOOL (*handler)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
-} PropTable, *PropTableEntryPtr;
+typedef struct _PropHandler {
+    void (*init)(DeviceIntPtr dev);
+    BOOL (*handle)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
+} PropHandler;
 
-static PropTable evdevPropTable[] = {
-    { 0, "Middle Button Emulation", EvdevMBEmuInitProperty, EvdevMBEmuSetProperty },
-    { 0, "Middle Button Timeout", EvdevMBEmuInitPropertyTimeout, EvdevMBEmuSetProperty},
-    { 0, "Wheel Emulation", EvdevWheelEmuInitProperty, EvdevWheelEmuSetProperty},
-    { 0, "Wheel Emulation X Axis", EvdevWheelEmuInitPropertyXMap, EvdevWheelEmuSetProperty},
-    { 0, "Wheel Emulation Y Axis", EvdevWheelEmuInitPropertyYMap, EvdevWheelEmuSetProperty},
-    { 0, "Wheel Emulation Inertia", EvdevWheelEmuInitPropertyInertia, EvdevWheelEmuSetProperty},
-    { 0, "Wheel Emulation Button", EvdevWheelEmuInitPropertyButton, EvdevWheelEmuSetProperty},
-    { 0, NULL, NULL, NULL }
+static PropHandler evdevPropHandlers[] =
+{
+    {EvdevMBEmuInitProperty, EvdevMBEmuSetProperty},
+    {EvdevWheelEmuInitProperty, EvdevWheelEmuSetProperty},
+    {NULL, NULL}
 };
 
 #endif
@@ -178,13 +172,13 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 static Bool
 EvdevSetProperty(DeviceIntPtr dev, Atom property, XIPropertyValuePtr val)
 {
-    PropTableEntryPtr entry  = evdevPropTable;
+    PropHandler *handler  = evdevPropHandlers;
 
-    while (entry && entry->prop_name)
+    while (handler->init || handler->handle)
     {
-        if (entry->prop == property)
-            return entry->handler(dev, property, val);
-        entry++;
+        if (handler->handle && !handler->handle(dev, property, val))
+            return FALSE;
+        handler++;
     }
 
     /* property not handled, report success */
@@ -882,13 +876,12 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 static void
 EvdevInitProperties(DeviceIntPtr device)
 {
-    PropTableEntryPtr entry;
-
-    entry = evdevPropTable;
-    while(entry && entry->prop_name)
+    PropHandler *handler = evdevPropHandlers;
+    while(handler->init || handler->handle)
     {
-        entry->prop = (*entry->init)(device, entry->prop_name);
-        entry++;
+        if (handler->init)
+            (*handler->init)(device);
+        handler++;
     }
 
 }

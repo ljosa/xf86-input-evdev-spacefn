@@ -6,6 +6,7 @@
 * Copyright 2002 by Paul Elliott
 * (Ported from xf86-input-mouse, above copyrights taken from there)
 * Copyright 2008 by Chris Salch
+* Copyright © 2008 Red Hat, Inc.
 *
 * Permission to use, copy, modify, distribute, and sell this software
 * and its documentation for any purpose is hereby granted without
@@ -41,6 +42,12 @@
 #include "evdev.h"
 
 #define WHEEL_NOT_CONFIGURED 0
+
+static const char *propname_wheel_emu     = "Wheel Emulation";
+static const char *propname_wheel_xmap    = "Wheel Emulation X Axis";
+static const char *propname_wheel_ymap    = "Wheel Emulation Y Axis";
+static const char *propname_wheel_inertia = "Wheel Emulation Inertia";
+static const char *propname_wheel_button  = "Wheel Emulation Button";
 
 static Atom prop_wheel_emu;
 static Atom prop_wheel_xmap;
@@ -295,8 +302,8 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-Atom
-EvdevWheelEmuInitProperty(DeviceIntPtr dev, char* name)
+void
+EvdevWheelEmuInitProperty(DeviceIntPtr dev)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -304,132 +311,79 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev, char* name)
     INT32 valid_vals[]  = { TRUE, FALSE};
 
     if (!dev->button) /* don't init prop for keyboards */
-        return 0;
+        return;
 
-    prop_wheel_emu = MakeAtom(name, strlen(name), TRUE);
+    prop_wheel_emu = MakeAtom((char*)propname_wheel_emu, strlen(propname_wheel_emu), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_emu, XA_INTEGER, 8,
                                 PropModeReplace, 1,
                                 &pEvdev->emulateWheel.enabled,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_wheel_emu, FALSE, FALSE,
                                    FALSE, 2, valid_vals);
 
     if (rc != Success)
-        return 0;
-    return prop_wheel_emu;
-}
+        return;
 
-Atom
-EvdevWheelEmuInitPropertyXMap(DeviceIntPtr dev, char* name)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-    int          vals[2];
+    valid_vals[0] = pEvdev->emulateWheel.X.up_button;
+    valid_vals[1] = pEvdev->emulateWheel.X.down_button;
 
-    if (!dev->button) /* don't init prop for keyboards */
-        return 0;
-
-    vals[0] = pEvdev->emulateWheel.X.up_button;
-    vals[1] = pEvdev->emulateWheel.X.down_button;
-
-    prop_wheel_xmap = MakeAtom(name, strlen(name), TRUE);
+    prop_wheel_xmap = MakeAtom((char*)propname_wheel_xmap, strlen(propname_wheel_xmap), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_xmap, XA_INTEGER, 8,
-                                PropModeReplace, 2, vals,
+                                PropModeReplace, 2, valid_vals,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_wheel_xmap, FALSE, FALSE,
                                    FALSE, 0, NULL);
 
     if (rc != Success)
-        return 0;
-    return prop_wheel_xmap;
-}
+        return;
 
-Atom
-EvdevWheelEmuInitPropertyYMap(DeviceIntPtr dev, char* name)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-    int          vals[2];
+    valid_vals[0] = pEvdev->emulateWheel.Y.up_button;
+    valid_vals[1] = pEvdev->emulateWheel.Y.down_button;
 
-    if (!dev->button) /* don't init prop for keyboards */
-        return 0;
-
-    vals[0] = pEvdev->emulateWheel.Y.up_button;
-    vals[1] = pEvdev->emulateWheel.Y.down_button;
-
-    prop_wheel_ymap = MakeAtom(name, strlen(name), TRUE);
+    prop_wheel_ymap = MakeAtom((char*)propname_wheel_ymap, strlen(propname_wheel_ymap), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_ymap, XA_INTEGER, 8,
-                                PropModeReplace, 2, vals,
+                                PropModeReplace, 2, valid_vals,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_wheel_ymap, FALSE, FALSE,
                                    FALSE, 0, NULL);
 
-    if (rc != Success)
-        return 0;
-    return prop_wheel_ymap;
-}
 
-Atom
-EvdevWheelEmuInitPropertyInertia(DeviceIntPtr dev, char* name)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-
-    if (!dev->button) /* don't init prop for keyboards */
-        return 0;
-
-    prop_wheel_inertia = MakeAtom(name, strlen(name), TRUE);
+    prop_wheel_inertia = MakeAtom((char*)propname_wheel_inertia, strlen(propname_wheel_inertia), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER, 16,
                                 PropModeReplace, 1,
                                 &pEvdev->emulateWheel.inertia,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_wheel_inertia, FALSE, FALSE,
                                    FALSE, 0, NULL);
 
     if (rc != Success)
-        return 0;
-    return prop_wheel_inertia;
-}
+        return;
 
-Atom
-EvdevWheelEmuInitPropertyButton(DeviceIntPtr dev, char* name)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-
-    if (!dev->button) /* don't init prop for keyboards */
-        return 0;
-
-    prop_wheel_button = MakeAtom(name, strlen(name), TRUE);
+    prop_wheel_button = MakeAtom((char*)propname_wheel_button, strlen(propname_wheel_button), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_button, XA_INTEGER, 8,
                                 PropModeReplace, 1,
                                 &pEvdev->emulateWheel.button,
                                 FALSE, FALSE, FALSE);
     if (rc != Success)
-        return 0;
+        return;
 
     rc = XIConfigureDeviceProperty(dev, prop_wheel_button, FALSE, FALSE,
                                    FALSE, 0, NULL);
 
     if (rc != Success)
-        return 0;
-    return prop_wheel_button;
+        return;
 }
 
 

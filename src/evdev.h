@@ -101,16 +101,10 @@ void EvdevMBEmuEnable(InputInfoPtr, BOOL);
 unsigned int EvdevUtilButtonEventToButtonNumber(int code);
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-Atom EvdevMBEmuInitProperty(DeviceIntPtr, char*);
-Atom EvdevMBEmuInitPropertyTimeout(DeviceIntPtr, char*);
+void EvdevMBEmuInitProperty(DeviceIntPtr);
 BOOL EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 
-Atom EvdevWheelEmuInitProperty(DeviceIntPtr, char*);
-Atom EvdevWheelEmuInitPropertyXMap(DeviceIntPtr, char*);
-Atom EvdevWheelEmuInitPropertyYMap(DeviceIntPtr, char*);
-Atom EvdevWheelEmuInitPropertyInertia(DeviceIntPtr, char*);
-Atom EvdevWheelEmuInitPropertyButton(DeviceIntPtr, char*);
-
+void EvdevWheelEmuInitProperty(DeviceIntPtr);
 BOOL EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 #endif
 
