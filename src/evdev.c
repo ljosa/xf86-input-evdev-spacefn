@@ -287,10 +287,10 @@ EvdevReadInput(InputInfoPtr pInfo)
             default:
 		button = EvdevUtilButtonEventToButtonNumber(ev.code);
 
-		if (EvdevMBEmuFilterEvent(pInfo, button, value))
+		if (EvdevWheelEmuFilterButton(pInfo, button, value))
 		   break;
 
-		if (EvdevWheelEmuFilterButton(pInfo, button, value))
+		if (EvdevMBEmuFilterEvent(pInfo, button, value))
 		   break;
 
 		if (button)
