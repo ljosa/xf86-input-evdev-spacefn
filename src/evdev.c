@@ -942,24 +942,23 @@ EvdevProc(DeviceIntPtr device, int what)
 	return EvdevInit(device);
 
     case DEVICE_ON:
-        if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
-        {
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)1))
             xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
                     strerror(errno));
-            if (errno == ENODEV)
-                return !Success;
-        }
-        xf86AddEnabledDevice(pInfo);
-        if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+        if (errno != ENODEV)
         {
-            EvdevMBEmuPreInit(pInfo);
-            EvdevWheelEmuPreInit(pInfo);
+            xf86AddEnabledDevice(pInfo);
+            if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+            {
+                EvdevMBEmuPreInit(pInfo);
+                EvdevWheelEmuPreInit(pInfo);
+            }
+            device->public.on = TRUE;
         }
-        device->public.on = TRUE;
 	break;
 
     case DEVICE_OFF:
-        if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+        if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
             xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
                     strerror(errno));
         xf86RemoveEnabledDevice(pInfo);
@@ -983,19 +982,17 @@ EvdevProbe(InputInfoPtr pInfo)
     long rel_bitmask[NBITS(REL_MAX)];
     long abs_bitmask[NBITS(ABS_MAX)];
     int i, has_axes, has_keys, num_buttons;
-    int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
 
-    if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
+    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
         if (errno == EINVAL) {
             /* keyboards are unsafe in 2.4 */
-            kernel24 = 1;
-            pEvdev->grabDevice = 0;
+            pEvdev->kernel24 = 1;
         } else {
             xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
             return 1;
         }
-    } else if (pEvdev->grabDevice) {
+    } else {
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
@@ -1071,7 +1068,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_keys) {
-        if (kernel24) {
+        if (pEvdev->kernel24) {
             xf86Msg(X_INFO, "%s: Kernel < 2.6 is too old, ignoring keyboard\n",
                     pInfo->name);
         } else {
@@ -1154,10 +1151,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
-
-    /* Grabbing the event device stops in-kernel event forwarding. In other
-       words, it disables rfkill and the "Macintosh mouse button emulation".  */
-    pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
 
     EvdevInitButtonMapping(pInfo);
 
