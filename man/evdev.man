@@ -12,6 +12,7 @@ evdev \- Generic Linux input driver
 .BI "  Option \*qPath\*q     \*q" path \*q
 .BI "  Option \*qEmulate3Buttons\*q     \*q" True \*q
 .BI "  Option \*qEmulate3Timeout\*q     \*q" 50 \*q
+.BI "  Option \*qGrabDevice\*q     \*q" False \*q
 \ \ ...
 .B EndSection
 .fi
@@ -120,6 +121,13 @@ emulation mode.  Button number
 is mapped to the negative Y axis motion and button number
 .I N2
 is mapped to the positive Y axis motion.  Default: "4 5"
+.TP 7
+.BI "Option \*qGrabDevice\*q \*q" boolean \*q
+Force a grab on the event device. Doing so will ensure that no other driver
+can initialise the same device and it will also stop the device from sending
+events to /dev/kbd or /dev/input/mice. Events from this device will not be
+sent to virtual devices (e.g. rfkill or the Macintosh mouse button emulation).
+Default disabled.
 .SH AUTHORS
 Kristian Høgsberg.
 .SH "SEE ALSO"
