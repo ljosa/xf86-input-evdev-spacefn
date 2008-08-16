@@ -89,7 +89,7 @@
 #define COMPOSEFLAG	16
 
 static const char *evdevDefaults[] = {
-    "XkbRules",     "base",
+    "XkbRules",     "evdev",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
     NULL
@@ -686,12 +686,12 @@ EvdevAddKeyClass(DeviceIntPtr device)
 #ifdef XKB
     else
     {
+	/* sorry, no rules change allowed for you */
+	xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
         SetXkbOption(pInfo, "xkb_rules", &pEvdev->xkb_rules);
-	if (!pEvdev->xkb_rules)
-	    SetXkbOption(pInfo, "XkbRules", &pEvdev->xkb_rules);
-	/* sorry, no model change allowed for you */
-	xf86ReplaceStrOption(pInfo->options, "xkb_model", "evdev");
         SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
+	if (!pEvdev->xkb_model)
+	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_rules);
         SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
 	if (!pEvdev->xkb_layout)
 	    SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
