@@ -78,6 +78,18 @@ For example, a left-handed mouse with deactivated scroll-wheel would use a
 mapping of "3 2 1 0 0". Invalid mappings are ignored and the default mapping
 is used. Buttons not specified in the user's mapping use the default mapping.
 .TP 7
+.BI "Option \*qDragLockButtons\*q \*q" "L1 B2 L3 B4" \*q
+Sets \*qdrag lock buttons\*q that simulate holding a button down, so
+that low dexterity people do not have to hold a button down at the
+same time they move a mouse cursor. Button numbers occur in pairs,
+with the lock button number occurring first, followed by the button
+number that is the target of the lock button.
+.TP 7
+.BI "Option \*qDragLockButtons\*q \*q" "M1" \*q
+Sets a \*qmaster drag lock button\*q that acts as a \*qMeta Key\*q
+indicating that the next button pressed is to be
+\*qdrag locked\*q.
+.TP 7
 .BI "Option \*qEmulateWheel\*q \*q" boolean \*q
 Enable/disable "wheel" emulation.  Wheel emulation means emulating button
 press/release events when the mouse is moved while a specific real button

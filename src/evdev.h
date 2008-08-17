@@ -78,6 +78,12 @@ typedef struct {
         Time                timeout;
     } emulateMB;
     struct {
+	int                 meta;           /* meta key to lock any button */
+	BOOL                meta_state;     /* meta_button state */
+	unsigned int        lock_pair[EVDEV_MAXBUTTONS];  /* specify a meta/lock pair */
+	BOOL                lock_state[EVDEV_MAXBUTTONS]; /* state of any locked buttons */
+    } dragLock;
+    struct {
         BOOL                enabled;
         int                 button;
         int                 button_state;
@@ -113,5 +119,7 @@ void EvdevWheelEmuPreInit(InputInfoPtr pInfo);
 BOOL EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value);
 BOOL EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv);
 
-
+/* Draglock code */
+void EvdevDragLockInit(InputInfoPtr pInfo);
+BOOL EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value);
 #endif

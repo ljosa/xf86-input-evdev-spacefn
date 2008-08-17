@@ -287,6 +287,10 @@ EvdevReadInput(InputInfoPtr pInfo)
             default:
 		button = EvdevUtilButtonEventToButtonNumber(ev.code);
 
+		/* Handle drag lock */
+		if (EvdevDragLockFilterEvent(pInfo, button, value))
+		    break;
+
 		if (EvdevWheelEmuFilterButton(pInfo, button, value))
 		   break;
 
@@ -952,6 +956,7 @@ EvdevProc(DeviceIntPtr device, int what)
             {
                 EvdevMBEmuPreInit(pInfo);
                 EvdevWheelEmuPreInit(pInfo);
+                EvdevDragLockInit(pInfo);
             }
             device->public.on = TRUE;
         }
