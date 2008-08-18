@@ -112,6 +112,9 @@ BOOL EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 
 void EvdevWheelEmuInitProperty(DeviceIntPtr);
 BOOL EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
+
+void EvdevDragLockInitProperty(DeviceIntPtr);
+BOOL EvdevDragLockSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 #endif
 
 /* Mouse Wheel emulation */

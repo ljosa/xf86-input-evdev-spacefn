@@ -7,6 +7,7 @@
  * (Ported from xf86-input-mouse, above copyrights taken from there)
  * Copyright © 2008 University of South Australia
  * Copyright 2008 by Chris Salch
+ * Copyright 2008 Red Hat, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without
@@ -37,8 +38,13 @@
 
 #include <xf86.h>
 #include <xf86Xinput.h>
+#include <X11/Xatom.h>
 
 #include "evdev.h"
+
+static const char *propname_dlock = "Drag Lock Buttons";
+
+static Atom prop_dlock     = 0; /* Drag lock buttons. */
 
 void EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button);
 
@@ -201,3 +207,100 @@ EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value)
     return FALSE;
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+/**
+ * Initialise property for drag lock buttons setting.
+ */
+void
+EvdevDragLockInitProperty(DeviceIntPtr dev)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return;
+
+    prop_dlock = MakeAtom((char*)propname_dlock, strlen(propname_dlock), TRUE);
+    if (pEvdev->dragLock.meta)
+    {
+        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8,
+                               PropModeReplace, 1, &pEvdev->dragLock.meta,
+                               FALSE, FALSE, FALSE);
+    } else {
+        int highest = 0;
+        int i;
+        CARD8 pair[EVDEV_MAXBUTTONS] = {0};
+
+        for (i = 0; i < EVDEV_MAXBUTTONS; i++)
+        {
+            if (pEvdev->dragLock.lock_pair[i])
+                highest = i;
+            pair[i] = pEvdev->dragLock.lock_pair[i];
+        }
+
+        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8, PropModeReplace,
+                               highest + 1, pair, FALSE, FALSE, FALSE);
+    }
+
+    return;
+}
+
+/**
+ * Set the drag lock property.
+ * If only one value is supplied, then this is used as the meta button.
+ * If more than one value is supplied, then each value is the drag lock button
+ * for the pair. 0 disables a pair.
+ * i.e. to set bt 3 to draglock button 1, supply 0,0,1
+ */
+BOOL
+EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (atom == prop_dlock)
+    {
+        int i;
+        if (val->format != 8 || val->type != XA_INTEGER)
+            return FALSE;
+
+        /* Don't allow changes while a lock is active */
+        /* FIXME: Need more meaningful method of returning Busy. */
+        if (pEvdev->dragLock.meta)
+        {
+            if (pEvdev->dragLock.meta_state)
+                return FALSE;
+        } else
+        {
+            for (i = 0; i < EVDEV_MAXBUTTONS; i++)
+                if (pEvdev->dragLock.lock_state[i])
+                    return FALSE;
+        }
+
+        if (val->size == 1)
+        {
+            int meta = *((CARD8*)val->data);
+            if (meta > EVDEV_MAXBUTTONS)
+                return FALSE;
+
+            pEvdev->dragLock.meta = meta;
+            memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
+        } else
+        {
+            CARD8* vals = (CARD8*)val->data;
+
+            for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
+                if (vals[i] > EVDEV_MAXBUTTONS)
+                    return FALSE;
+
+            pEvdev->dragLock.meta = 0;
+            memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
+
+            for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
+                pEvdev->dragLock.lock_pair[i] = vals[i];
+        }
+    }
+
+    return TRUE;
+}
+#endif

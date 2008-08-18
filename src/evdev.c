@@ -23,6 +23,7 @@
  * Authors:
  *	Kristian Høgsberg (krh@redhat.com)
  *	Adam Jackson (ajax@redhat.com)
+ *	Peter Hutterer (peter.hutterer@redhat.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -105,6 +106,7 @@ static PropHandler evdevPropHandlers[] =
 {
     {EvdevMBEmuInitProperty, EvdevMBEmuSetProperty},
     {EvdevWheelEmuInitProperty, EvdevWheelEmuSetProperty},
+    {EvdevDragLockInitProperty, EvdevDragLockSetProperty},
     {NULL, NULL}
 };
 
