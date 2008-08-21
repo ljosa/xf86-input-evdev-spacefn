@@ -99,6 +99,7 @@ behaviour with trackballs.  It can also be useful for mice with 4 or
 more buttons but no wheel.  See the description of the
 .BR EmulateWheelButton ,
 .BR EmulateWheelInertia ,
+.BR EmulateWheelTimeout ,
 .BR XAxisMapping ,
 and
 .B YAxisMapping
@@ -116,6 +117,14 @@ settings.  Default: 4.
 .BI "Option \*qEmulateWheelInertia\*q \*q" integer \*q
 Specifies how far (in pixels) the pointer must move to generate button
 press/release events in wheel emulation mode.  Default: 10.
+.TP 7
+.BI "Option \*qEmulateWheelTimeout\*q \*q" integer \*q
+Specifies the time in milliseconds the
+.BR EmulateWheelButton
+must be pressed before wheel emulation is started. If the
+.BR EmulateWheelButton
+is released before this timeout, the original button press/release event
+is sent.  Default: 200.
 .TP 7
 .BI "Option \*qXAxisMapping\*q \*q" "N1 N2" \*q
 Specifies which buttons are mapped to motion in the X direction in wheel

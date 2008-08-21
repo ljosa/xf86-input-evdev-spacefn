@@ -64,6 +64,7 @@ BOOL
 EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
+    int ms;
 
     /* Has wheel emulation been configured to be enabled? */
     if (!pEvdev->emulateWheel.enabled)
@@ -72,6 +73,22 @@ EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value)
     /* Check for EmulateWheelButton */
     if (pEvdev->emulateWheel.button == button) {
 	pEvdev->emulateWheel.button_state = value;
+
+        if (value)
+            /* Start the timer when the button is pressed */
+            pEvdev->emulateWheel.expires = pEvdev->emulateWheel.timeout +
+                                           GetTimeInMillis();
+        else {
+            ms = pEvdev->emulateWheel.expires - GetTimeInMillis();
+            if (ms > 0) {
+                /*
+                 * If the button is released early enough emit the button
+                 * press/release events
+                 */
+                xf86PostButtonEvent(pInfo->dev, 0, button, 1, 0, 0);
+                xf86PostButtonEvent(pInfo->dev, 0, button, 0, 0, 0);
+            }
+        }
 
 	return TRUE;
     }
@@ -87,6 +104,7 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     WheelAxisPtr pAxis = NULL;
     int value = pEv->value;
+    int ms;
 
     /* Has wheel emulation been configured to be enabled? */
     if (!pEvdev->emulateWheel.enabled)
@@ -94,6 +112,11 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 
     /* Handle our motion events if the emuWheel button is pressed*/
     if (pEvdev->emulateWheel.button_state) {
+        /* Just return if the timeout hasn't expired yet */
+        ms = pEvdev->emulateWheel.expires - GetTimeInMillis();
+        if (ms > 0)
+            return TRUE;
+
 	/* We don't want to intercept real mouse wheel events */
 	switch(pEv->code) {
 	case REL_X:
@@ -212,6 +235,7 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     if (xf86SetBoolOption(pInfo->options, "EmulateWheel", FALSE)) {
 	int wheelButton;
 	int inertia;
+	int timeout;
 
 	pEvdev->emulateWheel.enabled = TRUE;
 	wheelButton = xf86SetIntOption(pInfo->options,
@@ -241,6 +265,19 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 
 	pEvdev->emulateWheel.inertia = inertia;
 
+        timeout = xf86SetIntOption(pInfo->options, "EmulateWheelTimeout", 200);
+
+        if (timeout < 0) {
+            xf86Msg(X_WARNING, "%s: Invalid EmulateWheelTimeout value: %d\n",
+                    pInfo->name, timeout);
+            xf86Msg(X_WARNING, "%s: Using built-in timeout value.\n",
+                    pInfo->name);
+
+            timeout = 200;
+        }
+
+        pEvdev->emulateWheel.timeout = timeout;
+
 	/* Configure the Y axis or default it */
 	if (!EvdevWheelEmuHandleButtonMap(pInfo, &(pEvdev->emulateWheel.Y),
 					  "YAxisMapping")) {
@@ -269,8 +306,10 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 	pEvdev->emulateWheel.X.traveled_distance = 0;
 	pEvdev->emulateWheel.Y.traveled_distance = 0;
 
-	xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, EmulateWheelInertia: %d\n",
-		pInfo->name, pEvdev->emulateWheel.button, inertia);
+	xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, "
+		"EmulateWheelInertia: %d, "
+		"EmulateWheelTimeout: %d\n",
+		pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
         XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,

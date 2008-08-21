@@ -90,6 +90,8 @@ typedef struct {
         int                 inertia;
         WheelAxis           X;
         WheelAxis           Y;
+        Time                expires;     /* time of expiry */
+        Time                timeout;
     } emulateWheel;
 
     unsigned char btnmap[32];           /* config-file specified button mapping */
