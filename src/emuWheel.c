@@ -231,119 +231,118 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     int val[2];
+    int wheelButton;
+    int inertia;
+    int timeout;
 
-    pEvdev->emulateWheel.enabled = FALSE;
+
 
     if (xf86SetBoolOption(pInfo->options, "EmulateWheel", FALSE)) {
-	int wheelButton;
-	int inertia;
-	int timeout;
-
 	pEvdev->emulateWheel.enabled = TRUE;
-	wheelButton = xf86SetIntOption(pInfo->options,
-				       "EmulateWheelButton", 4);
+    } else
+        pEvdev->emulateWheel.enabled = FALSE;
 
-	if ((wheelButton < 0) || (wheelButton > EVDEV_MAXBUTTONS)) {
-	    xf86Msg(X_WARNING, "%s: Invalid EmulateWheelButton value: %d\n",
-		    pInfo->name, wheelButton);
-            xf86Msg(X_WARNING, "%s: Wheel emulation disabled.\n", pInfo->name);
+    wheelButton = xf86SetIntOption(pInfo->options, "EmulateWheelButton", 4);
 
-	    pEvdev->emulateWheel.enabled = FALSE;
-            return;
-	}
+    if ((wheelButton < 0) || (wheelButton > EVDEV_MAXBUTTONS)) {
+        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelButton value: %d\n",
+                pInfo->name, wheelButton);
+        xf86Msg(X_WARNING, "%s: Wheel emulation disabled.\n", pInfo->name);
 
-	pEvdev->emulateWheel.button = wheelButton;
+        pEvdev->emulateWheel.enabled = FALSE;
+    }
 
-	inertia = xf86SetIntOption(pInfo->options, "EmulateWheelInertia", 10);
+    pEvdev->emulateWheel.button = wheelButton;
 
-	if (inertia <= 0) {
-	    xf86Msg(X_WARNING, "%s: Invalid EmulateWheelInertia value: %d\n",
-		    pInfo->name, inertia);
-            xf86Msg(X_WARNING, "%s: Using built-in inertia value.\n",
-                    pInfo->name);
+    inertia = xf86SetIntOption(pInfo->options, "EmulateWheelInertia", 10);
 
-	    inertia = 10;
-	}
+    if (inertia <= 0) {
+        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelInertia value: %d\n",
+                pInfo->name, inertia);
+        xf86Msg(X_WARNING, "%s: Using built-in inertia value.\n",
+                pInfo->name);
 
-	pEvdev->emulateWheel.inertia = inertia;
+        inertia = 10;
+    }
 
-        timeout = xf86SetIntOption(pInfo->options, "EmulateWheelTimeout", 200);
+    pEvdev->emulateWheel.inertia = inertia;
 
-        if (timeout < 0) {
-            xf86Msg(X_WARNING, "%s: Invalid EmulateWheelTimeout value: %d\n",
-                    pInfo->name, timeout);
-            xf86Msg(X_WARNING, "%s: Using built-in timeout value.\n",
-                    pInfo->name);
+    timeout = xf86SetIntOption(pInfo->options, "EmulateWheelTimeout", 200);
 
-            timeout = 200;
-        }
+    if (timeout < 0) {
+        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelTimeout value: %d\n",
+                pInfo->name, timeout);
+        xf86Msg(X_WARNING, "%s: Using built-in timeout value.\n",
+                pInfo->name);
 
-        pEvdev->emulateWheel.timeout = timeout;
+        timeout = 200;
+    }
 
-	/* Configure the Y axis or default it */
-	if (!EvdevWheelEmuHandleButtonMap(pInfo, &(pEvdev->emulateWheel.Y),
-					  "YAxisMapping")) {
-	    /* Default the Y axis to sane values */
-	    pEvdev->emulateWheel.Y.up_button = 4;
-	    pEvdev->emulateWheel.Y.down_button = 5;
+    pEvdev->emulateWheel.timeout = timeout;
 
-	    /* Simpler to check just the largest value in this case */
-            /* XXX: we should post this to the server */
-	    if (5 > pEvdev->buttons)
-		pEvdev->buttons = 5;
+    /* Configure the Y axis or default it */
+    if (!EvdevWheelEmuHandleButtonMap(pInfo, &(pEvdev->emulateWheel.Y),
+                "YAxisMapping")) {
+        /* Default the Y axis to sane values */
+        pEvdev->emulateWheel.Y.up_button = 4;
+        pEvdev->emulateWheel.Y.down_button = 5;
 
-	    /* Display default Configuration */
-	    xf86Msg(X_CONFIG, "%s: YAxisMapping: buttons %d and %d\n",
-		    pInfo->name, pEvdev->emulateWheel.Y.up_button,
-		    pEvdev->emulateWheel.Y.down_button);
-	}
+        /* Simpler to check just the largest value in this case */
+        /* XXX: we should post this to the server */
+        if (5 > pEvdev->buttons)
+            pEvdev->buttons = 5;
+
+        /* Display default Configuration */
+        xf86Msg(X_CONFIG, "%s: YAxisMapping: buttons %d and %d\n",
+                pInfo->name, pEvdev->emulateWheel.Y.up_button,
+                pEvdev->emulateWheel.Y.down_button);
+    }
 
 
-	/* This axis should default to an unconfigured state as most people
-	are not going to expect a Horizontal wheel. */
-	EvdevWheelEmuHandleButtonMap(pInfo, &(pEvdev->emulateWheel.X),
-				     "XAxisMapping");
+    /* This axis should default to an unconfigured state as most people
+       are not going to expect a Horizontal wheel. */
+    EvdevWheelEmuHandleButtonMap(pInfo, &(pEvdev->emulateWheel.X),
+            "XAxisMapping");
 
-	/* Used by the inertia code */
-	pEvdev->emulateWheel.X.traveled_distance = 0;
-	pEvdev->emulateWheel.Y.traveled_distance = 0;
+    /* Used by the inertia code */
+    pEvdev->emulateWheel.X.traveled_distance = 0;
+    pEvdev->emulateWheel.Y.traveled_distance = 0;
 
-	xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, "
-		"EmulateWheelInertia: %d, "
-		"EmulateWheelTimeout: %d\n",
-		pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
+    xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, "
+            "EmulateWheelInertia: %d, "
+            "EmulateWheelTimeout: %d\n",
+            pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,
-                               PropModeReplace, 1, &pEvdev->emulateWheel.enabled,
-                               TRUE, FALSE, FALSE);
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_button, XA_INTEGER, 8,
-                               PropModeReplace, 1,
-                               &pEvdev->emulateWheel.button,
-                               TRUE, FALSE, FALSE);
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_inertia, XA_INTEGER, 8,
-                               PropModeReplace, 1,
-                               &pEvdev->emulateWheel.inertia,
-                               TRUE, FALSE, FALSE);
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_timeout, XA_INTEGER, 16,
-                               PropModeReplace, 1,
-                               &pEvdev->emulateWheel.timeout,
-                               TRUE, FALSE, FALSE);
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,
+            PropModeReplace, 1, &pEvdev->emulateWheel.enabled,
+            TRUE, FALSE, FALSE);
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_button, XA_INTEGER, 8,
+            PropModeReplace, 1,
+            &pEvdev->emulateWheel.button,
+            TRUE, FALSE, FALSE);
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_inertia, XA_INTEGER, 8,
+            PropModeReplace, 1,
+            &pEvdev->emulateWheel.inertia,
+            TRUE, FALSE, FALSE);
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_timeout, XA_INTEGER, 16,
+            PropModeReplace, 1,
+            &pEvdev->emulateWheel.timeout,
+            TRUE, FALSE, FALSE);
 
-        val[0] = pEvdev->emulateWheel.X.up_button;
-        val[1] = pEvdev->emulateWheel.X.down_button;
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_xmap, XA_INTEGER, 8,
-                               PropModeReplace, 2, val,
-                               TRUE, FALSE, FALSE);
+    val[0] = pEvdev->emulateWheel.X.up_button;
+    val[1] = pEvdev->emulateWheel.X.down_button;
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_xmap, XA_INTEGER, 8,
+            PropModeReplace, 2, val,
+            TRUE, FALSE, FALSE);
 
-        val[0] = pEvdev->emulateWheel.Y.up_button;
-        val[1] = pEvdev->emulateWheel.Y.down_button;
-        XIChangeDeviceProperty(pInfo->dev, prop_wheel_ymap, XA_INTEGER, 8,
-                               PropModeReplace, 2, val,
-                               TRUE, FALSE, FALSE);
+    val[0] = pEvdev->emulateWheel.Y.up_button;
+    val[1] = pEvdev->emulateWheel.Y.down_button;
+    XIChangeDeviceProperty(pInfo->dev, prop_wheel_ymap, XA_INTEGER, 8,
+            PropModeReplace, 2, val,
+            TRUE, FALSE, FALSE);
 
 #endif
-    }
 }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
