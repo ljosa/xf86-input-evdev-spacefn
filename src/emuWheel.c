@@ -43,6 +43,7 @@
 
 #define WHEEL_NOT_CONFIGURED 0
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
 static const char *propname_wheel_emu     = "Wheel Emulation";
 static const char *propname_wheel_xmap    = "Wheel Emulation X Axis";
 static const char *propname_wheel_ymap    = "Wheel Emulation Y Axis";
@@ -50,12 +51,13 @@ static const char *propname_wheel_inertia = "Wheel Emulation Inertia";
 static const char *propname_wheel_timeout = "Wheel Emulation Timeout";
 static const char *propname_wheel_button  = "Wheel Emulation Button";
 
-static Atom prop_wheel_emu;
-static Atom prop_wheel_xmap;
-static Atom prop_wheel_ymap;
-static Atom prop_wheel_inertia;
-static Atom prop_wheel_timeout;
-static Atom prop_wheel_button;
+static Atom prop_wheel_emu      = 0;
+static Atom prop_wheel_xmap     = 0;
+static Atom prop_wheel_ymap     = 0;
+static Atom prop_wheel_inertia  = 0;
+static Atom prop_wheel_timeout  = 0;
+static Atom prop_wheel_button   = 0;
+#endif
 
 /* Local Funciton Prototypes */
 static BOOL EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char *axis_name);
@@ -235,7 +237,8 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     int inertia;
     int timeout;
 
-
+    val[0] = 0;
+    val[1] = 0;
 
     if (xf86SetBoolOption(pInfo->options, "EmulateWheel", FALSE)) {
 	pEvdev->emulateWheel.enabled = TRUE;

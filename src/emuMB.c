@@ -47,12 +47,14 @@ enum {
     MBEMU_AUTO
 };
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
 static const char *propname_mbemu = "Middle Button Emulation";
 static const char *propname_mbtimeout = "Middle Button Timeout";
 
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
 
+#endif
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
  *
