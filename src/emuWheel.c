@@ -230,7 +230,7 @@ void
 EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    int val[2];
+    char val[2];
     int wheelButton;
     int inertia;
     int timeout;
