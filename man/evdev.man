@@ -141,6 +141,11 @@ emulation mode.  Button number
 is mapped to the negative Y axis motion and button number
 .I N2
 is mapped to the positive Y axis motion.  Default: "4 5"
+.TP 7
+.BI "Option \*qReopenAttempts\*q \*q" integer \*q
+Number of reopen attempts after a read error occurs on the device (e.g. after
+waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
+
 .SH AUTHORS
 Kristian Høgsberg.
 .SH "SEE ALSO"

@@ -46,6 +46,8 @@
 #define HAVE_PROPERTIES 1
 #endif
 
+#define LONG_BITS (sizeof(long) * 8)
+#define NBITS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
 
 /* axis specific data for wheel emulation */
 typedef struct {
@@ -55,6 +57,7 @@ typedef struct {
 } WheelAxis, *WheelAxisPtr;
 
 typedef struct {
+    const char *device;
     int kernel24;
     int screen;
     int min_x, min_y, max_x, max_y;
@@ -100,6 +103,19 @@ typedef struct {
     } emulateWheel;
 
     unsigned char btnmap[32];           /* config-file specified button mapping */
+
+    int reopen_attempts; /* max attempts to re-open after read failure */
+    int reopen_left;     /* number of attempts left to re-open the device */
+    OsTimerPtr reopen_timer;
+
+    /* Cached info from device. */
+    char name[1024];
+    long bitmask[NBITS(EV_MAX)];
+    long key_bitmask[NBITS(KEY_MAX)];
+    long rel_bitmask[NBITS(REL_MAX)];
+    long abs_bitmask[NBITS(ABS_MAX)];
+    long led_bitmask[NBITS(LED_MAX)];
+    struct input_absinfo absinfo[ABS_MAX];
 } EvdevRec, *EvdevPtr;
 
 /* Middle Button emulation */
