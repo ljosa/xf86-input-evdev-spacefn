@@ -42,6 +42,11 @@
 
 #define EVDEV_MAXBUTTONS 32
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#define HAVE_PROPERTIES 1
+#endif
+
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;
@@ -108,7 +113,7 @@ void EvdevMBEmuEnable(InputInfoPtr, BOOL);
 
 unsigned int EvdevUtilButtonEventToButtonNumber(int code);
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 void EvdevMBEmuInitProperty(DeviceIntPtr);
 BOOL EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
 

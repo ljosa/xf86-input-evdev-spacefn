@@ -47,7 +47,7 @@ enum {
     MBEMU_AUTO
 };
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 static const char *propname_mbemu = "Middle Button Emulation";
 static const char *propname_mbtimeout = "Middle Button Timeout";
 
@@ -324,7 +324,7 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
     XIChangeDeviceProperty(pInfo->dev, prop_mbemu, XA_INTEGER, 8,
                            PropModeReplace, 1, &pEvdev->emulateMB.enabled,
                            TRUE, FALSE, FALSE);
@@ -353,7 +353,7 @@ EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
 }
 
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 /**
  * Initialise property for MB emulation on/off.
  */

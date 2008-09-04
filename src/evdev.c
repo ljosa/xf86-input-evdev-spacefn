@@ -96,7 +96,7 @@ static const char *evdevDefaults[] = {
     NULL
 };
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 typedef struct _PropHandler {
     void (*init)(DeviceIntPtr dev);
     BOOL (*handle)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
@@ -170,7 +170,7 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
     xf86PostKeyboardEvent(pInfo->dev, code, value);
 }
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 static Bool
 EvdevSetProperty(DeviceIntPtr dev, Atom property, XIPropertyValuePtr val)
 {
@@ -878,7 +878,7 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 }
 
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 static void
 EvdevInitProperties(DeviceIntPtr device)
 {
@@ -922,7 +922,7 @@ EvdevInit(DeviceIntPtr device)
     else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
         EvdevAddAbsClass(device);
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
      * unregister anyway */

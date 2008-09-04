@@ -43,7 +43,7 @@
 
 #define WHEEL_NOT_CONFIGURED 0
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 static const char *propname_wheel_emu     = "Wheel Emulation";
 static const char *propname_wheel_xmap    = "Wheel Emulation X Axis";
 static const char *propname_wheel_ymap    = "Wheel Emulation Y Axis";
@@ -316,7 +316,7 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
             "EmulateWheelTimeout: %d\n",
             pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
     XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,
             PropModeReplace, 1, &pEvdev->emulateWheel.enabled,
             TRUE, FALSE, FALSE);
@@ -348,7 +348,7 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 #endif
 }
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 void
 EvdevWheelEmuInitProperty(DeviceIntPtr dev)
 {

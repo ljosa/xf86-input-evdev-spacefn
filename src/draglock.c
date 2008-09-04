@@ -42,7 +42,7 @@
 
 #include "evdev.h"
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 static const char *propname_dlock = "Drag Lock Buttons";
 
 static Atom prop_dlock     = 0; /* Drag lock buttons. */
@@ -209,7 +209,7 @@ EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value)
     return FALSE;
 }
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
+#ifdef HAVE_PROPERTIES
 /**
  * Initialise property for drag lock buttons setting.
  */
