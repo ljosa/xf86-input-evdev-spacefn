@@ -228,7 +228,7 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
     {
         XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8,
                                PropModeReplace, 1, &pEvdev->dragLock.meta,
-                               FALSE, FALSE, FALSE);
+                               FALSE);
     } else {
         int highest = 0;
         int i;
@@ -242,8 +242,10 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
         }
 
         XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8, PropModeReplace,
-                               highest + 1, pair, FALSE, FALSE, FALSE);
+                               highest + 1, pair, FALSE);
     }
+
+    XISetDevicePropertyDeletable(dev, prop_dlock, FALSE);
 
     return;
 }
@@ -255,7 +257,7 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
  * for the pair. 0 disables a pair.
  * i.e. to set bt 3 to draglock button 1, supply 0,0,1
  */
-BOOL
+int
 EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
@@ -264,27 +266,27 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     if (atom == prop_dlock)
     {
         int i;
+
         if (val->format != 8 || val->type != XA_INTEGER)
             return FALSE;
 
         /* Don't allow changes while a lock is active */
-        /* FIXME: Need more meaningful method of returning Busy. */
         if (pEvdev->dragLock.meta)
         {
             if (pEvdev->dragLock.meta_state)
-                return FALSE;
+                return BadAccess;
         } else
         {
             for (i = 0; i < EVDEV_MAXBUTTONS; i++)
                 if (pEvdev->dragLock.lock_state[i])
-                    return FALSE;
+                    return BadValue;
         }
 
         if (val->size == 1)
         {
             int meta = *((CARD8*)val->data);
             if (meta > EVDEV_MAXBUTTONS)
-                return FALSE;
+                return BadValue;
 
             pEvdev->dragLock.meta = meta;
             memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
@@ -294,7 +296,7 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
 
             for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
                 if (vals[i] > EVDEV_MAXBUTTONS)
-                    return FALSE;
+                    return BadValue;
 
             pEvdev->dragLock.meta = 0;
             memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
@@ -304,6 +306,6 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         }
     }
 
-    return TRUE;
+    return Success;
 }
 #endif

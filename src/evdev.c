@@ -100,7 +100,7 @@ static const char *evdevDefaults[] = {
 #ifdef HAVE_PROPERTIES
 typedef struct _PropHandler {
     void (*init)(DeviceIntPtr dev);
-    BOOL (*handle)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
+    int (*handle)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
 } PropHandler;
 
 static PropHandler evdevPropHandlers[] =
@@ -175,28 +175,27 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 }
 
 #ifdef HAVE_PROPERTIES
-static Bool
+static int
 EvdevSetProperty(DeviceIntPtr dev, Atom property, XIPropertyValuePtr val)
 {
     PropHandler *handler  = evdevPropHandlers;
+    int rc;
 
     while (handler->init || handler->handle)
     {
-        if (handler->handle && !handler->handle(dev, property, val))
-            return FALSE;
+        if (handler->handle)
+        {
+            rc = handler->handle(dev, property, val);
+            if (rc != Success)
+                return rc;
+        }
         handler++;
     }
 
     /* property not handled, report success */
-    return TRUE;
+    return Success;
 }
 
-static Bool EvdevGetProperty(DeviceIntPtr dev,
-                             Atom property)
-{
-    /* XXX */
-    return TRUE;
-}
 #endif
 
 /**
@@ -986,7 +985,7 @@ EvdevInit(DeviceIntPtr device)
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
      * unregister anyway */
-    XIRegisterPropertyHandler(device, EvdevSetProperty, EvdevGetProperty);
+    XIRegisterPropertyHandler(device, EvdevSetProperty, NULL, NULL);
     EvdevInitProperties(device);
 #endif
 
