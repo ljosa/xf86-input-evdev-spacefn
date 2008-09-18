@@ -39,6 +39,7 @@
 #include <xf86.h>
 #include <xf86Xinput.h>
 #include <X11/Xatom.h>
+#include <exevents.h>
 
 #include "evdev.h"
 
