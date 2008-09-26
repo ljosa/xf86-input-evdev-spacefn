@@ -39,6 +39,7 @@
 #include <xf86Xinput.h>
 #include <exevents.h>
 
+#include <evdev-properties.h>
 #include "evdev.h"
 
 enum {
@@ -48,12 +49,8 @@ enum {
 };
 
 #ifdef HAVE_PROPERTIES
-static const char *propname_mbemu = "Middle Button Emulation";
-static const char *propname_mbtimeout = "Middle Button Timeout";
-
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
-
 #endif
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
@@ -367,7 +364,7 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
     if (!dev->button) /* don't init prop for keyboards */
         return;
 
-    prop_mbemu = MakeAtom((char*)propname_mbemu, strlen(propname_mbemu), TRUE);
+    prop_mbemu = MakeAtom(EVDEV_PROP_MIDBUTTON, strlen(EVDEV_PROP_MIDBUTTON), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_mbemu, XA_INTEGER, 8,
                                 PropModeReplace, 1,
                                 &pEvdev->emulateMB.enabled,
@@ -376,8 +373,8 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
         return;
     XISetDevicePropertyDeletable(dev, prop_mbemu, FALSE);
 
-    prop_mbtimeout = MakeAtom((char*)propname_mbtimeout,
-                              strlen(propname_mbtimeout),
+    prop_mbtimeout = MakeAtom(EVDEV_PROP_MIDBUTTON_TIMEOUT,
+                              strlen(EVDEV_PROP_MIDBUTTON_TIMEOUT),
                               TRUE);
     rc = XIChangeDeviceProperty(dev, prop_mbtimeout, XA_INTEGER, 16, PropModeReplace, 1,
                                 &pEvdev->emulateMB.timeout, FALSE);

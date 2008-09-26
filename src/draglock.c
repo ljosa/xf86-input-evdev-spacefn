@@ -41,11 +41,10 @@
 #include <X11/Xatom.h>
 #include <exevents.h>
 
+#include <evdev-properties.h>
 #include "evdev.h"
 
 #ifdef HAVE_PROPERTIES
-static const char *propname_dlock = "Drag Lock Buttons";
-
 static Atom prop_dlock     = 0; /* Drag lock buttons. */
 
 void EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button);
@@ -223,7 +222,7 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
     if (!dev->button) /* don't init prop for keyboards */
         return;
 
-    prop_dlock = MakeAtom((char*)propname_dlock, strlen(propname_dlock), TRUE);
+    prop_dlock = MakeAtom(EVDEV_PROP_DRAGLOCK, strlen(EVDEV_PROP_DRAGLOCK), TRUE);
     if (pEvdev->dragLock.meta)
     {
         XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8,
