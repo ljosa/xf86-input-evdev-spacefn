@@ -58,6 +58,7 @@ XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
 # Checks for pkg-config packages
 PKG_CHECK_MODULES(XORG, xorg-server xproto $REQUIRED_MODULES)
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
+AC_SUBST(sdkdir)
 
 CFLAGS="$CFLAGS $XORG_CFLAGS "' -I$(top_srcdir)/src'
 AC_SUBST([CFLAGS])
@@ -70,4 +71,8 @@ AC_HEADER_STDC
 XORG_MANPAGE_SECTIONS
 XORG_RELEASE_VERSION
 
-AC_OUTPUT([Makefile src/Makefile man/Makefile])
+AC_OUTPUT([Makefile
+           src/Makefile
+           man/Makefile
+           include/Makefile
+           xorg-evdev.pc])

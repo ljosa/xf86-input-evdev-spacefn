@@ -19,7 +19,10 @@
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = src man
+SUBDIRS = src man include
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = xorg-evdev.pc
 
 EXTRA_DIST = ChangeLog autogen.sh
 
