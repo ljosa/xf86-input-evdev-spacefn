@@ -336,7 +336,7 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
     int          rc     = TRUE;
-    INT32 valid_vals[4]  = { TRUE, FALSE};
+    INT32        vals[4]  = { TRUE, FALSE};
 
     if (!dev->button) /* don't init prop for keyboards */
         return;
@@ -350,14 +350,14 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
 
     XISetDevicePropertyDeletable(dev, prop_wheel_emu, FALSE);
 
-    valid_vals[0] = pEvdev->emulateWheel.X.up_button;
-    valid_vals[1] = pEvdev->emulateWheel.X.down_button;
-    valid_vals[2] = pEvdev->emulateWheel.Y.up_button;
-    valid_vals[3] = pEvdev->emulateWheel.Y.down_button;
+    vals[0] = pEvdev->emulateWheel.X.up_button;
+    vals[1] = pEvdev->emulateWheel.X.down_button;
+    vals[2] = pEvdev->emulateWheel.Y.up_button;
+    vals[3] = pEvdev->emulateWheel.Y.down_button;
 
     prop_wheel_axismap = MakeAtom(EVDEV_PROP_WHEEL_AXES, strlen(EVDEV_PROP_WHEEL_AXES), TRUE);
     rc = XIChangeDeviceProperty(dev, prop_wheel_axismap, XA_INTEGER, 8,
-                                PropModeReplace, 4, valid_vals, FALSE);
+                                PropModeReplace, 4, vals, FALSE);
 
     if (rc != Success)
         return;
