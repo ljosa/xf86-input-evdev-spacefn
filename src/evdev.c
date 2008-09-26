@@ -97,22 +97,6 @@ static const char *evdevDefaults[] = {
     NULL
 };
 
-#ifdef HAVE_PROPERTIES
-typedef struct _PropHandler {
-    void (*init)(DeviceIntPtr dev);
-    int (*handle)(DeviceIntPtr dev, Atom prop, XIPropertyValuePtr val);
-} PropHandler;
-
-static PropHandler evdevPropHandlers[] =
-{
-    {EvdevMBEmuInitProperty, EvdevMBEmuSetProperty},
-    {EvdevWheelEmuInitProperty, EvdevWheelEmuSetProperty},
-    {EvdevDragLockInitProperty, EvdevDragLockSetProperty},
-    {NULL, NULL}
-};
-
-#endif
-
 static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, Bool compare);
 
@@ -173,30 +157,6 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 
     xf86PostKeyboardEvent(pInfo->dev, code, value);
 }
-
-#ifdef HAVE_PROPERTIES
-static int
-EvdevSetProperty(DeviceIntPtr dev, Atom property, XIPropertyValuePtr val)
-{
-    PropHandler *handler  = evdevPropHandlers;
-    int rc;
-
-    while (handler->init || handler->handle)
-    {
-        if (handler->handle)
-        {
-            rc = handler->handle(dev, property, val);
-            if (rc != Success)
-                return rc;
-        }
-        handler++;
-    }
-
-    /* property not handled, report success */
-    return Success;
-}
-
-#endif
 
 /**
  * Coming back from resume may leave us with a file descriptor that can be
@@ -936,22 +896,6 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 
 }
 
-
-#ifdef HAVE_PROPERTIES
-static void
-EvdevInitProperties(DeviceIntPtr device)
-{
-    PropHandler *handler = evdevPropHandlers;
-    while(handler->init || handler->handle)
-    {
-        if (handler->init)
-            (*handler->init)(device);
-        handler++;
-    }
-
-}
-#endif
-
 static int
 EvdevInit(DeviceIntPtr device)
 {
@@ -985,8 +929,12 @@ EvdevInit(DeviceIntPtr device)
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
      * unregister anyway */
-    XIRegisterPropertyHandler(device, EvdevSetProperty, NULL, NULL);
-    EvdevInitProperties(device);
+    XIRegisterPropertyHandler(device, EvdevMBEmuSetProperty, NULL, NULL);
+    XIRegisterPropertyHandler(device, EvdevWheelEmuSetProperty, NULL, NULL);
+    XIRegisterPropertyHandler(device, EvdevDragLockSetProperty, NULL, NULL);
+    EvdevMBEmuInitProperty(device);
+    EvdevWheelEmuInitProperty(device);
+    EvdevDragLockInitProperty(device);
 #endif
 
     return Success;
