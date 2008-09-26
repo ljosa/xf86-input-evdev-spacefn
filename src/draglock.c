@@ -46,9 +46,9 @@
 
 #ifdef HAVE_PROPERTIES
 static Atom prop_dlock     = 0; /* Drag lock buttons. */
+#endif
 
 void EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button);
-#endif
 
 
 /* Setup and configuration code */
