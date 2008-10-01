@@ -52,6 +52,11 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#ifdef HAVE_PROPERTIES
+#include <X11/Xatom.h>
+#include <evdev-properties.h>
+#endif
+
 /* 2.4 compatibility */
 #ifndef EVIOCGRAB
 #define EVIOCGRAB _IOW('E', 0x90, int)
@@ -99,6 +104,15 @@ static const char *evdevDefaults[] = {
 
 static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, Bool compare);
+
+#ifdef HAVE_PROPERTIES
+static void EvdevInitProperty(DeviceIntPtr dev);
+static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
+                            XIPropertyValuePtr val);
+static Atom prop_invert = 0;
+
+#endif
+
 
 static void
 SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
@@ -944,6 +958,8 @@ EvdevInit(DeviceIntPtr device)
     XIRegisterPropertyHandler(device, EvdevMBEmuSetProperty, NULL, NULL);
     XIRegisterPropertyHandler(device, EvdevWheelEmuSetProperty, NULL, NULL);
     XIRegisterPropertyHandler(device, EvdevDragLockSetProperty, NULL, NULL);
+    XIRegisterPropertyHandler(device, EvdevSetProperty, NULL, NULL);
+    EvdevInitProperty(device);
     EvdevMBEmuInitProperty(device);
     EvdevWheelEmuInitProperty(device);
     EvdevDragLockInitProperty(device);
@@ -1451,3 +1467,46 @@ EvdevUtilButtonEventToButtonNumber(int code)
 
     return button;
 }
+
+#ifdef HAVE_PROPERTIES
+static void
+EvdevInitProperty(DeviceIntPtr dev)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc;
+    BOOL         invert[2];
+
+    invert[0] = pEvdev->invert_x;
+    invert[1] = pEvdev->invert_y;
+
+    prop_invert = MakeAtom(EVDEV_PROP_INVERT_AXES, strlen(EVDEV_PROP_INVERT_AXES), TRUE);
+
+    rc = XIChangeDeviceProperty(dev, prop_invert, XA_INTEGER, 8,
+                                PropModeReplace, 2,
+                                invert, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+}
+
+static int
+EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (atom == prop_invert)
+    {
+        BOOL* data;
+        if (val->format != 8 || val->size != 2 || val->type != XA_INTEGER)
+            return BadMatch;
+        data = (BOOL*)val->data;
+        pEvdev->invert_x = data[0];
+        pEvdev->invert_y = data[1];
+    }
+
+    return Success;
+}
+#endif

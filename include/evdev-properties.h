@@ -50,4 +50,8 @@
 /* CARD8, either 1 value or pairs, value range 0-32, 0 to disable a value*/
 #define EVDEV_PROP_DRAGLOCK "Evdev Drag Lock Buttons"
 
+/* Axis inversion */
+/* BOOL, 2 values [x, y], 1 inverts axis */
+#define EVDEV_PROP_INVERT_AXES "Evdev Axis Inversion"
+
 #endif
