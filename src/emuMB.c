@@ -359,7 +359,7 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
+    int          rc;
 
     if (!dev->button) /* don't init prop for keyboards */
         return;
