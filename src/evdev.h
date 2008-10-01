@@ -65,6 +65,8 @@ typedef struct {
     int flags;
     int tool;
     int buttons;            /* number of buttons */
+    BOOL invert_x;
+    BOOL invert_y;
 
     /* XKB stuff has to be per-device rather than per-driver */
     int noXkb;

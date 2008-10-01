@@ -348,8 +348,13 @@ EvdevReadInput(InputInfoPtr pInfo)
 	}
     }
 
-    if (dx != 0 || dy != 0)
+    if (dx != 0 || dy != 0) {
+        if (pEvdev->invert_x)
+            dx *= -1;
+        if (pEvdev->invert_y)
+            dy *= -1;
         xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
+    }
 
     /*
      * Some devices only generate valid abs coords when BTN_DIGI is
@@ -361,8 +366,15 @@ EvdevReadInput(InputInfoPtr pInfo)
      * just works.
      */
     if (abs && pEvdev->tool) {
-	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2,
-			    pEvdev->abs_x, pEvdev->abs_y);
+        int abs_x, abs_y;
+        abs_x = pEvdev->abs_x;
+        abs_y = pEvdev->abs_y;
+        if (pEvdev->invert_x)
+            abs_x = pEvdev->max_x - abs_x;
+        if (pEvdev->invert_y)
+            abs_y = pEvdev->max_y - abs_y;
+
+	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2, abs_x, abs_y);
     }
 }
 
@@ -1336,6 +1348,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     pEvdev->noXkb = noXkbExtension;
     /* parse the XKB options during kbd setup */
+
+    pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
+    pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
 
     if (EvdevProbe(pInfo)) {
 	close(pInfo->fd);
