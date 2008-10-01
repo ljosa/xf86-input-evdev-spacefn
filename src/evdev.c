@@ -75,6 +75,7 @@
 #define EVDEV_ABSOLUTE_EVENTS	(1 << 3)
 #define EVDEV_TOUCHPAD		(1 << 4)
 #define EVDEV_INITIALIZED	(1 << 5) /* WheelInit etc. called already? */
+#define EVDEV_TOUCHSCREEN	(1 << 6)
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
@@ -317,7 +318,12 @@ EvdevReadInput(InputInfoPtr pInfo)
 	    case BTN_TOOL_MOUSE:
 	    case BTN_TOOL_LENS:
 		pEvdev->tool = value ? ev.code : 0;
-		break;
+		if (!(pEvdev->flags & EVDEV_TOUCHSCREEN))
+		    break;
+		/* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
+                 * BTN_LEFT. */
+		ev.code = BTN_LEFT;
+                /* Intentional fallthrough! */
 
             default:
 		button = EvdevUtilButtonEventToButtonNumber(ev.code);
@@ -1215,23 +1221,6 @@ EvdevProbe(InputInfoPtr pInfo)
     has_keys = FALSE;
     num_buttons = 0;
 
-    if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
-	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
-	has_axes = TRUE;
-    }
-
-    if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
-	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
-	if (TestBit(BTN_TOUCH, key_bitmask)) {
-	    xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
-	    pEvdev->flags |= EVDEV_TOUCHPAD;
-	    pEvdev->old_x = pEvdev->old_y = -1;
-	}
-	has_axes = TRUE;
-    }
-
     /* count all buttons */
     for (i = BTN_MISC; i < BTN_JOYSTICK; i++)
     {
@@ -1245,6 +1234,29 @@ EvdevProbe(InputInfoPtr pInfo)
         pEvdev->buttons = num_buttons;
         xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name,
                 num_buttons);
+    }
+
+    if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
+	has_axes = TRUE;
+    }
+
+    if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
+	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
+	if (TestBit(BTN_TOUCH, key_bitmask)) {
+            if (num_buttons) {
+                xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
+                pEvdev->flags |= EVDEV_TOUCHPAD;
+                pEvdev->old_x = pEvdev->old_y = -1;
+            } else {
+                xf86Msg(X_INFO, "%s: Found absolute touchscreen\n", pInfo->name);
+                pEvdev->flags |= EVDEV_TOUCHSCREEN;
+                pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+            }
+	}
+	has_axes = TRUE;
     }
 
     for (i = 0; i < BTN_MISC; i++)
@@ -1262,6 +1274,13 @@ EvdevProbe(InputInfoPtr pInfo)
 	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
 	    XI86_CONFIGURED;
 	pInfo->type_name = XI_MOUSE;
+    }
+
+    if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
+        xf86Msg(X_INFO, "%s: Configuring as touchscreen\n", pInfo->name);
+        pInfo->type_name = XI_TOUCHSCREEN;
+        pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
+                        XI86_CONFIGURED;
     }
 
     if (has_keys) {
