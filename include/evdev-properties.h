@@ -48,6 +48,6 @@
 
 /* Drag lock */
 /* CARD8, either 1 value or pairs, value range 0-32, 0 to disable a value*/
-#define EVDEV_PROP_DRAGLOCK "Drag Lock Buttons"
+#define EVDEV_PROP_DRAGLOCK "Evdev Drag Lock Buttons"
 
 #endif
