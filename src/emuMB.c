@@ -385,7 +385,8 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
 }
 
 int
-EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
+                      BOOL checkonly)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -395,13 +396,15 @@ EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
 
-        pEvdev->emulateMB.enabled = *((BOOL*)val->data);
+        if (!checkonly)
+            pEvdev->emulateMB.enabled = *((BOOL*)val->data);
     } else if (atom == prop_mbtimeout)
     {
         if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
 
-        pEvdev->emulateMB.timeout = *((INT16*)val->data);
+        if (!checkonly)
+            pEvdev->emulateMB.timeout = *((INT16*)val->data);
     }
 
     return Success;

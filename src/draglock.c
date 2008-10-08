@@ -257,7 +257,8 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
  * i.e. to set bt 3 to draglock button 1, supply 0,0,1
  */
 int
-EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
+                         BOOL checkonly)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -287,8 +288,11 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
             if (meta > EVDEV_MAXBUTTONS)
                 return BadValue;
 
-            pEvdev->dragLock.meta = meta;
-            memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
+            if (!checkonly)
+            {
+                pEvdev->dragLock.meta = meta;
+                memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
+            }
         } else
         {
             CARD8* vals = (CARD8*)val->data;
@@ -297,11 +301,14 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
                 if (vals[i] > EVDEV_MAXBUTTONS)
                     return BadValue;
 
-            pEvdev->dragLock.meta = 0;
-            memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
+            if (!checkonly)
+            {
+                pEvdev->dragLock.meta = 0;
+                memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
 
-            for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
-                pEvdev->dragLock.lock_pair[i] = vals[i];
+                for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
+                    pEvdev->dragLock.lock_pair[i] = vals[i];
+            }
         }
     }
 

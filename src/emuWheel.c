@@ -394,7 +394,8 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
 
 
 int
-EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
+                         BOOL checkonly)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -404,26 +405,29 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
 
-        pEvdev->emulateWheel.enabled = *((BOOL*)val->data);
-        /* Don't enable with zero inertia, otherwise we may get stuck in an
-         * infinite loop */
-        if (pEvdev->emulateWheel.inertia <= 0)
+        if (!checkonly)
         {
-            pEvdev->emulateWheel.inertia = 10;
-            /* We may get here before the property is actually enabled */
-            if (prop_wheel_inertia)
-                XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER,
-                                       16, PropModeReplace, 1,
-                                       &pEvdev->emulateWheel.inertia, TRUE);
-        }
+            pEvdev->emulateWheel.enabled = *((BOOL*)val->data);
+            /* Don't enable with zero inertia, otherwise we may get stuck in an
+             * infinite loop */
+            if (pEvdev->emulateWheel.inertia <= 0)
+            {
+                pEvdev->emulateWheel.inertia = 10;
+                /* We may get here before the property is actually enabled */
+                if (prop_wheel_inertia)
+                    XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER,
+                            16, PropModeReplace, 1,
+                            &pEvdev->emulateWheel.inertia, TRUE);
+            }
 
-        /* Don't enable with negative timeout */
-        if (pEvdev->emulateWheel.timeout < 0)
-        {
-            pEvdev->emulateWheel.timeout = 200;
-            XIChangeDeviceProperty(dev, prop_wheel_timeout, XA_INTEGER, 16,
-                                   PropModeReplace, 1,
-                                   &pEvdev->emulateWheel.timeout, TRUE);
+            /* Don't enable with negative timeout */
+            if (pEvdev->emulateWheel.timeout < 0)
+            {
+                pEvdev->emulateWheel.timeout = 200;
+                XIChangeDeviceProperty(dev, prop_wheel_timeout, XA_INTEGER, 16,
+                        PropModeReplace, 1,
+                        &pEvdev->emulateWheel.timeout, TRUE);
+            }
         }
     }
     else if (atom == prop_wheel_button)
@@ -435,16 +439,21 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
 
         if (bt < 0 || bt >= EVDEV_MAXBUTTONS)
             return BadValue;
-        pEvdev->emulateWheel.button = bt;
+
+        if (!checkonly)
+            pEvdev->emulateWheel.button = bt;
     } else if (atom == prop_wheel_axismap)
     {
         if (val->format != 8 || val->size != 4 || val->type != XA_INTEGER)
             return BadMatch;
 
-        pEvdev->emulateWheel.X.up_button = *((CARD8*)val->data);
-        pEvdev->emulateWheel.X.down_button = *(((CARD8*)val->data) + 1);
-        pEvdev->emulateWheel.Y.up_button = *(((CARD8*)val->data) + 2);
-        pEvdev->emulateWheel.Y.down_button = *(((CARD8*)val->data) + 3);
+        if (!checkonly)
+        {
+            pEvdev->emulateWheel.X.up_button = *((CARD8*)val->data);
+            pEvdev->emulateWheel.X.down_button = *(((CARD8*)val->data) + 1);
+            pEvdev->emulateWheel.Y.up_button = *(((CARD8*)val->data) + 2);
+            pEvdev->emulateWheel.Y.down_button = *(((CARD8*)val->data) + 3);
+        }
     } else if (atom == prop_wheel_inertia)
     {
         int inertia = *((CARD16*)val->data);
@@ -455,7 +464,8 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         if (inertia < 0)
             return BadValue;
 
-        pEvdev->emulateWheel.inertia = inertia;
+        if (!checkonly)
+            pEvdev->emulateWheel.inertia = inertia;
     } else if (atom == prop_wheel_timeout)
     {
         int timeout = *((CARD16*)val->data);
@@ -466,7 +476,8 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         if (timeout < 0)
             return BadValue;
 
-        pEvdev->emulateWheel.timeout = timeout;
+        if (!checkonly)
+            pEvdev->emulateWheel.timeout = timeout;
     }
     return Success;
 }

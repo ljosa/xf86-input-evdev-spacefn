@@ -133,13 +133,13 @@ unsigned int EvdevUtilButtonEventToButtonNumber(int code);
 
 #ifdef HAVE_PROPERTIES
 void EvdevMBEmuInitProperty(DeviceIntPtr);
-int EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
+int EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
 
 void EvdevWheelEmuInitProperty(DeviceIntPtr);
-int EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
+int EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
 
 void EvdevDragLockInitProperty(DeviceIntPtr);
-int EvdevDragLockSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr);
+int EvdevDragLockSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
 #endif
 
 /* Mouse Wheel emulation */

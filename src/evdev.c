@@ -108,7 +108,7 @@ static int EvdevCacheCompare(InputInfoPtr pInfo, Bool compare);
 #ifdef HAVE_PROPERTIES
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
-                            XIPropertyValuePtr val);
+                            XIPropertyValuePtr val, BOOL checkonly);
 static Atom prop_invert = 0;
 
 #endif
@@ -1494,7 +1494,8 @@ EvdevInitProperty(DeviceIntPtr dev)
 }
 
 static int
-EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
+EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
+                 BOOL checkonly)
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
@@ -1504,9 +1505,13 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         BOOL* data;
         if (val->format != 8 || val->size != 2 || val->type != XA_INTEGER)
             return BadMatch;
-        data = (BOOL*)val->data;
-        pEvdev->invert_x = data[0];
-        pEvdev->invert_y = data[1];
+
+        if (!checkonly)
+        {
+            data = (BOOL*)val->data;
+            pEvdev->invert_x = data[0];
+            pEvdev->invert_y = data[1];
+        }
     }
 
     return Success;
