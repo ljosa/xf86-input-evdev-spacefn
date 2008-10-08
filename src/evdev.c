@@ -31,31 +31,26 @@
 #endif
 
 #include <X11/keysym.h>
-#include <X11/XF86keysym.h>
-#include <X11/extensions/XIproto.h>
 
 #include <unistd.h>
-
-#include <misc.h>
-#include <xf86.h>
-#include <xf86str.h>
-#include <xf86_OSproc.h>
-#include <xf86Xinput.h>
-#include <exevents.h>
-#include <mipointer.h>
-#include <xorgVersion.h>
-
-#include "evdev.h"
-
-#include <xf86Module.h>
-
 #include <errno.h>
 #include <fcntl.h>
+
+#include <xf86.h>
+#include <xf86Xinput.h>
+#include <exevents.h>
+#include <xorgVersion.h>
+#ifdef XKB
+#include <xkbsrv.h>
+#endif
+
+#include "evdev.h"
 
 #ifdef HAVE_PROPERTIES
 #include <X11/Xatom.h>
 #include <evdev-properties.h>
 #endif
+
 
 /* 2.4 compatibility */
 #ifndef EVIOCGRAB
@@ -103,14 +98,13 @@ static const char *evdevDefaults[] = {
 };
 
 static int EvdevOn(DeviceIntPtr);
-static int EvdevCacheCompare(InputInfoPtr pInfo, Bool compare);
+static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
 static Atom prop_invert = 0;
-
 #endif
 
 
@@ -275,7 +269,7 @@ EvdevReadInput(InputInfoPtr pInfo)
             case REL_WHEEL:
                 if (value > 0)
                     PostButtonClicks(pInfo, wheel_up_button, value);
-                if (value < 0)
+                else if (value < 0)
                     PostButtonClicks(pInfo, wheel_down_button, -value);
                 break;
 
@@ -283,7 +277,7 @@ EvdevReadInput(InputInfoPtr pInfo)
             case REL_HWHEEL:
                 if (value > 0)
                     PostButtonClicks(pInfo, wheel_right_button, value);
-                if (value < 0)
+                else if (value < 0)
                     PostButtonClicks(pInfo, wheel_left_button, -value);
                 break;
             }
@@ -310,14 +304,14 @@ EvdevReadInput(InputInfoPtr pInfo)
 
             switch (ev.code) {
 	    case BTN_TOUCH:
- 	    case BTN_TOOL_PEN:
- 	    case BTN_TOOL_RUBBER:
- 	    case BTN_TOOL_BRUSH:
- 	    case BTN_TOOL_PENCIL:
- 	    case BTN_TOOL_AIRBRUSH:
- 	    case BTN_TOOL_FINGER:
- 	    case BTN_TOOL_MOUSE:
- 	    case BTN_TOOL_LENS:
+	    case BTN_TOOL_PEN:
+	    case BTN_TOOL_RUBBER:
+	    case BTN_TOOL_BRUSH:
+	    case BTN_TOOL_PENCIL:
+	    case BTN_TOOL_AIRBRUSH:
+	    case BTN_TOOL_FINGER:
+	    case BTN_TOOL_MOUSE:
+	    case BTN_TOOL_LENS:
 		pEvdev->tool = value ? ev.code : 0;
 		break;
 
@@ -693,7 +687,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
     static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
         { XK_Shift_L,		ShiftMask },
-        { XK_Shift_R, 		ShiftMask },
+        { XK_Shift_R,		ShiftMask },
         { XK_Control_L,		ControlMask },
         { XK_Control_R,		ControlMask },
         { XK_Caps_Lock,		LockMask },
@@ -1079,7 +1073,7 @@ EvdevProc(DeviceIntPtr device, int what)
  * @return Success if the information was cached, or !Success otherwise.
  */
 static int
-EvdevCacheCompare(InputInfoPtr pInfo, Bool compare)
+EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
 {
     EvdevPtr pEvdev = pInfo->private;
     int i;
@@ -1203,7 +1197,7 @@ EvdevProbe(InputInfoPtr pInfo)
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
-    if (ioctl(pInfo->fd, 
+    if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask) < 0) {
         xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
         return 1;
@@ -1269,7 +1263,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (has_axes && num_buttons) {
         xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
-	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS | 
+	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
 	    XI86_CONFIGURED;
 	pInfo->type_name = XI_MOUSE;
     }
@@ -1329,7 +1323,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->private = pEvdev;
 
     xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options); 
+    xf86ProcessCommonOptions(pInfo, pInfo->options);
 
     pEvdev->screen = xf86SetIntOption(pInfo->options, "ScreenNumber", 0);
     /*
@@ -1361,14 +1355,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     }
 
     pEvdev->reopen_attempts = xf86SetIntOption(pInfo->options, "ReopenAttempts", 10);
-
-    EvdevInitButtonMapping(pInfo);
-
-    pEvdev->noXkb = noXkbExtension;
-    /* parse the XKB options during kbd setup */
-
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
+
+    pEvdev->noXkb = noXkbExtension; /* parse the XKB options during kbd setup */
+
+    EvdevInitButtonMapping(pInfo);
 
     if (EvdevProbe(pInfo)) {
 	close(pInfo->fd);
