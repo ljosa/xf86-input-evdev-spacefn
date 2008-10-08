@@ -267,7 +267,7 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
         int i;
 
         if (val->format != 8 || val->type != XA_INTEGER)
-            return FALSE;
+            return BadMatch;
 
         /* Don't allow changes while a lock is active */
         if (pEvdev->dragLock.meta)
