@@ -391,9 +391,18 @@ EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     EvdevPtr     pEvdev = pInfo->private;
 
     if (atom == prop_mbemu)
+    {
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
         pEvdev->emulateMB.enabled = *((BOOL*)val->data);
-    else if (atom == prop_mbtimeout)
+    } else if (atom == prop_mbtimeout)
+    {
+        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
         pEvdev->emulateMB.timeout = *((INT16*)val->data);
+    }
 
     return Success;
 }

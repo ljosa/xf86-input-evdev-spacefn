@@ -401,6 +401,9 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
 
     if (atom == prop_wheel_emu)
     {
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
         pEvdev->emulateWheel.enabled = *((BOOL*)val->data);
         /* Don't enable with zero inertia, otherwise we may get stuck in an
          * infinite loop */
@@ -427,13 +430,16 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     {
         int bt = *((CARD8*)val->data);
 
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
         if (bt < 0 || bt >= EVDEV_MAXBUTTONS)
             return BadValue;
         pEvdev->emulateWheel.button = bt;
     } else if (atom == prop_wheel_axismap)
     {
-        if (val->size != 4)
-            return BadValue;
+        if (val->format != 8 || val->size != 4 || val->type != XA_INTEGER)
+            return BadMatch;
 
         pEvdev->emulateWheel.X.up_button = *((CARD8*)val->data);
         pEvdev->emulateWheel.X.down_button = *(((CARD8*)val->data) + 1);
@@ -443,6 +449,9 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     {
         int inertia = *((CARD16*)val->data);
 
+        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
         if (inertia < 0)
             return BadValue;
 
@@ -450,6 +459,9 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val)
     } else if (atom == prop_wheel_timeout)
     {
         int timeout = *((CARD16*)val->data);
+
+        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
 
         if (timeout < 0)
             return BadValue;
