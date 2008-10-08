@@ -1331,9 +1331,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
      */
     pEvdev->tool = 1;
 
-    device = xf86CheckStrOption(dev->commonOptions, "Path", NULL);
-    if (!device)
-	device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
+    device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
         xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
 	xf86DeleteInput(pInfo, 0);

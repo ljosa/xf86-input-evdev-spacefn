@@ -9,7 +9,6 @@ evdev \- Generic Linux input driver
 .BI "  Identifier \*q" devname \*q
 .B  "  Driver \*qevdev\*q"
 .BI "  Option \*qDevice\*q   \*q" devpath \*q
-.BI "  Option \*qPath\*q     \*q" path \*q
 .BI "  Option \*qEmulate3Buttons\*q     \*q" True \*q
 .BI "  Option \*qEmulate3Timeout\*q     \*q" 50 \*q
 \ \ ...
@@ -47,15 +46,7 @@ are supported:
 .BI "Option \*qDevice\*q \*q" string \*q
 Specifies the device through which the device can be accessed.  This will 
 generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
-The mapping from device node to hardware is system-dependent.  This option is
-mandatory unless \*qPath\*q is given, and there is no default setting.
-.TP 7
-.BI "Option \*qPath\*q \*q" string \*q
-Specifies the device through which the device can be accessed.  This will
-generally be of the form \*q/dev/input/by-path/xyz\*q, where xyz includes the
-name of the device. The mapping from device node to hardware is
-system-dependent. This option has precedence over the \*qDevice\*q option but
-one of \*qPath\*q or \*qDevice\*q must be given.
+The mapping from device node to hardware is system-dependent.
 .TP 7
 .BI "Option \*qEmulate3Buttons\*q \*q" boolean \*q
 Enable/disable the emulation of the third (middle) mouse button for mice
