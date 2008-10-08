@@ -1325,7 +1325,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
-    pEvdev->screen = xf86SetIntOption(pInfo->options, "ScreenNumber", 0);
     /*
      * We initialize pEvdev->tool to 1 so that device that doesn't use
      * proximity will still report events.
