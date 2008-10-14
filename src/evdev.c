@@ -185,12 +185,10 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
 
     if (pInfo->fd != -1)
     {
-        pEvdev->reopen_left = 0;
-
         if (EvdevCacheCompare(pInfo, TRUE) == Success)
         {
             xf86Msg(X_INFO, "%s: Device reopened after %d attempts.\n", pInfo->name,
-                    pEvdev->reopen_attempts - pEvdev->reopen_left);
+                    pEvdev->reopen_attempts - pEvdev->reopen_left + 1);
             EvdevOn(pInfo->dev);
         } else
         {
@@ -200,6 +198,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
             close(pInfo->fd);
             pInfo->fd = -1;
         }
+        pEvdev->reopen_left = 0;
         return 0;
     }
 
