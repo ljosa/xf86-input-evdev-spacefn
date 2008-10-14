@@ -320,15 +320,6 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
     RegisterBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
-
-#ifdef HAVE_PROPERTIES
-    XIChangeDeviceProperty(pInfo->dev, prop_mbemu, XA_INTEGER, 8,
-                           PropModeReplace, 1, &pEvdev->emulateMB.enabled,
-                           TRUE);
-    XIChangeDeviceProperty(pInfo->dev, prop_mbtimeout, XA_INTEGER, 16,
-                           PropModeReplace, 1, &pEvdev->emulateMB.timeout,
-                           TRUE);
-#endif
 }
 
 void

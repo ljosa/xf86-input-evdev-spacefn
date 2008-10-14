@@ -1000,13 +1000,6 @@ EvdevOn(DeviceIntPtr device)
     } else
     {
         xf86AddEnabledDevice(pInfo);
-        if ((pEvdev->flags & EVDEV_BUTTON_EVENTS) &&
-            !(pEvdev->flags & EVDEV_INITIALIZED))
-        {
-            EvdevMBEmuPreInit(pInfo);
-            EvdevWheelEmuPreInit(pInfo);
-            EvdevDragLockInit(pInfo);
-        }
         pEvdev->flags |= EVDEV_INITIALIZED;
         device->public.on = TRUE;
     }
@@ -1366,6 +1359,10 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     }
 
     EvdevCacheCompare(pInfo, FALSE); /* cache device data */
+
+    EvdevMBEmuPreInit(pInfo);
+    EvdevWheelEmuPreInit(pInfo);
+    EvdevDragLockInit(pInfo);
 
     return pInfo;
 }

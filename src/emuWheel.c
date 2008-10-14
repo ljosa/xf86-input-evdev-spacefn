@@ -308,25 +308,6 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
             "EmulateWheelInertia: %d, "
             "EmulateWheelTimeout: %d\n",
             pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
-
-#ifdef HAVE_PROPERTIES
-    XIChangeDeviceProperty(pInfo->dev, prop_wheel_emu, XA_INTEGER, 8,
-            PropModeReplace, 1, &pEvdev->emulateWheel.enabled, TRUE);
-    XIChangeDeviceProperty(pInfo->dev, prop_wheel_button, XA_INTEGER, 8,
-            PropModeReplace, 1, &pEvdev->emulateWheel.button, TRUE);
-    XIChangeDeviceProperty(pInfo->dev, prop_wheel_inertia, XA_INTEGER, 8,
-            PropModeReplace, 1, &pEvdev->emulateWheel.inertia, TRUE);
-    XIChangeDeviceProperty(pInfo->dev, prop_wheel_timeout, XA_INTEGER, 16,
-            PropModeReplace, 1, &pEvdev->emulateWheel.timeout, TRUE);
-
-    val[0] = pEvdev->emulateWheel.X.up_button;
-    val[1] = pEvdev->emulateWheel.X.down_button;
-    val[2] = pEvdev->emulateWheel.Y.up_button;
-    val[3] = pEvdev->emulateWheel.Y.down_button;
-    XIChangeDeviceProperty(pInfo->dev, prop_wheel_axismap, XA_INTEGER, 8,
-                           PropModeReplace, 4, val, TRUE);
-
-#endif
 }
 
 #ifdef HAVE_PROPERTIES
