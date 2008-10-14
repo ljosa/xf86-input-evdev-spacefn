@@ -52,12 +52,12 @@ The mapping from device node to hardware is system-dependent.
 Enable/disable the emulation of the third (middle) mouse button for mice
 which only have two physical buttons.  The third button is emulated by
 pressing both buttons simultaneously.  Default: on, until a middle mouse
-button event is registered.
+button event is registered. Property: "Evdev Middle Button Emulation".
 .TP 7
 .BI "Option \*qEmulate3Timeout\*q \*q" integer \*q
 Sets the timeout (in milliseconds) that the driver waits before deciding
 if two buttons where pressed "simultaneously" when 3 button emulation is
-enabled.  Default: 50.
+enabled.  Default: 50. Property: "Evdev Middle Button Timeout".
 .TP 7
 .BI "Option \*qButtonMapping\*q \*q" string \*q
 Sets the button mapping for this device. The mapping is a space-separated list
@@ -74,12 +74,13 @@ Sets \*qdrag lock buttons\*q that simulate holding a button down, so
 that low dexterity people do not have to hold a button down at the
 same time they move a mouse cursor. Button numbers occur in pairs,
 with the lock button number occurring first, followed by the button
-number that is the target of the lock button.
+number that is the target of the lock button. Property: "Evdev
+Drag Lock Buttons".
 .TP 7
 .BI "Option \*qDragLockButtons\*q \*q" "M1" \*q
 Sets a \*qmaster drag lock button\*q that acts as a \*qMeta Key\*q
 indicating that the next button pressed is to be
-\*qdrag locked\*q.
+\*qdrag locked\*q. Property: "Evdev Drag Lock Buttons".
 .TP 7
 .BI "Option \*qEmulateWheel\*q \*q" boolean \*q
 Enable/disable "wheel" emulation.  Wheel emulation means emulating button
@@ -94,7 +95,7 @@ more buttons but no wheel.  See the description of the
 .BR XAxisMapping ,
 and
 .B YAxisMapping
-options below.  Default: off.
+options below.  Default: off. Property "Evdev Wheel Emulation".
 .TP 7
 .BI "Option \*qEmulateWheelButton\*q \*q" integer \*q
 Specifies which button must be held down to enable wheel emulation mode.
@@ -103,11 +104,12 @@ press/release events as specified for the
 .B XAxisMapping
 and
 .B YAxisMapping
-settings.  Default: 4.
+settings.  Default: 4. Property: "Evdev Wheel Emulation Button".
 .TP 7
 .BI "Option \*qEmulateWheelInertia\*q \*q" integer \*q
 Specifies how far (in pixels) the pointer must move to generate button
-press/release events in wheel emulation mode.  Default: 10.
+press/release events in wheel emulation mode.  Default: 10. Property: "Evdev
+Wheel Emulation Inertia".
 .TP 7
 .BI "Option \*qEmulateWheelTimeout\*q \*q" integer \*q
 Specifies the time in milliseconds the
@@ -115,7 +117,7 @@ Specifies the time in milliseconds the
 must be pressed before wheel emulation is started. If the
 .BR EmulateWheelButton
 is released before this timeout, the original button press/release event
-is sent.  Default: 200.
+is sent.  Default: 200. Property: "Evdev Wheel Emulation Timeout".
 .TP 7
 .BI "Option \*qXAxisMapping\*q \*q" "N1 N2" \*q
 Specifies which buttons are mapped to motion in the X direction in wheel
@@ -123,7 +125,8 @@ emulation mode.  Button number
 .I N1
 is mapped to the negative X axis motion and button number
 .I N2
-is mapped to the positive X axis motion.  Default: no mapping.
+is mapped to the positive X axis motion.  Default: no mapping. Property:
+"Evdev Wheel Emulation Axes".
 .TP 7
 .BI "Option \*qYAxisMapping\*q \*q" "N1 N2" \*q
 Specifies which buttons are mapped to motion in the Y direction in wheel
@@ -131,7 +134,8 @@ emulation mode.  Button number
 .I N1
 is mapped to the negative Y axis motion and button number
 .I N2
-is mapped to the positive Y axis motion.  Default: "4 5"
+is mapped to the positive Y axis motion.  Default: "4 5". Property:
+"Evdev Wheel Emulation Axes".
 .TP 7
 .BI "Option \*qReopenAttempts\*q \*q" integer \*q
 Number of reopen attempts after a read error occurs on the device (e.g. after
@@ -140,7 +144,40 @@ waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
 .BI "Option \*qInvertX\*q \*q" Bool \*q
 .TP 7
 .BI "Option \*qInvertY\*q \*q" Bool \*q
-Invert the given axis. Default: off.
+Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
+
+.SH SUPPORTED PROPERTIES
+The following properties are provided by the
+.B evdev
+driver.
+.TP 7
+.BI "Evdev Middle Button Emulation"
+1 boolean value (8 bit, 0 or 1).
+.TP 7
+.BI "Evdev Middle Button Timeout"
+1 16-bit positive value.
+.TP 7
+.BI "Evdev Wheel Emulation"
+1 boolean value (8 bit, 0 or 1).
+.TP 7
+.BI "Evdev Wheel Emulation Axes"
+4 8-bit values, order X up, X down, Y up, Y down. 0 disables a value.
+.TP 7
+.BI "Evdev Wheel Emulation Inertia"
+1 16-bit positive value.
+.TP 7
+.BI "Evdev Wheel Emulation Timeout"
+1 16-bit positive value.
+.TP 7
+.BI "Evdev Wheel Emulation Button"
+1 8-bit value, allowed range 0-32, 0 disables the button.
+.TP 7
+.BI "Evdev Drag Lock Buttons"
+8-bit. Either 1 value or pairs of values. Value range 0-32, 0 disables a
+value.
+.TP 7
+.BI "Evdev Axis Inversion"
+2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.
 
 .SH AUTHORS
 Kristian Høgsberg.
