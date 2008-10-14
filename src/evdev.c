@@ -1357,9 +1357,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     EvdevCacheCompare(pInfo, FALSE); /* cache device data */
 
-    EvdevMBEmuPreInit(pInfo);
-    EvdevWheelEmuPreInit(pInfo);
-    EvdevDragLockPreInit(pInfo);
+    if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
+    {
+        EvdevMBEmuPreInit(pInfo);
+        EvdevWheelEmuPreInit(pInfo);
+        EvdevDragLockPreInit(pInfo);
+    }
 
     return pInfo;
 }
@@ -1463,18 +1466,22 @@ EvdevInitProperty(DeviceIntPtr dev)
     BOOL         invert[2];
     char         reopen;
 
-    invert[0] = pEvdev->invert_x;
-    invert[1] = pEvdev->invert_y;
 
-    prop_invert = MakeAtom(EVDEV_PROP_INVERT_AXES, strlen(EVDEV_PROP_INVERT_AXES), TRUE);
+    if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
+    {
+        invert[0] = pEvdev->invert_x;
+        invert[1] = pEvdev->invert_y;
 
-    rc = XIChangeDeviceProperty(dev, prop_invert, XA_INTEGER, 8,
-                                PropModeReplace, 2,
-                                invert, FALSE);
-    if (rc != Success)
-        return;
+        prop_invert = MakeAtom(EVDEV_PROP_INVERT_AXES, strlen(EVDEV_PROP_INVERT_AXES), TRUE);
 
-    XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+        rc = XIChangeDeviceProperty(dev, prop_invert, XA_INTEGER, 8,
+                PropModeReplace, 2,
+                invert, FALSE);
+        if (rc != Success)
+            return;
+
+        XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+    }
 
     prop_reopen = MakeAtom(EVDEV_PROP_REOPEN, strlen(EVDEV_PROP_REOPEN),
             TRUE);
