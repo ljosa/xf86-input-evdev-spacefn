@@ -136,6 +136,11 @@ is mapped to the positive Y axis motion.  Default: "4 5"
 .BI "Option \*qReopenAttempts\*q \*q" integer \*q
 Number of reopen attempts after a read error occurs on the device (e.g. after
 waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
+.TP 7
+.BI "Option \*qInvertX\*q \*q" Bool \*q
+.TP 7
+.BI "Option \*qInvertY\*q \*q" Bool \*q
+Invert the given axis. Default: off.
 
 .SH AUTHORS
 Kristian Høgsberg.
