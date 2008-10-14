@@ -54,4 +54,8 @@
 /* BOOL, 2 values [x, y], 1 inverts axis */
 #define EVDEV_PROP_INVERT_AXES "Evdev Axis Inversion"
 
+/* Reopen attempts. */
+/* CARD8 */
+#define EVDEV_PROP_REOPEN "Evdev Reopen Attempts"
+
 #endif

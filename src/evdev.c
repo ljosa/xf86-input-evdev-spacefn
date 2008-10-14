@@ -105,6 +105,7 @@ static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
 static Atom prop_invert = 0;
+static Atom prop_reopen = 0;
 #endif
 
 
@@ -1467,6 +1468,7 @@ EvdevInitProperty(DeviceIntPtr dev)
     EvdevPtr     pEvdev = pInfo->private;
     int          rc;
     BOOL         invert[2];
+    char         reopen;
 
     invert[0] = pEvdev->invert_x;
     invert[1] = pEvdev->invert_y;
@@ -1480,6 +1482,17 @@ EvdevInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+
+    prop_reopen = MakeAtom(EVDEV_PROP_REOPEN, strlen(EVDEV_PROP_REOPEN),
+            TRUE);
+
+    reopen = pEvdev->reopen_attempts;
+    rc = XIChangeDeviceProperty(dev, prop_reopen, XA_INTEGER, 8,
+                                PropModeReplace, 1, &reopen, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_reopen, FALSE);
 }
 
 static int
@@ -1501,6 +1514,13 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
             pEvdev->invert_x = data[0];
             pEvdev->invert_y = data[1];
         }
+    } else if (atom == prop_reopen)
+    {
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
+        if (!checkonly)
+            pEvdev->reopen_attempts = *((CARD8*)val->data);
     }
 
     return Success;
