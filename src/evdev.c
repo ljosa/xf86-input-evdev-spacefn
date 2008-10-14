@@ -1294,7 +1294,6 @@ static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    MessageType deviceFrom = X_CONFIG;
     const char *device;
     EvdevPtr pEvdev;
 
@@ -1341,7 +1340,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     pEvdev->device = device;
 
-    xf86Msg(deviceFrom, "%s: Device: \"%s\"\n", pInfo->name, device);
+    xf86Msg(X_CONFIG, "%s: Device: \"%s\"\n", pInfo->name, device);
     do {
         pInfo->fd = open(device, O_RDWR, 0);
     } while (pInfo->fd < 0 && errno == EINTR);
