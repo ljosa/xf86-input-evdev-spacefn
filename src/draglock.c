@@ -53,7 +53,7 @@ void EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button);
 
 /* Setup and configuration code */
 void
-EvdevDragLockInit(InputInfoPtr pInfo)
+EvdevDragLockPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     char *option_string = NULL;
@@ -247,8 +247,6 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
     XISetDevicePropertyDeletable(dev, prop_dlock, FALSE);
 
     XIRegisterPropertyHandler(dev, EvdevDragLockSetProperty, NULL, NULL);
-
-    return;
 }
 
 /**

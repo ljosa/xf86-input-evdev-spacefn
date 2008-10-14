@@ -148,6 +148,6 @@ BOOL EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int valu
 BOOL EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv);
 
 /* Draglock code */
-void EvdevDragLockInit(InputInfoPtr pInfo);
+void EvdevDragLockPreInit(InputInfoPtr pInfo);
 BOOL EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value);
 #endif

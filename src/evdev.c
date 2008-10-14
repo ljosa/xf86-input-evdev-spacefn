@@ -1359,7 +1359,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     EvdevMBEmuPreInit(pInfo);
     EvdevWheelEmuPreInit(pInfo);
-    EvdevDragLockInit(pInfo);
+    EvdevDragLockPreInit(pInfo);
 
     return pInfo;
 }
