@@ -373,6 +373,8 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
     if (rc != Success)
         return;
     XISetDevicePropertyDeletable(dev, prop_mbtimeout, FALSE);
+
+    XIRegisterPropertyHandler(dev, EvdevMBEmuSetProperty, NULL, NULL);
 }
 
 int

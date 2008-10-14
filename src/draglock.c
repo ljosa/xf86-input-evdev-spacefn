@@ -246,6 +246,8 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
 
     XISetDevicePropertyDeletable(dev, prop_dlock, FALSE);
 
+    XIRegisterPropertyHandler(dev, EvdevDragLockSetProperty, NULL, NULL);
+
     return;
 }
 

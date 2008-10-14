@@ -950,9 +950,6 @@ EvdevInit(DeviceIntPtr device)
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
      * unregister anyway */
-    XIRegisterPropertyHandler(device, EvdevMBEmuSetProperty, NULL, NULL);
-    XIRegisterPropertyHandler(device, EvdevWheelEmuSetProperty, NULL, NULL);
-    XIRegisterPropertyHandler(device, EvdevDragLockSetProperty, NULL, NULL);
     XIRegisterPropertyHandler(device, EvdevSetProperty, NULL, NULL);
     EvdevInitProperty(device);
     EvdevMBEmuInitProperty(device);

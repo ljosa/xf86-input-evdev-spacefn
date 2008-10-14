@@ -371,6 +371,8 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_wheel_button, FALSE);
+
+    XIRegisterPropertyHandler(dev, EvdevWheelEmuSetProperty, NULL, NULL);
 }
 
 
