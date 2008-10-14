@@ -406,7 +406,7 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
     int          rc     = TRUE;
-    INT32        vals[4]  = { TRUE, FALSE};
+    char         vals[4];
 
     if (!dev->button) /* don't init prop for keyboards */
         return;
