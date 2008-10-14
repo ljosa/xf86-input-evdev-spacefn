@@ -35,9 +35,8 @@
 #include <xf86Xinput.h>
 #include <xf86_OSproc.h>
 
-#if defined(XKB)
-/* XXX VERY WRONG.  this is a client side header. */
-#include <X11/extensions/XKBstr.h>
+#ifdef XKB
+#include <xkbstr.h>
 #endif
 
 #define EVDEV_MAXBUTTONS 32
