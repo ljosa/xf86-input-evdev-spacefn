@@ -120,6 +120,8 @@ typedef struct {
     struct input_absinfo absinfo[ABS_MAX];
 } EvdevRec, *EvdevPtr;
 
+unsigned int EvdevUtilButtonEventToButtonNumber(int code);
+
 /* Middle Button emulation */
 int  EvdevMBEmuTimer(InputInfoPtr);
 BOOL EvdevMBEmuFilterEvent(InputInfoPtr, int, BOOL);
@@ -129,19 +131,6 @@ void EvdevMBEmuPreInit(InputInfoPtr);
 void EvdevMBEmuFinalize(InputInfoPtr);
 void EvdevMBEmuEnable(InputInfoPtr, BOOL);
 
-unsigned int EvdevUtilButtonEventToButtonNumber(int code);
-
-#ifdef HAVE_PROPERTIES
-void EvdevMBEmuInitProperty(DeviceIntPtr);
-int EvdevMBEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
-
-void EvdevWheelEmuInitProperty(DeviceIntPtr);
-int EvdevWheelEmuSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
-
-void EvdevDragLockInitProperty(DeviceIntPtr);
-int EvdevDragLockSetProperty(DeviceIntPtr, Atom, XIPropertyValuePtr, BOOL);
-#endif
-
 /* Mouse Wheel emulation */
 void EvdevWheelEmuPreInit(InputInfoPtr pInfo);
 BOOL EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value);
@@ -150,4 +139,10 @@ BOOL EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv);
 /* Draglock code */
 void EvdevDragLockPreInit(InputInfoPtr pInfo);
 BOOL EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value);
+
+#ifdef HAVE_PROPERTIES
+void EvdevMBEmuInitProperty(DeviceIntPtr);
+void EvdevWheelEmuInitProperty(DeviceIntPtr);
+void EvdevDragLockInitProperty(DeviceIntPtr);
+#endif
 #endif

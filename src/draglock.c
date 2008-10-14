@@ -211,45 +211,6 @@ EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value)
 
 #ifdef HAVE_PROPERTIES
 /**
- * Initialise property for drag lock buttons setting.
- */
-void
-EvdevDragLockInitProperty(DeviceIntPtr dev)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-
-    if (!dev->button) /* don't init prop for keyboards */
-        return;
-
-    prop_dlock = MakeAtom(EVDEV_PROP_DRAGLOCK, strlen(EVDEV_PROP_DRAGLOCK), TRUE);
-    if (pEvdev->dragLock.meta)
-    {
-        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8,
-                               PropModeReplace, 1, &pEvdev->dragLock.meta,
-                               FALSE);
-    } else {
-        int highest = 0;
-        int i;
-        CARD8 pair[EVDEV_MAXBUTTONS] = {0};
-
-        for (i = 0; i < EVDEV_MAXBUTTONS; i++)
-        {
-            if (pEvdev->dragLock.lock_pair[i])
-                highest = i;
-            pair[i] = pEvdev->dragLock.lock_pair[i];
-        }
-
-        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8, PropModeReplace,
-                               highest + 1, pair, FALSE);
-    }
-
-    XISetDevicePropertyDeletable(dev, prop_dlock, FALSE);
-
-    XIRegisterPropertyHandler(dev, EvdevDragLockSetProperty, NULL, NULL);
-}
-
-/**
  * Set the drag lock property.
  * If only one value is supplied, then this is used as the meta button.
  * If more than one value is supplied, then each value is the drag lock button
@@ -314,4 +275,44 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
     return Success;
 }
+
+/**
+ * Initialise property for drag lock buttons setting.
+ */
+void
+EvdevDragLockInitProperty(DeviceIntPtr dev)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return;
+
+    prop_dlock = MakeAtom(EVDEV_PROP_DRAGLOCK, strlen(EVDEV_PROP_DRAGLOCK), TRUE);
+    if (pEvdev->dragLock.meta)
+    {
+        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8,
+                               PropModeReplace, 1, &pEvdev->dragLock.meta,
+                               FALSE);
+    } else {
+        int highest = 0;
+        int i;
+        CARD8 pair[EVDEV_MAXBUTTONS] = {0};
+
+        for (i = 0; i < EVDEV_MAXBUTTONS; i++)
+        {
+            if (pEvdev->dragLock.lock_pair[i])
+                highest = i;
+            pair[i] = pEvdev->dragLock.lock_pair[i];
+        }
+
+        XIChangeDeviceProperty(dev, prop_dlock, XA_INTEGER, 8, PropModeReplace,
+                               highest + 1, pair, FALSE);
+    }
+
+    XISetDevicePropertyDeletable(dev, prop_dlock, FALSE);
+
+    XIRegisterPropertyHandler(dev, EvdevDragLockSetProperty, NULL, NULL);
+}
+
 #endif

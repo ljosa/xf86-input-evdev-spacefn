@@ -342,6 +342,32 @@ EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
 
 
 #ifdef HAVE_PROPERTIES
+int
+EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
+                      BOOL checkonly)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+
+    if (atom == prop_mbemu)
+    {
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
+        if (!checkonly)
+            pEvdev->emulateMB.enabled = *((BOOL*)val->data);
+    } else if (atom == prop_mbtimeout)
+    {
+        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
+        if (!checkonly)
+            pEvdev->emulateMB.timeout = *((INT16*)val->data);
+    }
+
+    return Success;
+}
+
 /**
  * Initialise property for MB emulation on/off.
  */
@@ -375,31 +401,5 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
     XISetDevicePropertyDeletable(dev, prop_mbtimeout, FALSE);
 
     XIRegisterPropertyHandler(dev, EvdevMBEmuSetProperty, NULL, NULL);
-}
-
-int
-EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
-                      BOOL checkonly)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-
-    if (atom == prop_mbemu)
-    {
-        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
-            return BadMatch;
-
-        if (!checkonly)
-            pEvdev->emulateMB.enabled = *((BOOL*)val->data);
-    } else if (atom == prop_mbtimeout)
-    {
-        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
-            return BadMatch;
-
-        if (!checkonly)
-            pEvdev->emulateMB.timeout = *((INT16*)val->data);
-    }
-
-    return Success;
 }
 #endif

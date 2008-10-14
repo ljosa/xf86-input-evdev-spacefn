@@ -311,71 +311,6 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 }
 
 #ifdef HAVE_PROPERTIES
-void
-EvdevWheelEmuInitProperty(DeviceIntPtr dev)
-{
-    InputInfoPtr pInfo  = dev->public.devicePrivate;
-    EvdevPtr     pEvdev = pInfo->private;
-    int          rc     = TRUE;
-    INT32        vals[4]  = { TRUE, FALSE};
-
-    if (!dev->button) /* don't init prop for keyboards */
-        return;
-
-    prop_wheel_emu = MakeAtom(EVDEV_PROP_WHEEL, strlen(EVDEV_PROP_WHEEL), TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_wheel_emu, XA_INTEGER, 8,
-                                PropModeReplace, 1,
-                                &pEvdev->emulateWheel.enabled, FALSE);
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_wheel_emu, FALSE);
-
-    vals[0] = pEvdev->emulateWheel.X.up_button;
-    vals[1] = pEvdev->emulateWheel.X.down_button;
-    vals[2] = pEvdev->emulateWheel.Y.up_button;
-    vals[3] = pEvdev->emulateWheel.Y.down_button;
-
-    prop_wheel_axismap = MakeAtom(EVDEV_PROP_WHEEL_AXES, strlen(EVDEV_PROP_WHEEL_AXES), TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_wheel_axismap, XA_INTEGER, 8,
-                                PropModeReplace, 4, vals, FALSE);
-
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_wheel_axismap, FALSE);
-
-    prop_wheel_inertia = MakeAtom(EVDEV_PROP_WHEEL_INERTIA, strlen(EVDEV_PROP_WHEEL_INERTIA), TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER, 16,
-                                PropModeReplace, 1,
-                                &pEvdev->emulateWheel.inertia, FALSE);
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_wheel_inertia, FALSE);
-
-    prop_wheel_timeout = MakeAtom(EVDEV_PROP_WHEEL_TIMEOUT, strlen(EVDEV_PROP_WHEEL_TIMEOUT), TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_wheel_timeout, XA_INTEGER, 16,
-                                PropModeReplace, 1,
-                                &pEvdev->emulateWheel.timeout, FALSE);
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_wheel_timeout, FALSE);
-
-    prop_wheel_button = MakeAtom(EVDEV_PROP_WHEEL_BUTTON, strlen(EVDEV_PROP_WHEEL_BUTTON), TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_wheel_button, XA_INTEGER, 8,
-                                PropModeReplace, 1,
-                                &pEvdev->emulateWheel.button, FALSE);
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_wheel_button, FALSE);
-
-    XIRegisterPropertyHandler(dev, EvdevWheelEmuSetProperty, NULL, NULL);
-}
-
-
 int
 EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                          BOOL checkonly)
@@ -465,4 +400,67 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
     return Success;
 }
 
+void
+EvdevWheelEmuInitProperty(DeviceIntPtr dev)
+{
+    InputInfoPtr pInfo  = dev->public.devicePrivate;
+    EvdevPtr     pEvdev = pInfo->private;
+    int          rc     = TRUE;
+    INT32        vals[4]  = { TRUE, FALSE};
+
+    if (!dev->button) /* don't init prop for keyboards */
+        return;
+
+    prop_wheel_emu = MakeAtom(EVDEV_PROP_WHEEL, strlen(EVDEV_PROP_WHEEL), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_emu, XA_INTEGER, 8,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.enabled, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_wheel_emu, FALSE);
+
+    vals[0] = pEvdev->emulateWheel.X.up_button;
+    vals[1] = pEvdev->emulateWheel.X.down_button;
+    vals[2] = pEvdev->emulateWheel.Y.up_button;
+    vals[3] = pEvdev->emulateWheel.Y.down_button;
+
+    prop_wheel_axismap = MakeAtom(EVDEV_PROP_WHEEL_AXES, strlen(EVDEV_PROP_WHEEL_AXES), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_axismap, XA_INTEGER, 8,
+                                PropModeReplace, 4, vals, FALSE);
+
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_wheel_axismap, FALSE);
+
+    prop_wheel_inertia = MakeAtom(EVDEV_PROP_WHEEL_INERTIA, strlen(EVDEV_PROP_WHEEL_INERTIA), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_inertia, XA_INTEGER, 16,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.inertia, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_wheel_inertia, FALSE);
+
+    prop_wheel_timeout = MakeAtom(EVDEV_PROP_WHEEL_TIMEOUT, strlen(EVDEV_PROP_WHEEL_TIMEOUT), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_timeout, XA_INTEGER, 16,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.timeout, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_wheel_timeout, FALSE);
+
+    prop_wheel_button = MakeAtom(EVDEV_PROP_WHEEL_BUTTON, strlen(EVDEV_PROP_WHEEL_BUTTON), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_wheel_button, XA_INTEGER, 8,
+                                PropModeReplace, 1,
+                                &pEvdev->emulateWheel.button, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_wheel_button, FALSE);
+
+    XIRegisterPropertyHandler(dev, EvdevWheelEmuSetProperty, NULL, NULL);
+}
 #endif
