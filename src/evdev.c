@@ -979,7 +979,7 @@ EvdevOn(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    if (pInfo->fd != -1 && !pEvdev->kernel24 &&
+    if (pInfo->fd != -1 && pEvdev->grabDevice &&
         (rc = ioctl(pInfo->fd, EVIOCGRAB, (void *)1)))
     {
         xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
@@ -1028,7 +1028,7 @@ EvdevProc(DeviceIntPtr device, int what)
     case DEVICE_OFF:
         if (pInfo->fd != -1)
         {
-            if (!pEvdev->kernel24 && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+            if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
                 xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
                         strerror(errno));
             xf86RemoveEnabledDevice(pInfo);
@@ -1177,17 +1177,19 @@ EvdevProbe(InputInfoPtr pInfo)
     long rel_bitmask[NBITS(REL_MAX)];
     long abs_bitmask[NBITS(ABS_MAX)];
     int i, has_axes, has_keys, num_buttons;
+    int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
 
-    if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
+    if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
         if (errno == EINVAL) {
             /* keyboards are unsafe in 2.4 */
-            pEvdev->kernel24 = 1;
+            kernel24 = 1;
+            pEvdev->grabDevice = 0;
         } else {
             xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
             return 1;
         }
-    } else {
+    } else if (pEvdev->grabDevice) {
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
@@ -1263,7 +1265,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_keys) {
-        if (pEvdev->kernel24) {
+        if (kernel24) {
             xf86Msg(X_INFO, "%s: Kernel < 2.6 is too old, ignoring keyboard\n",
                     pInfo->name);
         } else {
@@ -1347,6 +1349,11 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pEvdev->reopen_attempts = xf86SetIntOption(pInfo->options, "ReopenAttempts", 10);
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
+
+    /* Grabbing the event device stops in-kernel event forwarding. In other
+       words, it disables rfkill and the "Macintosh mouse button emulation".
+       Note that this needs a server that sets the console to RAW mode. */
+    pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
 
     pEvdev->noXkb = noXkbExtension; /* parse the XKB options during kbd setup */
 

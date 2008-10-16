@@ -11,6 +11,7 @@ evdev \- Generic Linux input driver
 .BI "  Option \*qDevice\*q   \*q" devpath \*q
 .BI "  Option \*qEmulate3Buttons\*q     \*q" True \*q
 .BI "  Option \*qEmulate3Timeout\*q     \*q" 50 \*q
+.BI "  Option \*qGrabDevice\*q     \*q" False \*q
 \ \ ...
 .B EndSection
 .fi
@@ -145,6 +146,13 @@ waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
 .TP 7
 .BI "Option \*qInvertY\*q \*q" Bool \*q
 Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
+.TP 7
+.BI "Option \*qGrabDevice\*q \*q" boolean \*q
+Force a grab on the event device. Doing so will ensure that no other driver
+can initialise the same device and it will also stop the device from sending
+events to /dev/kbd or /dev/input/mice. Events from this device will not be
+sent to virtual devices (e.g. rfkill or the Macintosh mouse button emulation).
+Default disabled.
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the
