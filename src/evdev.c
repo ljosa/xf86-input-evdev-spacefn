@@ -164,6 +164,10 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 	warned[ev->code] = 1;
     }
 
+    /* The X server can't handle keycodes > 255 anyway, just drop them.  */
+    if (code > 255)
+        return;
+
     xf86PostKeyboardEvent(pInfo->dev, code, value);
 }
 
