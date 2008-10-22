@@ -672,7 +672,7 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
     };
 
     InputInfoPtr pInfo;
-    struct input_event ev[ArrayLength(bits)];
+    struct input_event ev[ArrayLength(bits)] = {0};
     int i;
 
     pInfo = device->public.devicePrivate;
@@ -1179,9 +1179,9 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    long key_bitmask[NBITS(KEY_MAX)];
-    long rel_bitmask[NBITS(REL_MAX)];
-    long abs_bitmask[NBITS(ABS_MAX)];
+    long key_bitmask[NBITS(KEY_MAX)] = {0};
+    long rel_bitmask[NBITS(REL_MAX)] = {0};
+    long abs_bitmask[NBITS(ABS_MAX)] = {0};
     int i, has_axes, has_keys, num_buttons;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
