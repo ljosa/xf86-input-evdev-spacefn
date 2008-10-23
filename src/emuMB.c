@@ -311,8 +311,8 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
         pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
                                                       "Emulate3Buttons",
                                                       MBEMU_ENABLED);
-        xf86Msg(X_INFO, "%s: Forcing middle mouse button emulation.\n",
-                        pInfo->name);
+        xf86Msg(X_INFO, "%s: Forcing middle mouse button emulation %s.\n",
+                pInfo->name, (pEvdev->emulateMB.enabled) ? "on" : "off");
     }
 
     pEvdev->emulateMB.timeout = xf86SetIntOption(pInfo->options,
