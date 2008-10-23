@@ -672,8 +672,10 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
     };
 
     InputInfoPtr pInfo;
-    struct input_event ev[ArrayLength(bits)] = {0};
+    struct input_event ev[ArrayLength(bits)];
     int i;
+
+    memset(ev, 0, sizeof(ev));
 
     pInfo = device->public.devicePrivate;
     for (i = 0; i < ArrayLength(bits); i++) {
