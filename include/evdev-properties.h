@@ -31,7 +31,7 @@
 /* Middle mouse button emulation */
 /* BOOL */
 #define EVDEV_PROP_MIDBUTTON "Evdev Middle Button Emulation"
-/* CARD16 */
+/* CARD32 */
 #define EVDEV_PROP_MIDBUTTON_TIMEOUT "Evdev Middle Button Timeout"
 
 /* Wheel emulation */

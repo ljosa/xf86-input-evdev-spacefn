@@ -358,11 +358,11 @@ EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
             pEvdev->emulateMB.enabled = *((BOOL*)val->data);
     } else if (atom == prop_mbtimeout)
     {
-        if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
+        if (val->format != 32 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
 
         if (!checkonly)
-            pEvdev->emulateMB.timeout = *((INT16*)val->data);
+            pEvdev->emulateMB.timeout = *((CARD32*)val->data);
     }
 
     return Success;
@@ -393,7 +393,7 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
     prop_mbtimeout = MakeAtom(EVDEV_PROP_MIDBUTTON_TIMEOUT,
                               strlen(EVDEV_PROP_MIDBUTTON_TIMEOUT),
                               TRUE);
-    rc = XIChangeDeviceProperty(dev, prop_mbtimeout, XA_INTEGER, 16, PropModeReplace, 1,
+    rc = XIChangeDeviceProperty(dev, prop_mbtimeout, XA_INTEGER, 32, PropModeReplace, 1,
                                 &pEvdev->emulateMB.timeout, FALSE);
 
     if (rc != Success)
