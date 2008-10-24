@@ -388,9 +388,9 @@ EvdevReadInput(InputInfoPtr pInfo)
         abs_x = pEvdev->abs_x;
         abs_y = pEvdev->abs_y;
         if (pEvdev->invert_x)
-            abs_x = pEvdev->max_x - abs_x;
+            abs_x = pEvdev->max_x - (abs_x - pEvdev->min_x);
         if (pEvdev->invert_y)
-            abs_y = pEvdev->max_y - abs_y;
+            abs_y = pEvdev->max_y - (abs_y - pEvdev->min_y);
 
 	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2, abs_x, abs_y);
     }
