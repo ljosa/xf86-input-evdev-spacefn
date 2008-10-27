@@ -1008,6 +1008,7 @@ EvdevOn(DeviceIntPtr device)
     } else
     {
         xf86AddEnabledDevice(pInfo);
+        EvdevMBEmuOn(pInfo);
         pEvdev->flags |= EVDEV_INITIALIZED;
         device->public.on = TRUE;
     }

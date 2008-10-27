@@ -317,6 +317,11 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
 
     pEvdev->emulateMB.timeout = xf86SetIntOption(pInfo->options,
                                                  "Emulate3Timeout", 50);
+}
+
+void
+EvdevMBEmuOn(InputInfoPtr pInfo)
+{
     RegisterBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
