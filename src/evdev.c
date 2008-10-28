@@ -1007,6 +1007,7 @@ EvdevOn(DeviceIntPtr device)
         pEvdev->reopen_timer = TimerSet(NULL, 0, 100, EvdevReopenTimer, pInfo);
     } else
     {
+        xf86FlushInput(pInfo->fd);
         xf86AddEnabledDevice(pInfo);
         EvdevMBEmuOn(pInfo);
         pEvdev->flags |= EVDEV_INITIALIZED;
