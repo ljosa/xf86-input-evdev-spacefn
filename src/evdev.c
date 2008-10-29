@@ -404,9 +404,6 @@ EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
     /* Nothing to do, dix handles all settings */
 }
 
-/* FIXME: this map works with evdev keyboards, but all the xkb maps
- * probably don't.  The easiest is to remap the event keycodes.  */
-
 static KeySym map[] = {
     /* 0x00 */  NoSymbol,       NoSymbol,
     /* 0x01 */  XK_Escape,      NoSymbol,
