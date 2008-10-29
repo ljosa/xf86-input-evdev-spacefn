@@ -52,6 +52,21 @@ AC_ARG_WITH(xorg-module-dir,
 inputdir=${moduledir}/input
 AC_SUBST(inputdir)
 
+# Enable building everything in the test/ directory. These are uinput-based
+# devices that resemble random hardware that may or may not look like a mouse,
+# keyboard, etc.
+AC_ARG_ENABLE(testdevices,
+              AC_HELP_STRING([--enable-testdevices], [Build uinput-based test devices]),
+              [BUILD_TEST="yes"],
+              [BUILD_TEST="no"])
+AM_CONDITIONAL([BUILD_TEST], [test "x$BUILD_TEST" = "xyes"])
+
+if test "x$BUILD_TEST" = "xyes"; then
+    AC_CHECK_FUNC([dlopen], [],
+                  AC_CHECK_LIB([dl], [dlopen], DLOPEN_LIBS="-ldl"))
+    AC_SUBST([DLOPEN_LIBS])
+fi
+
 # Checks for extensions
 XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
 
@@ -75,4 +90,5 @@ AC_OUTPUT([Makefile
            src/Makefile
            man/Makefile
            include/Makefile
+           test/Makefile
            xorg-evdev.pc])

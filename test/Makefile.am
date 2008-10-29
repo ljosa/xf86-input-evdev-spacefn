@@ -1,4 +1,4 @@
-#  Copyright 2005 Adam Jackson.
+#  Copyright 2008 Red Hat, Inc.
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a
 #  copy of this software and associated documentation files (the "Software"),
@@ -14,29 +14,22 @@
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.  IN NO EVENT SHALL
-#  ADAM JACKSON BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+#  THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 #  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-AUTOMAKE_OPTIONS = foreign
+noinst_PROGRAMS=fakedev btn0 absrel abs
 
-if BUILD_TEST
-test_dir=test
-endif
+fakedev_SOURCES=fakedev.c fakedev.h
+fakedev_LDFLAGS=$(DLOPEN_LIBS) -rdynamic
 
-SUBDIRS = src man include $(test_dir)
+LFLAGS=-shared -fPIC
 
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = xorg-evdev.pc
+btn0_SOURCES=btn0.c
+btn0_LDFLAGS=$(LFLAGS)
 
-EXTRA_DIST = ChangeLog autogen.sh
+absrel_SOURCES=absrel.c
+absrel_LDFLAGS=$(LFLAGS)
 
-MAINTAINERCLEANFILES=ChangeLog
-
-.PHONY: ChangeLog
-
-ChangeLog:
-	(GIT_DIR=$(top_srcdir)/.git git-log > .changelog.tmp && mv .changelog.tmp ChangeLog; rm -f .changelog.tmp) || \
-	(touch ChangeLog; echo 'git directory not found: installing possibly empty changelog.' >&2)
-
-dist-hook: ChangeLog
+abs_SOURCES=abs.c
+abs_LDFLAGS=$(LFLAGS)
