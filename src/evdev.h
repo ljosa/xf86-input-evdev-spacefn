@@ -119,7 +119,7 @@ typedef struct {
     struct input_absinfo absinfo[ABS_MAX];
 } EvdevRec, *EvdevPtr;
 
-unsigned int EvdevUtilButtonEventToButtonNumber(int code);
+unsigned int EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code);
 
 /* Middle Button emulation */
 int  EvdevMBEmuTimer(InputInfoPtr);

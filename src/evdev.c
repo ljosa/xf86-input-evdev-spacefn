@@ -326,7 +326,7 @@ EvdevReadInput(InputInfoPtr pInfo)
                 /* Intentional fallthrough! */
 
             default:
-		button = EvdevUtilButtonEventToButtonNumber(ev.code);
+		button = EvdevUtilButtonEventToButtonNumber(pEvdev, ev.code);
 
 		/* Handle drag lock */
 		if (EvdevDragLockFilterEvent(pInfo, button, value))
@@ -1448,7 +1448,7 @@ _X_EXPORT XF86ModuleData evdevModuleData =
  * returns 0 on non-button event.
  */
 unsigned int
-EvdevUtilButtonEventToButtonNumber(int code)
+EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 {
     unsigned int button = 0;
 
@@ -1465,6 +1465,21 @@ EvdevUtilButtonEventToButtonNumber(int code)
 	button = 2;
 	break;
 
+        /* Treat BTN_[0-2] as LMR buttons on devices that do not advertise
+           BTN_LEFT, BTN_MIDDLE, BTN_RIGHT.
+           Otherwise, treat BTN_[0+n] as button 5+n.
+           XXX: This causes duplicate mappings for BTN_0 + n and BTN_SIDE + n
+         */
+    case BTN_0:
+        button = (TestBit(BTN_LEFT, pEvdev->key_bitmask)) ?  8 : 1;
+        break;
+    case BTN_1:
+        button = (TestBit(BTN_MIDDLE, pEvdev->key_bitmask)) ?  9 : 2;
+        break;
+    case BTN_2:
+        button = (TestBit(BTN_RIGHT, pEvdev->key_bitmask)) ?  10 : 3;
+        break;
+
     case BTN_SIDE:
     case BTN_EXTRA:
     case BTN_FORWARD:
@@ -1475,8 +1490,12 @@ EvdevUtilButtonEventToButtonNumber(int code)
 
     default:
 	if ((code > BTN_TASK) && (code < KEY_OK)) {
-	    if (code < BTN_JOYSTICK)
-		button = (code - BTN_LEFT + 5);
+	    if (code < BTN_JOYSTICK) {
+                if (code < BTN_MOUSE)
+                    button = (code - BTN_0 + 5);
+                else
+                    button = (code - BTN_LEFT + 5);
+            }
 	}
     }
 
