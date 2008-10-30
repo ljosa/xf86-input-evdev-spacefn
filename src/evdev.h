@@ -102,6 +102,13 @@ typedef struct {
         Time                expires;     /* time of expiry */
         Time                timeout;
     } emulateWheel;
+    /* run-time calibration */
+    struct {
+        int                 min_x;
+        int                 max_x;
+        int                 min_y;
+        int                 max_y;
+    } calibration;
 
     unsigned char btnmap[32];           /* config-file specified button mapping */
 

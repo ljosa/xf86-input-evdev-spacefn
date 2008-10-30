@@ -58,4 +58,8 @@
 /* CARD8 */
 #define EVDEV_PROP_REOPEN "Evdev Reopen Attempts"
 
+/* Run-time calibration */
+/* CARD32, 4 values [minx, maxx, miny, maxy], or no values for unset */
+#define EVDEV_PROP_CALIBRATION "Evdev Axis Calibration"
+
 #endif

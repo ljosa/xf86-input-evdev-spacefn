@@ -186,6 +186,11 @@ value.
 .TP 7
 .BI "Evdev Axis Inversion"
 2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.
+.BI "Evdev Axis Calibration"
+4 32-bit values, order min-x, max-x, min-y, max-y or 0 values to disable
+run-time axis calibration. This feature is required for devices that need to
+scale to a different coordinate system than originally reported to the X
+server, such as touchscreens that require run-time calibration.
 
 .SH AUTHORS
 Kristian Høgsberg.

@@ -76,6 +76,7 @@
 #define EVDEV_TOUCHPAD		(1 << 4)
 #define EVDEV_INITIALIZED	(1 << 5) /* WheelInit etc. called already? */
 #define EVDEV_TOUCHSCREEN	(1 << 6)
+#define EVDEV_CALIBRATED	(1 << 7) /* run-time calibrated? */
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
@@ -107,6 +108,7 @@ static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
 static Atom prop_invert = 0;
 static Atom prop_reopen = 0;
+static Atom prop_calibration = 0;
 #endif
 
 
@@ -387,6 +389,17 @@ EvdevReadInput(InputInfoPtr pInfo)
         int abs_x, abs_y;
         abs_x = pEvdev->abs_x;
         abs_y = pEvdev->abs_y;
+
+        if (pEvdev->flags & EVDEV_CALIBRATED)
+        {
+            abs_x = xf86ScaleAxis(abs_x,
+                    pEvdev->max_x, pEvdev->min_x,
+                    pEvdev->calibration.max_x, pEvdev->calibration.min_x);
+            abs_y = xf86ScaleAxis(abs_y,
+                    pEvdev->max_y, pEvdev->min_y,
+                    pEvdev->calibration.max_y, pEvdev->calibration.min_y);
+        }
+
         if (pEvdev->invert_x)
             abs_x = pEvdev->max_x - (abs_x - pEvdev->min_x);
         if (pEvdev->invert_y)
@@ -1542,6 +1555,16 @@ EvdevInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_reopen, FALSE);
+
+
+    prop_calibration = MakeAtom(EVDEV_PROP_CALIBRATION,
+                                strlen(EVDEV_PROP_CALIBRATION), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_calibration, XA_INTEGER, 32,
+                                PropModeReplace, 0, NULL, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_calibration, FALSE);
 }
 
 static int
@@ -1570,6 +1593,33 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->reopen_attempts = *((CARD8*)val->data);
+    } else if (atom == prop_calibration)
+    {
+        if (val->format != 32 || val->type != XA_INTEGER)
+            return BadMatch;
+        if (val->size != 4 && val->size != 0)
+            return BadMatch;
+
+        if (!checkonly)
+        {
+            if (val->size == 0)
+            {
+                pEvdev->flags &= ~EVDEV_CALIBRATED;
+                pEvdev->calibration.min_x = 0;
+                pEvdev->calibration.max_x = 0;
+                pEvdev->calibration.min_y = 0;
+                pEvdev->calibration.max_y = 0;
+            } else if (val->size == 4)
+            {
+                CARD32 *vals = (CARD32*)val->data;
+
+                pEvdev->flags |= EVDEV_CALIBRATED;
+                pEvdev->calibration.min_x = vals[0];
+                pEvdev->calibration.max_x = vals[1];
+                pEvdev->calibration.min_y = vals[2];
+                pEvdev->calibration.max_y = vals[3];
+            }
+        }
     }
 
     return Success;
