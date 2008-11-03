@@ -147,6 +147,9 @@ waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
 .BI "Option \*qInvertY\*q \*q" Bool \*q
 Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
 .TP 7
+.BI "Option \*qSwapAxes\*q \*q" Bool \*q
+Swap x/y axes. Default: off. Property: "Evdev Axes Swap".
+.TP 7
 .BI "Option \*qGrabDevice\*q \*q" boolean \*q
 Force a grab on the event device. Doing so will ensure that no other driver
 can initialise the same device and it will also stop the device from sending
@@ -191,6 +194,9 @@ value.
 run-time axis calibration. This feature is required for devices that need to
 scale to a different coordinate system than originally reported to the X
 server, such as touchscreens that require run-time calibration.
+.TP 7
+.BI "Evdev Axis Swap"
+1 boolean values (8 bit, 0 or 1). 1 swaps x/y axes.
 
 .SH AUTHORS
 Kristian Høgsberg.

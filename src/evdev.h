@@ -64,6 +64,7 @@ typedef struct {
     int flags;
     int tool;
     int buttons;            /* number of buttons */
+    BOOL swap_axes;
     BOOL invert_x;
     BOOL invert_y;
 

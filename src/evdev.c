@@ -109,6 +109,7 @@ static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
 static Atom prop_invert = 0;
 static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
+static Atom prop_swap = 0;
 #endif
 
 
@@ -227,13 +228,14 @@ EvdevReadInput(InputInfoPtr pInfo)
 {
     struct input_event ev;
     int len, value;
-    int dx, dy;
+    int dx, dy, tmp;
     unsigned int abs;
     unsigned int button;
     EvdevPtr pEvdev = pInfo->private;
 
     dx = 0;
     dy = 0;
+    tmp = 0;
     abs = 0;
 
     while (xf86WaitForInput (pInfo->fd, 0) > 0) {
@@ -369,6 +371,11 @@ EvdevReadInput(InputInfoPtr pInfo)
     }
 
     if (dx != 0 || dy != 0) {
+        if (pEvdev->swap_axes) {
+            tmp = dx;
+            dx = dy;
+            dy = tmp;
+        }
         if (pEvdev->invert_x)
             dx *= -1;
         if (pEvdev->invert_y)
@@ -387,8 +394,8 @@ EvdevReadInput(InputInfoPtr pInfo)
      */
     if (abs && pEvdev->tool) {
         int abs_x, abs_y;
-        abs_x = pEvdev->abs_x;
-        abs_y = pEvdev->abs_y;
+        abs_x = (pEvdev->swap_axes) ? pEvdev->abs_y : pEvdev->abs_x;
+        abs_y = (pEvdev->swap_axes) ? pEvdev->abs_x : pEvdev->abs_y;
 
         if (pEvdev->flags & EVDEV_CALIBRATED)
         {
@@ -1382,6 +1389,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pEvdev->reopen_attempts = xf86SetIntOption(pInfo->options, "ReopenAttempts", 10);
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
+    pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
@@ -1565,6 +1573,16 @@ EvdevInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_calibration, FALSE);
+
+    prop_swap = MakeAtom(EVDEV_PROP_SWAP_AXES,
+                         strlen(EVDEV_PROP_SWAP_AXES), TRUE);
+
+    rc = XIChangeDeviceProperty(dev, prop_swap, XA_INTEGER, 8,
+                                PropModeReplace, 1, &pEvdev->swap_axes, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
 }
 
 static int
@@ -1620,6 +1638,13 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                 pEvdev->calibration.max_y = vals[3];
             }
         }
+    } else if (atom == prop_swap)
+    {
+        if (val->format != 8 || val->type != XA_INTEGER || val->size != 1)
+            return BadMatch;
+
+        if (!checkonly)
+            pEvdev->swap_axes = *((BOOL*)val->data);
     }
 
     return Success;
