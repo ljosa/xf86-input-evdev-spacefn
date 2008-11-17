@@ -32,6 +32,7 @@
 
 #include <X11/keysym.h>
 
+#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -51,6 +52,10 @@
 #include <evdev-properties.h>
 #endif
 
+#ifndef MAXDEVICES
+#include <inputstr.h> /* for MAX_DEVICES */
+#define MAXDEVICES MAX_DEVICES
+#endif
 
 /* 2.4 compatibility */
 #ifndef EVIOCGRAB
@@ -111,6 +116,88 @@ static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
 #endif
+
+/* All devices the evdev driver has allocated and knows about.
+ * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
+ * cannot be used by evdev, leaving us with a space of 2 at the end. */
+static EvdevPtr evdev_devices[MAXDEVICES] = {0};
+
+static int
+EvdevGetMajorMinor(InputInfoPtr pInfo)
+{
+    struct stat st;
+
+    if (fstat(pInfo->fd, &st) == -1)
+    {
+        xf86Msg(X_ERROR, "%s: stat failed (%s). cannot check for duplicates.\n",
+                pInfo->name, strerror(errno));
+        return 0;
+    }
+
+    return st.st_rdev;
+}
+
+/**
+ * Return TRUE if one of the devices we know about has the same min/maj
+ * number.
+ */
+static BOOL
+EvdevIsDuplicate(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    EvdevPtr* dev   = evdev_devices;
+
+    if (pEvdev->min_maj)
+    {
+        while(*dev)
+        {
+            if ((*dev) != pEvdev &&
+                (*dev)->min_maj &&
+                (*dev)->min_maj == pEvdev->min_maj)
+                return TRUE;
+            dev++;
+        }
+    }
+    return FALSE;
+}
+
+/**
+ * Add to internal device list.
+ */
+static void
+EvdevAddDevice(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    EvdevPtr* dev = evdev_devices;
+
+    while(*dev)
+        dev++;
+
+    *dev = pEvdev;
+}
+
+/**
+ * Remove from internal device list.
+ */
+static void
+EvdevRemoveDevice(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    EvdevPtr *dev   = evdev_devices;
+    int count       = 0;
+
+    while(*dev)
+    {
+        count++;
+        if (*dev == pEvdev)
+        {
+            memmove(dev, dev + 1,
+                    sizeof(evdev_devices) - (count * sizeof(EvdevPtr)));
+            break;
+        }
+        dev++;
+    }
+}
 
 
 static void
@@ -205,6 +292,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
             DisableDevice(pInfo->dev);
             close(pInfo->fd);
             pInfo->fd = -1;
+            pEvdev->min_maj = 0; /* don't hog the device */
         }
         pEvdev->reopen_left = 0;
         return 0;
@@ -217,6 +305,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
         xf86Msg(X_ERROR, "%s: Failed to reopen device after %d attempts.\n",
                 pInfo->name, pEvdev->reopen_attempts);
         DisableDevice(pInfo->dev);
+        pEvdev->min_maj = 0; /* don't hog the device */
         return 0;
     }
 
@@ -1024,6 +1113,14 @@ EvdevOn(DeviceIntPtr device)
         pEvdev->reopen_timer = TimerSet(NULL, 0, 100, EvdevReopenTimer, pInfo);
     } else
     {
+        pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
+        if (EvdevIsDuplicate(pInfo))
+        {
+            xf86Msg(X_WARNING, "%s: Refusing to enable duplicate device.\n",
+                    pInfo->name);
+            return !Success;
+        }
+
         xf86FlushInput(pInfo->fd);
         xf86AddEnabledDevice(pInfo);
         EvdevMBEmuOn(pInfo);
@@ -1062,6 +1159,7 @@ EvdevProc(DeviceIntPtr device, int what)
             close(pInfo->fd);
             pInfo->fd = -1;
         }
+        pEvdev->min_maj = 0;
         if (pEvdev->flags & EVDEV_INITIALIZED)
             EvdevMBEmuFinalize(pInfo);
         pEvdev->flags &= ~EVDEV_INITIALIZED;
@@ -1079,6 +1177,8 @@ EvdevProc(DeviceIntPtr device, int what)
             close(pInfo->fd);
             pInfo->fd = -1;
         }
+        EvdevRemoveDevice(pInfo);
+        pEvdev->min_maj = 0;
 	break;
     }
 
@@ -1386,6 +1486,17 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         return NULL;
     }
 
+    /* Check major/minor of device node to avoid adding duplicate devices. */
+    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
+    if (EvdevIsDuplicate(pInfo))
+    {
+        xf86Msg(X_WARNING, "%s: device file already in use. Ignoring.\n",
+                pInfo->name);
+        close(pInfo->fd);
+        xf86DeleteInput(pInfo, 0);
+        return NULL;
+    }
+
     pEvdev->reopen_attempts = xf86SetIntOption(pInfo->options, "ReopenAttempts", 10);
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
@@ -1407,6 +1518,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     }
 
     EvdevCacheCompare(pInfo, FALSE); /* cache device data */
+    EvdevAddDevice(pInfo);
 
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
     {

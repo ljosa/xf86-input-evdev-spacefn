@@ -31,6 +31,7 @@
 #define EVDEV_H
 
 #include <linux/input.h>
+#include <linux/types.h>
 
 #include <xf86Xinput.h>
 #include <xf86_OSproc.h>
@@ -125,6 +126,9 @@ typedef struct {
     long abs_bitmask[NBITS(ABS_MAX)];
     long led_bitmask[NBITS(LED_MAX)];
     struct input_absinfo absinfo[ABS_MAX];
+
+    /* minor/major number */
+    dev_t min_maj;
 } EvdevRec, *EvdevPtr;
 
 unsigned int EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code);
