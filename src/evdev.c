@@ -1043,8 +1043,6 @@ EvdevInit(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    /* FIXME: This doesn't add buttons for keyboards with scrollwheels. */
-
     if (pEvdev->flags & EVDEV_KEYBOARD_EVENTS)
 	EvdevAddKeyClass(device);
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
@@ -1332,7 +1330,7 @@ EvdevProbe(InputInfoPtr pInfo)
     long key_bitmask[NBITS(KEY_MAX)] = {0};
     long rel_bitmask[NBITS(REL_MAX)] = {0};
     long abs_bitmask[NBITS(ABS_MAX)] = {0};
-    int i, has_axes, has_keys, num_buttons;
+    int i, has_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -1369,6 +1367,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     has_axes = FALSE;
     has_keys = FALSE;
+    has_scroll = FALSE;
     num_buttons = 0;
 
     /* count all buttons */
@@ -1390,6 +1389,11 @@ EvdevProbe(InputInfoPtr pInfo)
         xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 	has_axes = TRUE;
+    }
+
+    if (TestBit(REL_WHEEL, rel_bitmask) || TestBit(REL_HWHEEL, rel_bitmask)) {
+        xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
+        has_scroll = TRUE;
     }
 
     if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
@@ -1442,6 +1446,15 @@ EvdevProbe(InputInfoPtr pInfo)
             pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
 	    pInfo->type_name = XI_KEYBOARD;
         }
+    }
+
+    if (has_scroll && (pInfo->flags & XI86_CONFIGURED) &&
+        (pInfo->flags & XI86_POINTER_CAPABLE) == 0)
+    {
+        xf86Msg(X_INFO, "%s: Adding scrollwheel support\n", pInfo->name);
+        pInfo->flags  |= XI86_POINTER_CAPABLE;
+        pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+        pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
     }
 
     if ((pInfo->flags & XI86_CONFIGURED) == 0) {
