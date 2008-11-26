@@ -1176,6 +1176,8 @@ EvdevProc(DeviceIntPtr device, int what)
         return EvdevOn(device);
 
     case DEVICE_OFF:
+        if (pEvdev->flags & EVDEV_INITIALIZED)
+            EvdevMBEmuFinalize(pInfo);
         if (pInfo->fd != -1)
         {
             if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
