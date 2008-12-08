@@ -1070,33 +1070,6 @@ EvdevInit(DeviceIntPtr device)
     return Success;
 }
 
-/* We handle repeat per-key for ourselves in the server, so disable it
- * in the kernel.  If in is true, disable it: if out is true, restore
- * it. */
-static void
-EvdevSetKeyRepeat(InputInfoPtr pInfo, Bool in)
-{
-    EvdevPtr pEvdev = pInfo->private;
-    int zero_repeat[2] = { 0, 0 }; /* delay, rate */
-
-    if (!(pEvdev->flags & EVDEV_KEYBOARD_EVENTS))
-        return;
-
-    if (in) {
-        if (ioctl(pInfo->fd, EVIOCGREP, pEvdev->key_repeat) != 0)
-            return;
-
-        if (ioctl(pInfo->fd, EVIOCSREP, zero_repeat) != 0)
-            xf86Msg(X_WARNING, "%s: Couldn't set key repeat (%s)\n", pInfo->name,
-                    strerror(errno));
-    }
-    else {
-        if (ioctl(pInfo->fd, EVIOCSREP, pEvdev->key_repeat) != 0)
-            xf86Msg(X_WARNING, "%s: Couldn't reset key repeat (%s)\n",
-                    pInfo->name, strerror(errno));
-    }
-}
-
 /**
  * Init all extras (wheel emulation, etc.) and grab the device.
  *
@@ -1144,7 +1117,6 @@ EvdevOn(DeviceIntPtr device)
         xf86FlushInput(pInfo->fd);
         xf86AddEnabledDevice(pInfo);
         EvdevMBEmuOn(pInfo);
-        EvdevSetKeyRepeat(pInfo, TRUE);
         pEvdev->flags |= EVDEV_INITIALIZED;
         device->public.on = TRUE;
     }
@@ -1185,7 +1157,6 @@ EvdevProc(DeviceIntPtr device, int what)
         pEvdev->min_maj = 0;
         if (pEvdev->flags & EVDEV_INITIALIZED)
             EvdevMBEmuFinalize(pInfo);
-        EvdevSetKeyRepeat(pInfo, FALSE);
         pEvdev->flags &= ~EVDEV_INITIALIZED;
 	device->public.on = FALSE;
         if (pEvdev->reopen_timer)
