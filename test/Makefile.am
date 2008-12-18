@@ -18,7 +18,7 @@
 #  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 #  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-noinst_PROGRAMS=fakedev btn0 absrel abs
+noinst_PROGRAMS=fakedev btn0 absrel abs dummy
 
 fakedev_SOURCES=fakedev.c fakedev.h
 fakedev_LDFLAGS=$(DLOPEN_LIBS) -rdynamic
@@ -33,3 +33,6 @@ absrel_LDFLAGS=$(LFLAGS)
 
 abs_SOURCES=abs.c
 abs_LDFLAGS=$(LFLAGS)
+
+dummy_SOURCES=dummy.c
+dummy_LDFLAGS=$(LFLAGS)
