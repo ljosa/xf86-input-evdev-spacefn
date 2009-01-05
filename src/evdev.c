@@ -849,7 +849,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
         SetXkbOption(pInfo, "xkb_rules", &pEvdev->xkb_rules);
         SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
 	if (!pEvdev->xkb_model)
-	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_rules);
+	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
         SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
 	if (!pEvdev->xkb_layout)
 	    SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
