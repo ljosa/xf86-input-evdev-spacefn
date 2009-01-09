@@ -231,6 +231,11 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
     if (!pEvdev->emulateMB.enabled)
         return ret;
 
+    if (button == 2) {
+        EvdevMBEmuEnable(pInfo, FALSE);
+        return ret;
+    }
+
     /* don't care about other buttons */
     if (button != 1 && button != 3)
         return ret;
