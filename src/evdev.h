@@ -60,14 +60,15 @@ typedef struct {
     const char *device;
     int grabDevice;         /* grab the event device? */
     int screen;
-    int min_x, min_y, max_x, max_y;
-    int abs_x, abs_y, old_x, old_y;
+    int min_x, min_y, max_x, max_y, min_p, max_p;
+    int abs_x, abs_y, abs_p, old_x, old_y;
     int flags;
     int tool;
     int buttons;            /* number of buttons */
     BOOL swap_axes;
     BOOL invert_x;
     BOOL invert_y;
+    BOOL has_pressure;
 
     /* XKB stuff has to be per-device rather than per-driver */
     int noXkb;

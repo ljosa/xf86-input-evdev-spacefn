@@ -386,6 +386,10 @@ EvdevReadInput(InputInfoPtr pInfo)
 		pEvdev->abs_y = value;
 		abs = 1;
 		break;
+	    case ABS_PRESSURE:
+		pEvdev->abs_p = value;
+		abs = 1;
+		break;
 	    }
 	    break;
 
@@ -477,26 +481,28 @@ EvdevReadInput(InputInfoPtr pInfo)
      * just works.
      */
     if (abs && pEvdev->tool) {
-        int abs_x, abs_y;
-        abs_x = (pEvdev->swap_axes) ? pEvdev->abs_y : pEvdev->abs_x;
-        abs_y = (pEvdev->swap_axes) ? pEvdev->abs_x : pEvdev->abs_y;
+        int v[3];
+        v[0] = (pEvdev->swap_axes) ? pEvdev->abs_y : pEvdev->abs_x;
+        v[1] = (pEvdev->swap_axes) ? pEvdev->abs_x : pEvdev->abs_y;
+        v[2] = pEvdev->abs_p;
 
         if (pEvdev->flags & EVDEV_CALIBRATED)
         {
-            abs_x = xf86ScaleAxis(abs_x,
+            v[0] = xf86ScaleAxis(v[0],
                     pEvdev->max_x, pEvdev->min_x,
                     pEvdev->calibration.max_x, pEvdev->calibration.min_x);
-            abs_y = xf86ScaleAxis(abs_y,
+            v[1] = xf86ScaleAxis(v[1],
                     pEvdev->max_y, pEvdev->min_y,
                     pEvdev->calibration.max_y, pEvdev->calibration.min_y);
         }
 
         if (pEvdev->invert_x)
-            abs_x = pEvdev->max_x - (abs_x - pEvdev->min_x);
+            v[0] = pEvdev->max_x - (v[0] - pEvdev->min_x);
         if (pEvdev->invert_y)
-            abs_y = pEvdev->max_y - (abs_y - pEvdev->min_y);
+            v[1] = pEvdev->max_y - (v[1] - pEvdev->min_y);
 
-	xf86PostMotionEvent(pInfo->dev, TRUE, 0, 2, abs_x, abs_y);
+	xf86PostMotionEventP(pInfo->dev, TRUE, 0,
+			     2 + (pEvdev->has_pressure ? 1 : 0), v);
     }
 }
 
@@ -880,7 +886,8 @@ EvdevAddAbsClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
-    struct input_absinfo absinfo_x, absinfo_y;
+    struct input_absinfo absinfo_x, absinfo_y, absinfo_p;
+    int num_valuators = 2;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -902,7 +909,21 @@ EvdevAddAbsClass(DeviceIntPtr device)
     pEvdev->min_y = absinfo_y.minimum;
     pEvdev->max_y = absinfo_y.maximum;
 
-    if (!InitValuatorClassDeviceStruct(device, 2,
+    if (pEvdev->has_pressure &&
+	ioctl(pInfo->fd, EVIOCGABS(ABS_PRESSURE), &absinfo_p) < 0) {
+        xf86Msg(X_ERROR, "ioctl EVIOCGABS ABS_PRESSURE failed: %s\n",
+		strerror(errno));
+	return !Success;
+    }
+
+    if (pEvdev->has_pressure) {
+	    num_valuators++;
+	    pEvdev->max_p = absinfo_p.maximum;
+	    pEvdev->min_p = absinfo_p.minimum;
+    }
+
+
+    if (!InitValuatorClassDeviceStruct(device, num_valuators,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
@@ -918,6 +939,13 @@ EvdevAddAbsClass(DeviceIntPtr device)
     xf86InitValuatorAxisStruct(device, 1, pEvdev->min_y, pEvdev->max_y,
 			       10000, 0, 10000);
     xf86InitValuatorDefaults(device, 1);
+
+    if (pEvdev->has_pressure) {
+	    xf86InitValuatorAxisStruct(device, 2, pEvdev->min_p, pEvdev->max_p,
+				       10000, 0, 10000);
+	    xf86InitValuatorDefaults(device, 2);
+    }
+
     xf86MotionHistoryAllocate(pInfo);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
@@ -1367,7 +1395,7 @@ EvdevProbe(InputInfoPtr pInfo)
     if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
-	if (TestBit(BTN_TOUCH, key_bitmask)) {
+	if (!pEvdev->has_pressure && TestBit(BTN_TOUCH, key_bitmask)) {
             if (num_buttons) {
                 xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
                 pEvdev->flags |= EVDEV_TOUCHPAD;
@@ -1381,6 +1409,17 @@ EvdevProbe(InputInfoPtr pInfo)
 	has_axes = TRUE;
     }
 
+    if (TestBit(ABS_PRESSURE, abs_bitmask)) {
+        struct input_absinfo absinfo_p;
+
+        /* More than two pressure levels indicate it's not a button */
+        if (ioctl(pInfo->fd,
+                  EVIOCGABS(ABS_PRESSURE), &absinfo_p) == 0) {
+            if ((absinfo_p.maximum - absinfo_p.minimum) > 1)
+                pEvdev->has_pressure = TRUE;
+        }
+    }
+
     for (i = 0; i < BTN_MISC; i++)
         if (TestBit(i, key_bitmask))
             break;
@@ -1392,10 +1431,15 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_axes && num_buttons) {
-        xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
-	pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
-	    XI86_CONFIGURED;
-	pInfo->type_name = XI_MOUSE;
+        pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
+                        XI86_CONFIGURED;
+	if (pEvdev->has_pressure) {
+	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
+	    pInfo->type_name = XI_TABLET;
+	} else {
+	    xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
+	    pInfo->type_name = XI_MOUSE;
+	}
     }
 
     if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
@@ -1475,6 +1519,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
      * proximity will still report events.
      */
     pEvdev->tool = 1;
+    pEvdev->has_pressure = FALSE;
 
     device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
