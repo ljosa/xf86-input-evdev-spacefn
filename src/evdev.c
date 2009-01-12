@@ -236,14 +236,14 @@ static void
 PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
-    static char warned[KEY_MAX];
+    static char warned[KEY_CNT];
 
     /* Filter all repeated events from device.
        We'll do softrepeat in the server */
     if (value == 2)
 	return;
 
-    if (code > 255 && ev->code < KEY_MAX) {
+    if (code > 255 && ev->code <= KEY_MAX) {
 	if (!warned[ev->code])
 	    xf86Msg(X_WARNING, "%s: unable to handle keycode %d\n",
 		    pInfo->name, ev->code);
@@ -1223,12 +1223,12 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
     int i;
 
     char name[1024]                  = {0};
-    long bitmask[NLONGS(EV_MAX)]      = {0};
-    long key_bitmask[NLONGS(KEY_MAX)] = {0};
-    long rel_bitmask[NLONGS(REL_MAX)] = {0};
-    long abs_bitmask[NLONGS(ABS_MAX)] = {0};
-    long led_bitmask[NLONGS(LED_MAX)] = {0};
-    struct input_absinfo absinfo[ABS_MAX];
+    long bitmask[NLONGS(EV_CNT)]      = {0};
+    long key_bitmask[NLONGS(KEY_CNT)] = {0};
+    long rel_bitmask[NLONGS(REL_CNT)] = {0};
+    long abs_bitmask[NLONGS(ABS_CNT)] = {0};
+    long led_bitmask[NLONGS(LED_CNT)] = {0};
+    struct input_absinfo absinfo[ABS_CNT];
 
     if (ioctl(pInfo->fd,
               EVIOCGNAME(sizeof(name) - 1), name) < 0) {
@@ -1287,7 +1287,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
 
     memset(absinfo, 0, sizeof(absinfo));
 
-    for (i = 0; i < ABS_MAX; i++)
+    for (i = ABS_X; i <= ABS_MAX; i++)
     {
         if (TestBit(i, abs_bitmask))
         {
@@ -1323,9 +1323,9 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    long key_bitmask[NLONGS(KEY_MAX)] = {0};
-    long rel_bitmask[NLONGS(REL_MAX)] = {0};
-    long abs_bitmask[NLONGS(ABS_MAX)] = {0};
+    long key_bitmask[NLONGS(KEY_CNT)] = {0};
+    long rel_bitmask[NLONGS(REL_CNT)] = {0};
+    long abs_bitmask[NLONGS(ABS_CNT)] = {0};
     int i, has_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;

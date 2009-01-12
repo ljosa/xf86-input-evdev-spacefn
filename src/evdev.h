@@ -40,6 +40,22 @@
 #include <xkbstr.h>
 #endif
 
+#ifndef EV_CNT /* linux 2.4 kernels and earlier lack _CNT defines */
+#define EV_CNT (EV_MAX+1)
+#endif
+#ifndef KEY_CNT
+#define KEY_CNT (KEY_MAX+1)
+#endif
+#ifndef REL_CNT
+#define REL_CNT (REL_MAX+1)
+#endif
+#ifndef ABS_CNT
+#define ABS_CNT (ABS_MAX+1)
+#endif
+#ifndef LED_CNT
+#define LED_CNT (LED_MAX+1)
+#endif
+
 #define EVDEV_MAXBUTTONS 32
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
@@ -123,12 +139,12 @@ typedef struct {
 
     /* Cached info from device. */
     char name[1024];
-    long bitmask[NLONGS(EV_MAX)];
-    long key_bitmask[NLONGS(KEY_MAX)];
-    long rel_bitmask[NLONGS(REL_MAX)];
-    long abs_bitmask[NLONGS(ABS_MAX)];
-    long led_bitmask[NLONGS(LED_MAX)];
-    struct input_absinfo absinfo[ABS_MAX];
+    long bitmask[NLONGS(EV_CNT)];
+    long key_bitmask[NLONGS(KEY_CNT)];
+    long rel_bitmask[NLONGS(REL_CNT)];
+    long abs_bitmask[NLONGS(ABS_CNT)];
+    long led_bitmask[NLONGS(LED_CNT)];
+    struct input_absinfo absinfo[ABS_CNT];
 
     /* minor/major number */
     dev_t min_maj;
