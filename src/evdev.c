@@ -1223,11 +1223,11 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
     int i;
 
     char name[1024]                  = {0};
-    long bitmask[NBITS(EV_MAX)]      = {0};
-    long key_bitmask[NBITS(KEY_MAX)] = {0};
-    long rel_bitmask[NBITS(REL_MAX)] = {0};
-    long abs_bitmask[NBITS(ABS_MAX)] = {0};
-    long led_bitmask[NBITS(LED_MAX)] = {0};
+    long bitmask[NLONGS(EV_MAX)]      = {0};
+    long key_bitmask[NLONGS(KEY_MAX)] = {0};
+    long rel_bitmask[NLONGS(REL_MAX)] = {0};
+    long abs_bitmask[NLONGS(ABS_MAX)] = {0};
+    long led_bitmask[NLONGS(LED_MAX)] = {0};
     struct input_absinfo absinfo[ABS_MAX];
 
     if (ioctl(pInfo->fd,
@@ -1323,9 +1323,9 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    long key_bitmask[NBITS(KEY_MAX)] = {0};
-    long rel_bitmask[NBITS(REL_MAX)] = {0};
-    long abs_bitmask[NBITS(ABS_MAX)] = {0};
+    long key_bitmask[NLONGS(KEY_MAX)] = {0};
+    long rel_bitmask[NLONGS(REL_MAX)] = {0};
+    long abs_bitmask[NLONGS(ABS_MAX)] = {0};
     int i, has_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;

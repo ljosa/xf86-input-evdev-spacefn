@@ -47,7 +47,9 @@
 #endif
 
 #define LONG_BITS (sizeof(long) * 8)
-#define NBITS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
+
+/* Number of longs needed to hold the given number of bits */
+#define NLONGS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
 
 /* axis specific data for wheel emulation */
 typedef struct {
@@ -121,11 +123,11 @@ typedef struct {
 
     /* Cached info from device. */
     char name[1024];
-    long bitmask[NBITS(EV_MAX)];
-    long key_bitmask[NBITS(KEY_MAX)];
-    long rel_bitmask[NBITS(REL_MAX)];
-    long abs_bitmask[NBITS(ABS_MAX)];
-    long led_bitmask[NBITS(LED_MAX)];
+    long bitmask[NLONGS(EV_MAX)];
+    long key_bitmask[NLONGS(KEY_MAX)];
+    long rel_bitmask[NLONGS(REL_MAX)];
+    long abs_bitmask[NLONGS(ABS_MAX)];
+    long led_bitmask[NLONGS(LED_MAX)];
     struct input_absinfo absinfo[ABS_MAX];
 
     /* minor/major number */
