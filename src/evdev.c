@@ -50,6 +50,7 @@
 #ifdef HAVE_PROPERTIES
 #include <X11/Xatom.h>
 #include <evdev-properties.h>
+#include <xserver-properties.h>
 #endif
 
 #ifndef MAXDEVICES
@@ -115,6 +116,7 @@ static Atom prop_invert = 0;
 static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
+static Atom prop_label = 0;
 #endif
 
 /* All devices the evdev driver has allocated and knows about.
@@ -1702,7 +1704,6 @@ EvdevInitProperty(DeviceIntPtr dev)
     BOOL         invert[2];
     char         reopen;
 
-
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
     {
         invert[0] = pEvdev->invert_x;
@@ -1749,6 +1750,56 @@ EvdevInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
+
+
+    /* Axis labelling
+       This is of course rather stupid. Because evdev doesn't really deal with
+       arbitrary axes yet, axis 0/1 must always be X/Y. If we have pressure,
+       then it's always axis 2. So the labelling is rather lame.
+     */
+    if ((prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
+    {
+        Atom atom, atoms[3];
+
+        if (TestBit(REL_X, pEvdev->rel_bitmask))
+        {
+            atom = XIGetKnownProperty(AXIS_LABEL_PROP_REL_X);
+            if (atom)
+                atoms[0] = atom;
+        } else if (TestBit(ABS_X, pEvdev->abs_bitmask))
+        {
+            atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_X);
+            if (atom)
+                atoms[0] = atom;
+        }
+
+        if (TestBit(REL_Y, pEvdev->rel_bitmask))
+        {
+            atom = XIGetKnownProperty(AXIS_LABEL_PROP_REL_Y);
+            if (atom)
+                atoms[1] = atom;
+        } else if (TestBit(ABS_Y, pEvdev->abs_bitmask))
+        {
+            atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_Y);
+            if (atom)
+                atoms[1] = atom;
+        }
+
+        if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask))
+        {
+            atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_PRESSURE);
+            if (atom)
+                atoms[2] = atom;
+        }
+
+        if (atoms[0] != -1 && atoms[1] != -1)
+        {
+            int natoms = (pEvdev->has_pressure && atoms[2] != -1) ? 3 : 2;
+            XIChangeDeviceProperty(dev, prop_label, XA_ATOM, 32,
+                                   PropModeReplace, natoms, &atoms, FALSE);
+            XISetDevicePropertyDeletable(dev, prop_label, FALSE);
+        }
+    }
 }
 
 static int
@@ -1811,7 +1862,8 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
-    }
+    } else if (atom == prop_label)
+        return BadAccess; /* Axis labels can't be changed */
 
     return Success;
 }
