@@ -1392,6 +1392,17 @@ EvdevProbe(InputInfoPtr pInfo)
         has_scroll = TRUE;
     }
 
+    if (TestBit(ABS_PRESSURE, abs_bitmask)) {
+        struct input_absinfo absinfo_p;
+
+        /* More than two pressure levels indicate it's not a button */
+        if (ioctl(pInfo->fd,
+                  EVIOCGABS(ABS_PRESSURE), &absinfo_p) == 0) {
+            if ((absinfo_p.maximum - absinfo_p.minimum) > 1)
+                pEvdev->has_pressure = TRUE;
+        }
+    }
+
     if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
@@ -1407,17 +1418,6 @@ EvdevProbe(InputInfoPtr pInfo)
             }
 	}
 	has_axes = TRUE;
-    }
-
-    if (TestBit(ABS_PRESSURE, abs_bitmask)) {
-        struct input_absinfo absinfo_p;
-
-        /* More than two pressure levels indicate it's not a button */
-        if (ioctl(pInfo->fd,
-                  EVIOCGABS(ABS_PRESSURE), &absinfo_p) == 0) {
-            if ((absinfo_p.maximum - absinfo_p.minimum) > 1)
-                pEvdev->has_pressure = TRUE;
-        }
     }
 
     for (i = 0; i < BTN_MISC; i++)
