@@ -211,7 +211,6 @@ SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
             *option = NULL;
         } else {
             *option = s;
-            xf86Msg(X_CONFIG, "%s: %s: \"%s\"\n", pInfo->name, name, s);
         }
     }
 }
