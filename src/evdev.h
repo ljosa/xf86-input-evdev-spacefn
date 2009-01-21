@@ -62,6 +62,17 @@
 #define HAVE_PROPERTIES 1
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
+typedef struct {
+    char *rules;
+    char *model;
+    char *layout;
+    char *variant;
+    char *options;
+} XkbRMLVOSet;
+#endif
+
+
 #define LONG_BITS (sizeof(long) * 8)
 
 /* Number of longs needed to hold the given number of bits */
@@ -89,12 +100,11 @@ typedef struct {
     BOOL has_pressure;
 
     /* XKB stuff has to be per-device rather than per-driver */
-    char                    *xkb_rules;
-    char                    *xkb_model;
-    char                    *xkb_layout;
-    char                    *xkb_variant;
-    char                    *xkb_options;
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
     XkbComponentNamesRec    xkbnames;
+#endif
+    XkbRMLVOSet rmlvo;
+
     /* Middle mouse button emulation */
     struct {
         BOOL                enabled;

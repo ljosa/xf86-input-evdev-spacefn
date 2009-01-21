@@ -839,27 +839,33 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
     /* sorry, no rules change allowed for you */
     xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
-    SetXkbOption(pInfo, "xkb_rules", &pEvdev->xkb_rules);
-    SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
-    if (!pEvdev->xkb_model)
-        SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
-    SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
-    if (!pEvdev->xkb_layout)
-        SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
-    SetXkbOption(pInfo, "xkb_variant", &pEvdev->xkb_variant);
-    if (!pEvdev->xkb_variant)
-        SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
-    SetXkbOption(pInfo, "xkb_options", &pEvdev->xkb_options);
-    if (!pEvdev->xkb_options)
-        SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
+    SetXkbOption(pInfo, "xkb_rules", &pEvdev->rmlvo.rules);
+    SetXkbOption(pInfo, "xkb_model", &pEvdev->rmlvo.model);
+    if (!pEvdev->rmlvo.model)
+        SetXkbOption(pInfo, "XkbModel", &pEvdev->rmlvo.model);
+    SetXkbOption(pInfo, "xkb_layout", &pEvdev->rmlvo.layout);
+    if (!pEvdev->rmlvo.layout)
+        SetXkbOption(pInfo, "XkbLayout", &pEvdev->rmlvo.layout);
+    SetXkbOption(pInfo, "xkb_variant", &pEvdev->rmlvo.variant);
+    if (!pEvdev->rmlvo.variant)
+        SetXkbOption(pInfo, "XkbVariant", &pEvdev->rmlvo.variant);
+    SetXkbOption(pInfo, "xkb_options", &pEvdev->rmlvo.options);
+    if (!pEvdev->rmlvo.options)
+        SetXkbOption(pInfo, "XkbOptions", &pEvdev->rmlvo.options);
 
-    XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
-            pEvdev->xkb_layout, pEvdev->xkb_variant,
-            pEvdev->xkb_options);
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 5
+    XkbSetRulesDflts(&pEvdev->rmlvo);
+    if (!InitKeyboardDeviceStruct(device, &pEvdev->rmlvo, NULL, EvdevKbdCtrl))
+        return !Success;
+#else
+    XkbSetRulesDflts(pEvdev->rmlvo.rules, pEvdev->rmlvo.model,
+            pEvdev->rmlvo.layout, pEvdev->rmlvo.variant,
+            pEvdev->rmlvo.options);
     if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
                 &keySyms, modMap, NULL,
                 EvdevKbdCtrl))
         return !Success;
+#endif
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE;
 
