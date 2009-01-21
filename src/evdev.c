@@ -41,9 +41,7 @@
 #include <xf86Xinput.h>
 #include <exevents.h>
 #include <xorgVersion.h>
-#ifdef XKB
 #include <xkbsrv.h>
-#endif
 
 #include "evdev.h"
 
@@ -839,43 +837,29 @@ EvdevAddKeyClass(DeviceIntPtr device)
     keySyms.minKeyCode = MIN_KEYCODE;
     keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
 
-#ifdef XKB
-    if (pEvdev->noXkb)
-#endif
-    {
-        xf86Msg(X_CONFIG, "XKB: disabled\n");
-        if (!InitKeyboardDeviceStruct((DevicePtr)device, &keySyms, modMap,
-                                      NULL, EvdevKbdCtrl))
-            return !Success;
-    }
-#ifdef XKB
-    else
-    {
-	/* sorry, no rules change allowed for you */
-	xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
-        SetXkbOption(pInfo, "xkb_rules", &pEvdev->xkb_rules);
-        SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
-	if (!pEvdev->xkb_model)
-	    SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
-        SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
-	if (!pEvdev->xkb_layout)
-	    SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
-        SetXkbOption(pInfo, "xkb_variant", &pEvdev->xkb_variant);
-	if (!pEvdev->xkb_variant)
-	    SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
-        SetXkbOption(pInfo, "xkb_options", &pEvdev->xkb_options);
-	if (!pEvdev->xkb_options)
-	    SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
+    /* sorry, no rules change allowed for you */
+    xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
+    SetXkbOption(pInfo, "xkb_rules", &pEvdev->xkb_rules);
+    SetXkbOption(pInfo, "xkb_model", &pEvdev->xkb_model);
+    if (!pEvdev->xkb_model)
+        SetXkbOption(pInfo, "XkbModel", &pEvdev->xkb_model);
+    SetXkbOption(pInfo, "xkb_layout", &pEvdev->xkb_layout);
+    if (!pEvdev->xkb_layout)
+        SetXkbOption(pInfo, "XkbLayout", &pEvdev->xkb_layout);
+    SetXkbOption(pInfo, "xkb_variant", &pEvdev->xkb_variant);
+    if (!pEvdev->xkb_variant)
+        SetXkbOption(pInfo, "XkbVariant", &pEvdev->xkb_variant);
+    SetXkbOption(pInfo, "xkb_options", &pEvdev->xkb_options);
+    if (!pEvdev->xkb_options)
+        SetXkbOption(pInfo, "XkbOptions", &pEvdev->xkb_options);
 
-        XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
-                         pEvdev->xkb_layout, pEvdev->xkb_variant,
-                         pEvdev->xkb_options);
-        if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
-                                         &keySyms, modMap, NULL,
-                                         EvdevKbdCtrl))
-            return !Success;
-    }
-#endif
+    XkbSetRulesDflts(pEvdev->xkb_rules, pEvdev->xkb_model,
+            pEvdev->xkb_layout, pEvdev->xkb_variant,
+            pEvdev->xkb_options);
+    if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
+                &keySyms, modMap, NULL,
+                EvdevKbdCtrl))
+        return !Success;
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE;
 
@@ -1562,8 +1546,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
        words, it disables rfkill and the "Macintosh mouse button emulation".
        Note that this needs a server that sets the console to RAW mode. */
     pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
-
-    pEvdev->noXkb = noXkbExtension; /* parse the XKB options during kbd setup */
 
     EvdevInitButtonMapping(pInfo);
 
