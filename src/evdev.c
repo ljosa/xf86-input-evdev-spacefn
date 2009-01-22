@@ -854,7 +854,6 @@ EvdevAddKeyClass(DeviceIntPtr device)
         SetXkbOption(pInfo, "XkbOptions", &pEvdev->rmlvo.options);
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 5
-    XkbSetRulesDflts(&pEvdev->rmlvo);
     if (!InitKeyboardDeviceStruct(device, &pEvdev->rmlvo, NULL, EvdevKbdCtrl))
         return !Success;
 #else
