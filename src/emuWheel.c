@@ -311,7 +311,7 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 }
 
 #ifdef HAVE_PROPERTIES
-int
+static int
 EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                          BOOL checkonly)
 {

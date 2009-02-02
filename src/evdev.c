@@ -120,7 +120,7 @@ static Atom prop_label = 0;
 /* All devices the evdev driver has allocated and knows about.
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
  * cannot be used by evdev, leaving us with a space of 2 at the end. */
-static EvdevPtr evdev_devices[MAXDEVICES] = {0};
+static EvdevPtr evdev_devices[MAXDEVICES] = {NULL};
 
 static int
 EvdevGetMajorMinor(InputInfoPtr pInfo)
@@ -1495,7 +1495,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->reverse_conversion_proc = NULL;
     pInfo->dev = NULL;
     pInfo->private_flags = 0;
-    pInfo->always_core_feedback = 0;
+    pInfo->always_core_feedback = NULL;
     pInfo->conf_idev = dev;
 
     if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))

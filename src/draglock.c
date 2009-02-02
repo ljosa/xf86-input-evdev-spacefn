@@ -217,7 +217,7 @@ EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value)
  * for the pair. 0 disables a pair.
  * i.e. to set bt 3 to draglock button 1, supply 0,0,1
  */
-int
+static int
 EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                          BOOL checkonly)
 {

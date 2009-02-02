@@ -352,7 +352,7 @@ EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
 
 
 #ifdef HAVE_PROPERTIES
-int
+static int
 EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                       BOOL checkonly)
 {
