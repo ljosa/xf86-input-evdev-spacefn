@@ -243,7 +243,9 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                     return BadValue;
         }
 
-        if (val->size == 1)
+        if (val->size == 0)
+            return BadMatch;
+        else if (val->size == 1)
         {
             int meta = *((CARD8*)val->data);
             if (meta > EVDEV_MAXBUTTONS)

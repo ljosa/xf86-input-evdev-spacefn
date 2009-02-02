@@ -350,10 +350,12 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
     }
     else if (atom == prop_wheel_button)
     {
-        int bt = *((CARD8*)val->data);
+        int bt;
 
         if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
+
+        bt = *((CARD8*)val->data);
 
         if (bt < 0 || bt >= EVDEV_MAXBUTTONS)
             return BadValue;
@@ -374,10 +376,12 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
         }
     } else if (atom == prop_wheel_inertia)
     {
-        int inertia = *((CARD16*)val->data);
+        int inertia;
 
         if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
+
+        inertia = *((CARD16*)val->data);
 
         if (inertia < 0)
             return BadValue;
@@ -386,10 +390,12 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
             pEvdev->emulateWheel.inertia = inertia;
     } else if (atom == prop_wheel_timeout)
     {
-        int timeout = *((CARD16*)val->data);
+        int timeout;
 
         if (val->format != 16 || val->size != 1 || val->type != XA_INTEGER)
             return BadMatch;
+
+        timeout = *((CARD16*)val->data);
 
         if (timeout < 0)
             return BadValue;
