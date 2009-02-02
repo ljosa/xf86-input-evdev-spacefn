@@ -1285,6 +1285,8 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
                 xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
                 goto error;
             }
+            /* ignore current position (value) in comparison (bug #19819) */
+            absinfo[i].value = pEvdev->absinfo[i].value;
         }
     }
 
