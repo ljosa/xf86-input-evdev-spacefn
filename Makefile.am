@@ -20,6 +20,9 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+# Ensure headers are installed below $(prefix) for distcheck
+DISTCHECK_CONFIGURE_FLAGS = --with-sdkdir='$${includedir}/xorg'
+
 if BUILD_TEST
 test_dir=test
 endif
