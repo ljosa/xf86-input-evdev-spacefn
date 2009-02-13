@@ -1226,54 +1226,66 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (compare && strcmp(pEvdev->name, name))
-        goto error;
-
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(0, sizeof(bitmask)), bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+    if (compare && strcmp(pEvdev->name, name)) {
+        xf86Msg(X_ERROR, "%s: device name changed: %s != %s\n", pInfo->name, pEvdev->name, name);
         goto error;
     }
 
-    if (compare && memcmp(pEvdev->bitmask, bitmask, sizeof(bitmask)))
+    if (ioctl(pInfo->fd,
+              EVIOCGBIT(0, sizeof(bitmask)), bitmask) < 0) {
+        xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n", pInfo->name, strerror(errno));
         goto error;
+    }
+
+    if (compare && memcmp(pEvdev->bitmask, bitmask, sizeof(bitmask))) {
+        xf86Msg(X_ERROR, "%s: device bitmask has changed\n", pInfo->name);
+        goto error;
+    }
 
 
     if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n", pInfo->name, strerror(errno));
         goto error;
     }
 
-    if (compare && memcmp(pEvdev->rel_bitmask, rel_bitmask, sizeof(rel_bitmask)))
+    if (compare && memcmp(pEvdev->rel_bitmask, rel_bitmask, sizeof(rel_bitmask))) {
+        xf86Msg(X_ERROR, "%s: device rel_bitmask has changed\n", pInfo->name);
         goto error;
+    }
 
     if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n", pInfo->name, strerror(errno));
         goto error;
     }
 
-    if (compare && memcmp(pEvdev->abs_bitmask, abs_bitmask, sizeof(abs_bitmask)))
+    if (compare && memcmp(pEvdev->abs_bitmask, abs_bitmask, sizeof(abs_bitmask))) {
+        xf86Msg(X_ERROR, "%s: device abs_bitmask has changed\n", pInfo->name);
         goto error;
+    }
 
     if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n", pInfo->name, strerror(errno));
         goto error;
     }
 
-    if (compare && memcmp(pEvdev->key_bitmask, key_bitmask, sizeof(key_bitmask)))
+    if (compare && memcmp(pEvdev->key_bitmask, key_bitmask, sizeof(key_bitmask))) {
+        xf86Msg(X_ERROR, "%s: device key_bitmask has changed\n", pInfo->name);
         goto error;
+    }
 
     if (ioctl(pInfo->fd,
               EVIOCGBIT(EV_LED, sizeof(led_bitmask)), led_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
+        xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n", pInfo->name, strerror(errno));
         goto error;
     }
 
-    if (compare && memcmp(pEvdev->led_bitmask, led_bitmask, sizeof(led_bitmask)))
+    if (compare && memcmp(pEvdev->led_bitmask, led_bitmask, sizeof(led_bitmask))) {
+        xf86Msg(X_ERROR, "%s: device led_bitmask has changed\n", pInfo->name);
         goto error;
+    }
 
     memset(absinfo, 0, sizeof(absinfo));
 
@@ -1282,7 +1294,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         if (TestBit(i, abs_bitmask))
         {
             if (ioctl(pInfo->fd, EVIOCGABS(i), &absinfo[i]) < 0) {
-                xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+                xf86Msg(X_ERROR, "%s: ioctl EVIOCGABS failed: %s\n", pInfo->name, strerror(errno));
                 goto error;
             }
             /* ignore current position (value) in comparison (bug #19819) */
@@ -1290,8 +1302,10 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         }
     }
 
-    if (compare && memcmp(pEvdev->absinfo, absinfo, sizeof(absinfo)))
-            goto error;
+    if (compare && memcmp(pEvdev->absinfo, absinfo, sizeof(absinfo))) {
+        xf86Msg(X_ERROR, "%s: device absinfo has changed\n", pInfo->name);
+        goto error;
+    }
 
     /* cache info */
     if (!compare)
