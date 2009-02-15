@@ -1173,8 +1173,6 @@ EvdevProc(DeviceIntPtr device, int what)
             pInfo->fd = -1;
         }
         pEvdev->min_maj = 0;
-        if (pEvdev->flags & EVDEV_INITIALIZED)
-            EvdevMBEmuFinalize(pInfo);
         pEvdev->flags &= ~EVDEV_INITIALIZED;
 	device->public.on = FALSE;
         if (pEvdev->reopen_timer)
