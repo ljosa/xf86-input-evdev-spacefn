@@ -1208,11 +1208,11 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
     int i;
 
     char name[1024]                  = {0};
-    long bitmask[NLONGS(EV_CNT)]      = {0};
-    long key_bitmask[NLONGS(KEY_CNT)] = {0};
-    long rel_bitmask[NLONGS(REL_CNT)] = {0};
-    long abs_bitmask[NLONGS(ABS_CNT)] = {0};
-    long led_bitmask[NLONGS(LED_CNT)] = {0};
+    unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
+    unsigned long key_bitmask[NLONGS(KEY_CNT)] = {0};
+    unsigned long rel_bitmask[NLONGS(REL_CNT)] = {0};
+    unsigned long abs_bitmask[NLONGS(ABS_CNT)] = {0};
+    unsigned long led_bitmask[NLONGS(LED_CNT)] = {0};
     struct input_absinfo absinfo[ABS_CNT];
 
     if (ioctl(pInfo->fd,
