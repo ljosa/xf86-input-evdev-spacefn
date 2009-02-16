@@ -259,16 +259,18 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
     if (value == 2)
 	return;
 
-    if (code > 255 && ev->code <= KEY_MAX) {
-	if (!warned[ev->code])
-	    xf86Msg(X_WARNING, "%s: unable to handle keycode %d\n",
-		    pInfo->name, ev->code);
-	warned[ev->code] = 1;
-    }
-
-    /* The X server can't handle keycodes > 255 anyway, just drop them.  */
     if (code > 255)
+    {
+        if (ev->code <= KEY_MAX && !warned[ev->code])
+        {
+            xf86Msg(X_WARNING, "%s: unable to handle keycode %d\n",
+                    pInfo->name, ev->code);
+            warned[ev->code] = 1;
+        }
+
+        /* The X server can't handle keycodes > 255. */
         return;
+    }
 
     xf86PostKeyboardEvent(pInfo->dev, code, value);
 }
