@@ -1329,9 +1329,6 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    long key_bitmask[NLONGS(KEY_CNT)] = {0};
-    long rel_bitmask[NLONGS(REL_CNT)] = {0};
-    long abs_bitmask[NLONGS(ABS_CNT)] = {0};
     int i, has_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
@@ -1349,24 +1346,6 @@ EvdevProbe(InputInfoPtr pInfo)
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return 1;
-    }
-
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return 1;
-    }
-
-    if (ioctl(pInfo->fd,
-              EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask) < 0) {
-        xf86Msg(X_ERROR, "ioctl EVIOCGBIT failed: %s\n", strerror(errno));
-        return 1;
-    }
-
     has_axes = FALSE;
     has_keys = FALSE;
     has_scroll = FALSE;
@@ -1375,7 +1354,7 @@ EvdevProbe(InputInfoPtr pInfo)
     /* count all buttons */
     for (i = BTN_MISC; i < BTN_JOYSTICK; i++)
     {
-        if (TestBit(i, key_bitmask))
+        if (TestBit(i, pEvdev->key_bitmask))
             num_buttons++;
     }
 
@@ -1387,22 +1366,25 @@ EvdevProbe(InputInfoPtr pInfo)
                 num_buttons);
     }
 
-    if (TestBit(REL_X, rel_bitmask) && TestBit(REL_Y, rel_bitmask)) {
+    if (TestBit(REL_X, pEvdev->rel_bitmask) &&
+        TestBit(REL_Y, pEvdev->rel_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
 	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 	has_axes = TRUE;
     }
 
-    if (TestBit(REL_WHEEL, rel_bitmask) || TestBit(REL_HWHEEL, rel_bitmask)) {
+    if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
+        TestBit(REL_HWHEEL, pEvdev->rel_bitmask)) {
         xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
         has_scroll = TRUE;
     }
 
-    if (TestBit(ABS_X, abs_bitmask) && TestBit(ABS_Y, abs_bitmask)) {
+    if (TestBit(ABS_X, pEvdev->abs_bitmask) &&
+        TestBit(ABS_Y, pEvdev->abs_bitmask)) {
         xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
         if (!TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) &&
-             TestBit(BTN_TOUCH, key_bitmask)) {
+             TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
             if (num_buttons) {
                 xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
                 pEvdev->flags |= EVDEV_TOUCHPAD;
@@ -1417,7 +1399,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     for (i = 0; i < BTN_MISC; i++)
-        if (TestBit(i, key_bitmask))
+        if (TestBit(i, pEvdev->key_bitmask))
             break;
 
     if (i < BTN_MISC) {
@@ -1559,13 +1541,13 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     EvdevInitButtonMapping(pInfo);
 
-    if (EvdevProbe(pInfo)) {
+    if (EvdevCacheCompare(pInfo, FALSE) ||
+        EvdevProbe(pInfo)) {
 	close(pInfo->fd);
 	xf86DeleteInput(pInfo, 0);
         return NULL;
     }
 
-    EvdevCacheCompare(pInfo, FALSE); /* cache device data */
     EvdevAddDevice(pInfo);
 
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
