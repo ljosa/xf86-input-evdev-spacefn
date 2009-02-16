@@ -490,12 +490,6 @@ EvdevReadInput(InputInfoPtr pInfo)
         int v[MAX_VALUATORS];
 
         memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
-        if (pEvdev->swap_axes) {
-            int tmp = v[0];
-            v[0] = v[1];
-            v[1] = tmp;
-        }
-
         if (pEvdev->flags & EVDEV_CALIBRATED)
         {
             v[0] = xf86ScaleAxis(v[0],
@@ -506,6 +500,12 @@ EvdevReadInput(InputInfoPtr pInfo)
                     pEvdev->absinfo[ABS_Y].maximum,
                     pEvdev->absinfo[ABS_Y].minimum,
                     pEvdev->calibration.max_y, pEvdev->calibration.min_y);
+        }
+
+        if (pEvdev->swap_axes) {
+            int tmp = v[0];
+            v[0] = v[1];
+            v[1] = tmp;
         }
 
         if (pEvdev->invert_x)
