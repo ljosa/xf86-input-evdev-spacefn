@@ -884,13 +884,13 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     if (ioctl(pInfo->fd,
 	      EVIOCGABS(ABS_X), &absinfo_x) < 0) {
-	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS ABS_X failed: %s\n", strerror(errno));
 	return !Success;
     }
 
     if (ioctl(pInfo->fd,
 	      EVIOCGABS(ABS_Y), &absinfo_y) < 0) {
-	xf86Msg(X_ERROR, "ioctl EVIOCGABS failed: %s\n", strerror(errno));
+	xf86Msg(X_ERROR, "ioctl EVIOCGABS ABS_Y failed: %s\n", strerror(errno));
 	return !Success;
     }
 
