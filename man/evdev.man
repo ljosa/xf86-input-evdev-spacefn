@@ -44,22 +44,6 @@ The following driver
 .B Options
 are supported:
 .TP 7
-.BI "Option \*qDevice\*q \*q" string \*q
-Specifies the device through which the device can be accessed.  This will 
-generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
-The mapping from device node to hardware is system-dependent.
-.TP 7
-.BI "Option \*qEmulate3Buttons\*q \*q" boolean \*q
-Enable/disable the emulation of the third (middle) mouse button for mice
-which only have two physical buttons.  The third button is emulated by
-pressing both buttons simultaneously.  Default: on, until a middle mouse
-button event is registered. Property: "Evdev Middle Button Emulation".
-.TP 7
-.BI "Option \*qEmulate3Timeout\*q \*q" integer \*q
-Sets the timeout (in milliseconds) that the driver waits before deciding
-if two buttons where pressed "simultaneously" when 3 button emulation is
-enabled.  Default: 50. Property: "Evdev Middle Button Timeout".
-.TP 7
 .BI "Option \*qButtonMapping\*q \*q" string \*q
 Sets the button mapping for this device. The mapping is a space-separated list
 of button mappings that correspond in order to the physical buttons on the
@@ -69,6 +53,11 @@ buttons can have the same mapping.
 For example, a left-handed mouse with deactivated scroll-wheel would use a
 mapping of "3 2 1 0 0". Invalid mappings are ignored and the default mapping
 is used. Buttons not specified in the user's mapping use the default mapping.
+.TP 7
+.BI "Option \*qDevice\*q \*q" string \*q
+Specifies the device through which the device can be accessed.  This will 
+generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
+The mapping from device node to hardware is system-dependent.
 .TP 7
 .BI "Option \*qDragLockButtons\*q \*q" "L1 B2 L3 B4" \*q
 Sets \*qdrag lock buttons\*q that simulate holding a button down, so
@@ -83,6 +72,17 @@ Sets a \*qmaster drag lock button\*q that acts as a \*qMeta Key\*q
 indicating that the next button pressed is to be
 \*qdrag locked\*q. Property: "Evdev Drag Lock Buttons".
 .TP 7
+.TP 7
+.BI "Option \*qEmulate3Buttons\*q \*q" boolean \*q
+Enable/disable the emulation of the third (middle) mouse button for mice
+which only have two physical buttons.  The third button is emulated by
+pressing both buttons simultaneously.  Default: on, until a middle mouse
+button event is registered. Property: "Evdev Middle Button Emulation".
+.TP 7
+.BI "Option \*qEmulate3Timeout\*q \*q" integer \*q
+Sets the timeout (in milliseconds) that the driver waits before deciding
+if two buttons where pressed "simultaneously" when 3 button emulation is
+enabled.  Default: 50. Property: "Evdev Middle Button Timeout".
 .BI "Option \*qEmulateWheel\*q \*q" boolean \*q
 Enable/disable "wheel" emulation.  Wheel emulation means emulating button
 press/release events when the mouse is moved while a specific real button
@@ -96,7 +96,7 @@ more buttons but no wheel.  See the description of the
 .BR XAxisMapping ,
 and
 .B YAxisMapping
-options below.  Default: off. Property "Evdev Wheel Emulation".
+options.  Default: off. Property "Evdev Wheel Emulation".
 .TP 7
 .BI "Option \*qEmulateWheelButton\*q \*q" integer \*q
 Specifies which button must be held down to enable wheel emulation mode.
@@ -120,6 +120,25 @@ must be pressed before wheel emulation is started. If the
 is released before this timeout, the original button press/release event
 is sent.  Default: 200. Property: "Evdev Wheel Emulation Timeout".
 .TP 7
+.BI "Option \*qGrabDevice\*q \*q" boolean \*q
+Force a grab on the event device. Doing so will ensure that no other driver
+can initialise the same device and it will also stop the device from sending
+events to /dev/kbd or /dev/input/mice. Events from this device will not be
+sent to virtual devices (e.g. rfkill or the Macintosh mouse button emulation).
+Default: disabled.
+.TP 7
+.BI "Option \*qInvertX\*q \*q" Bool \*q
+.TP 7
+.BI "Option \*qInvertY\*q \*q" Bool \*q
+Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
+.TP 7
+.BI "Option \*qReopenAttempts\*q \*q" integer \*q
+Number of reopen attempts after a read error occurs on the device (e.g. after
+waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
+.TP 7
+.BI "Option \*qSwapAxes\*q \*q" Bool \*q
+Swap x/y axes. Default: off. Property: "Evdev Axes Swap".
+.TP 7
 .BI "Option \*qXAxisMapping\*q \*q" "N1 N2" \*q
 Specifies which buttons are mapped to motion in the X direction in wheel
 emulation mode.  Button number
@@ -137,30 +156,27 @@ is mapped to the negative Y axis motion and button number
 .I N2
 is mapped to the positive Y axis motion.  Default: "4 5". Property:
 "Evdev Wheel Emulation Axes".
-.TP 7
-.BI "Option \*qReopenAttempts\*q \*q" integer \*q
-Number of reopen attempts after a read error occurs on the device (e.g. after
-waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
-.TP 7
-.BI "Option \*qInvertX\*q \*q" Bool \*q
-.TP 7
-.BI "Option \*qInvertY\*q \*q" Bool \*q
-Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
-.TP 7
-.BI "Option \*qSwapAxes\*q \*q" Bool \*q
-Swap x/y axes. Default: off. Property: "Evdev Axes Swap".
-.TP 7
-.BI "Option \*qGrabDevice\*q \*q" boolean \*q
-Force a grab on the event device. Doing so will ensure that no other driver
-can initialise the same device and it will also stop the device from sending
-events to /dev/kbd or /dev/input/mice. Events from this device will not be
-sent to virtual devices (e.g. rfkill or the Macintosh mouse button emulation).
-Default: disabled.
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the
 .B evdev
 driver.
+.TP 7
+.BI "Evdev Axis Calibration"
+4 32-bit values, order min-x, max-x, min-y, max-y or 0 values to disable
+run-time axis calibration. This feature is required for devices that need to
+scale to a different coordinate system than originally reported to the X
+server, such as touchscreens that require run-time calibration.
+.TP 7
+.BI "Evdev Axis Inversion"
+2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.
+.TP 7
+.BI "Evdev Axis Swap"
+1 boolean value (8 bit, 0 or 1). 1 swaps x/y axes.
+.TP 7
+.BI "Evdev Drag Lock Buttons"
+8-bit. Either 1 value or pairs of values. Value range 0-32, 0 disables a
+value.
 .TP 7
 .BI "Evdev Middle Button Emulation"
 1 boolean value (8 bit, 0 or 1).
@@ -174,30 +190,14 @@ driver.
 .BI "Evdev Wheel Emulation Axes"
 4 8-bit values, order X up, X down, Y up, Y down. 0 disables a value.
 .TP 7
+.BI "Evdev Wheel Emulation Button"
+1 8-bit value, allowed range 0-32, 0 disables the button.
+.TP 7
 .BI "Evdev Wheel Emulation Inertia"
 1 16-bit positive value.
 .TP 7
 .BI "Evdev Wheel Emulation Timeout"
 1 16-bit positive value.
-.TP 7
-.BI "Evdev Wheel Emulation Button"
-1 8-bit value, allowed range 0-32, 0 disables the button.
-.TP 7
-.BI "Evdev Drag Lock Buttons"
-8-bit. Either 1 value or pairs of values. Value range 0-32, 0 disables a
-value.
-.TP 7
-.BI "Evdev Axis Inversion"
-2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.
-.TP 7
-.BI "Evdev Axis Calibration"
-4 32-bit values, order min-x, max-x, min-y, max-y or 0 values to disable
-run-time axis calibration. This feature is required for devices that need to
-scale to a different coordinate system than originally reported to the X
-server, such as touchscreens that require run-time calibration.
-.TP 7
-.BI "Evdev Axis Swap"
-1 boolean value (8 bit, 0 or 1). 1 swaps x/y axes.
 
 .SH AUTHORS
 Kristian Høgsberg.
