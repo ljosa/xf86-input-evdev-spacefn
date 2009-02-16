@@ -84,15 +84,18 @@ typedef struct {
 typedef struct {
     const char *device;
     int grabDevice;         /* grab the event device? */
-    int min_x, min_y, max_x, max_y, min_p, max_p;
-    int abs_x, abs_y, abs_p, old_x, old_y;
+
+    int num_vals;           /* number of valuators */
+    int axis_map[max(ABS_CNT, REL_CNT)]; /* Map evdev <axis> to index */
+    int vals[MAX_VALUATORS];
+    int old_vals[MAX_VALUATORS]; /* Translate absolute inputs to relative */
+
     int flags;
     int tool;
     int buttons;            /* number of buttons */
     BOOL swap_axes;
     BOOL invert_x;
     BOOL invert_y;
-    BOOL has_pressure;
 
     /* XKB stuff has to be per-device rather than per-driver */
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
