@@ -935,9 +935,6 @@ EvdevAddAbsClass(DeviceIntPtr device)
 				       10000, 0, 10000);
 	    xf86InitValuatorDefaults(device, 2);
     }
-
-    xf86MotionHistoryAllocate(pInfo);
-
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
 
