@@ -84,7 +84,6 @@ typedef struct {
 typedef struct {
     const char *device;
     int grabDevice;         /* grab the event device? */
-    int screen;
     int min_x, min_y, max_x, max_y, min_p, max_p;
     int abs_x, abs_y, abs_p, old_x, old_y;
     int flags;
