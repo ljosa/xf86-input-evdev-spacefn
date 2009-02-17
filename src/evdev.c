@@ -1685,7 +1685,7 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 
 #ifdef HAVE_PROPERTIES
 /* Aligned with linux/input.h */
-static char* labels[] = {
+static char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_X,
     AXIS_LABEL_PROP_ABS_Y,
     AXIS_LABEL_PROP_ABS_Z,
@@ -1713,6 +1713,20 @@ static char* labels[] = {
     AXIS_LABEL_PROP_ABS_VOLUME,
     AXIS_LABEL_PROP_ABS_MISC
 };
+
+static char* rel_labels[] = {
+    AXIS_LABEL_PROP_REL_X,
+    AXIS_LABEL_PROP_REL_Y,
+    AXIS_LABEL_PROP_REL_Z,
+    AXIS_LABEL_PROP_REL_RX,
+    AXIS_LABEL_PROP_REL_RY,
+    AXIS_LABEL_PROP_REL_RZ,
+    AXIS_LABEL_PROP_REL_HWHEEL,
+    AXIS_LABEL_PROP_REL_DIAL,
+    AXIS_LABEL_PROP_REL_WHEEL,
+    AXIS_LABEL_PROP_REL_MISC
+};
+
 
 static void
 EvdevInitProperty(DeviceIntPtr dev)
@@ -1769,21 +1783,41 @@ EvdevInitProperty(DeviceIntPtr dev)
         XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
 
         /* Axis labelling */
-        if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS) &&
-           (prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
+        if ((prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
             Atom atom, atoms[pEvdev->num_vals];
             int natoms = pEvdev->num_vals;
             int axis;
+            char **labels;
+            int labels_len = 0;
+            char *misc_label;
 
-            for (axis = ABS_X; axis < ArrayLength(labels); axis++)
+            if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+            {
+                labels     = rel_labels;
+                labels_len = ArrayLength(rel_labels);
+                misc_label = AXIS_LABEL_PROP_REL_MISC;
+            } else if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+            {
+                labels     = abs_labels;
+                labels_len = ArrayLength(abs_labels);
+                misc_label = AXIS_LABEL_PROP_ABS_MISC;
+            }
+
+            /* First, make sure all atoms are initialized */
+            atom = XIGetKnownProperty(misc_label);
+            for (axis = 0; axis < pEvdev->num_vals; axis++)
+                atoms[axis] = atom;
+
+            /* Now fill the ones we know */
+            for (axis = 0; axis < labels_len; axis++)
             {
                 if (pEvdev->axis_map[axis] == -1)
                     continue;
 
                 atom = XIGetKnownProperty(labels[axis]);
                 if (!atom) /* Should not happen */
-                    atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_MISC);
+                    atom = XIGetKnownProperty(misc_label);
 
                 atoms[pEvdev->axis_map[axis]] = atom;
             }
