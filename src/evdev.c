@@ -1684,34 +1684,43 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 }
 
 #ifdef HAVE_PROPERTIES
-/* Aligned with linux/input.h */
+/* Aligned with linux/input.h.
+   Note that there are holes in the ABS_ range, these are simply replaced with
+   MISC here */
 static char* abs_labels[] = {
-    AXIS_LABEL_PROP_ABS_X,
-    AXIS_LABEL_PROP_ABS_Y,
-    AXIS_LABEL_PROP_ABS_Z,
-    AXIS_LABEL_PROP_ABS_RX,
-    AXIS_LABEL_PROP_ABS_RY,
-    AXIS_LABEL_PROP_ABS_RZ,
-    AXIS_LABEL_PROP_ABS_THROTTLE,
-    AXIS_LABEL_PROP_ABS_RUDDER,
-    AXIS_LABEL_PROP_ABS_WHEEL,
-    AXIS_LABEL_PROP_ABS_GAS,
-    AXIS_LABEL_PROP_ABS_BRAKE,
-    AXIS_LABEL_PROP_ABS_HAT0X,
-    AXIS_LABEL_PROP_ABS_HAT0Y,
-    AXIS_LABEL_PROP_ABS_HAT1X,
-    AXIS_LABEL_PROP_ABS_HAT1Y,
-    AXIS_LABEL_PROP_ABS_HAT2X,
-    AXIS_LABEL_PROP_ABS_HAT2Y,
-    AXIS_LABEL_PROP_ABS_HAT3X,
-    AXIS_LABEL_PROP_ABS_HAT3Y,
-    AXIS_LABEL_PROP_ABS_PRESSURE,
-    AXIS_LABEL_PROP_ABS_DISTANCE,
-    AXIS_LABEL_PROP_ABS_TILT_X,
-    AXIS_LABEL_PROP_ABS_TILT_Y,
-    AXIS_LABEL_PROP_ABS_TOOL_WIDTH,
-    AXIS_LABEL_PROP_ABS_VOLUME,
-    AXIS_LABEL_PROP_ABS_MISC
+    AXIS_LABEL_PROP_ABS_X,              /* 0x00 */
+    AXIS_LABEL_PROP_ABS_Y,              /* 0x01 */
+    AXIS_LABEL_PROP_ABS_Z,              /* 0x02 */
+    AXIS_LABEL_PROP_ABS_RX,             /* 0x03 */
+    AXIS_LABEL_PROP_ABS_RY,             /* 0x04 */
+    AXIS_LABEL_PROP_ABS_RZ,             /* 0x05 */
+    AXIS_LABEL_PROP_ABS_THROTTLE,       /* 0x06 */
+    AXIS_LABEL_PROP_ABS_RUDDER,         /* 0x07 */
+    AXIS_LABEL_PROP_ABS_WHEEL,          /* 0x08 */
+    AXIS_LABEL_PROP_ABS_GAS,            /* 0x09 */
+    AXIS_LABEL_PROP_ABS_BRAKE,          /* 0x0a */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_HAT0X,          /* 0x10 */
+    AXIS_LABEL_PROP_ABS_HAT0Y,          /* 0x11 */
+    AXIS_LABEL_PROP_ABS_HAT1X,          /* 0x12 */
+    AXIS_LABEL_PROP_ABS_HAT1Y,          /* 0x13 */
+    AXIS_LABEL_PROP_ABS_HAT2X,          /* 0x14 */
+    AXIS_LABEL_PROP_ABS_HAT2Y,          /* 0x15 */
+    AXIS_LABEL_PROP_ABS_HAT3X,          /* 0x16 */
+    AXIS_LABEL_PROP_ABS_HAT3Y,          /* 0x17 */
+    AXIS_LABEL_PROP_ABS_PRESSURE,       /* 0x18 */
+    AXIS_LABEL_PROP_ABS_DISTANCE,       /* 0x19 */
+    AXIS_LABEL_PROP_ABS_TILT_X,         /* 0x1a */
+    AXIS_LABEL_PROP_ABS_TILT_Y,         /* 0x1b */
+    AXIS_LABEL_PROP_ABS_TOOL_WIDTH,     /* 0x1c */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_VOLUME          /* 0x20 */
 };
 
 static char* rel_labels[] = {
