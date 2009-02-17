@@ -1671,6 +1671,36 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 }
 
 #ifdef HAVE_PROPERTIES
+/* Aligned with linux/input.h */
+static char* labels[] = {
+    AXIS_LABEL_PROP_ABS_X,
+    AXIS_LABEL_PROP_ABS_Y,
+    AXIS_LABEL_PROP_ABS_Z,
+    AXIS_LABEL_PROP_ABS_RX,
+    AXIS_LABEL_PROP_ABS_RY,
+    AXIS_LABEL_PROP_ABS_RZ,
+    AXIS_LABEL_PROP_ABS_THROTTLE,
+    AXIS_LABEL_PROP_ABS_RUDDER,
+    AXIS_LABEL_PROP_ABS_WHEEL,
+    AXIS_LABEL_PROP_ABS_GAS,
+    AXIS_LABEL_PROP_ABS_BRAKE,
+    AXIS_LABEL_PROP_ABS_HAT0X,
+    AXIS_LABEL_PROP_ABS_HAT0Y,
+    AXIS_LABEL_PROP_ABS_HAT1X,
+    AXIS_LABEL_PROP_ABS_HAT1Y,
+    AXIS_LABEL_PROP_ABS_HAT2X,
+    AXIS_LABEL_PROP_ABS_HAT2Y,
+    AXIS_LABEL_PROP_ABS_HAT3X,
+    AXIS_LABEL_PROP_ABS_HAT3Y,
+    AXIS_LABEL_PROP_ABS_PRESSURE,
+    AXIS_LABEL_PROP_ABS_DISTANCE,
+    AXIS_LABEL_PROP_ABS_TILT_X,
+    AXIS_LABEL_PROP_ABS_TILT_Y,
+    AXIS_LABEL_PROP_ABS_TOOL_WIDTH,
+    AXIS_LABEL_PROP_ABS_VOLUME,
+    AXIS_LABEL_PROP_ABS_MISC
+};
+
 static void
 EvdevInitProperty(DeviceIntPtr dev)
 {
@@ -1725,53 +1755,29 @@ EvdevInitProperty(DeviceIntPtr dev)
 
         XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
 
-        /* Axis labelling
-           This is of course rather stupid. Because evdev doesn't really deal
-           with arbitrary axes yet, axis 0/1 must always be X/Y. If we have
-           pressure, then it's always axis 2. So the labelling is rather lame.
-         */
-        if ((prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
+        /* Axis labelling */
+        if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS) &&
+           (prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
-            Atom atom, atoms[3];
+            Atom atom, atoms[pEvdev->num_vals];
+            int natoms = pEvdev->num_vals;
+            int axis;
 
-            if (TestBit(REL_X, pEvdev->rel_bitmask))
+            for (axis = ABS_X; axis < ArrayLength(labels); axis++)
             {
-                atom = XIGetKnownProperty(AXIS_LABEL_PROP_REL_X);
-                if (atom)
-                    atoms[0] = atom;
-            } else if (TestBit(ABS_X, pEvdev->abs_bitmask))
-            {
-                atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_X);
-                if (atom)
-                    atoms[0] = atom;
+                if (pEvdev->axis_map[axis] == -1)
+                    continue;
+
+                atom = XIGetKnownProperty(labels[axis]);
+                if (!atom) /* Should not happen */
+                    atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_MISC);
+
+                atoms[pEvdev->axis_map[axis]] = atom;
             }
 
-            if (TestBit(REL_Y, pEvdev->rel_bitmask))
-            {
-                atom = XIGetKnownProperty(AXIS_LABEL_PROP_REL_Y);
-                if (atom)
-                    atoms[1] = atom;
-            } else if (TestBit(ABS_Y, pEvdev->abs_bitmask))
-            {
-                atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_Y);
-                if (atom)
-                    atoms[1] = atom;
-            }
-
-            if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask))
-            {
-                atom = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_PRESSURE);
-                if (atom)
-                    atoms[2] = atom;
-            }
-
-            if (atoms[0] != -1 && atoms[1] != -1)
-            {
-                int natoms = pEvdev->num_vals;
-                XIChangeDeviceProperty(dev, prop_label, XA_ATOM, 32,
-                        PropModeReplace, natoms, &atoms, FALSE);
-                XISetDevicePropertyDeletable(dev, prop_label, FALSE);
-            }
+            XIChangeDeviceProperty(dev, prop_label, XA_ATOM, 32,
+                                   PropModeReplace, natoms, &atoms, FALSE);
+            XISetDevicePropertyDeletable(dev, prop_label, FALSE);
         }
     }
 
