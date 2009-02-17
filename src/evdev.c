@@ -988,14 +988,10 @@ EvdevAddRelClass(DeviceIntPtr device)
         i++;
     }
 
-    xf86MotionHistoryAllocate(pInfo);
-
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
 
     pInfo->flags |= XI86_POINTER_CAPABLE;
-
-    xf86MotionHistoryAllocate(pInfo);
 
     return Success;
 }
