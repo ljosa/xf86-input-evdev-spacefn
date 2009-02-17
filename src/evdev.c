@@ -49,6 +49,13 @@
 #include <X11/Xatom.h>
 #include <evdev-properties.h>
 #include <xserver-properties.h>
+/* 1.6 has properties, but no labels */
+#ifdef AXIS_LABEL_PROP
+#define HAVE_LABELS
+#else
+#undef HAVE_LABELS
+#endif
+
 #endif
 
 #ifndef MAXDEVICES
@@ -1684,6 +1691,7 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 }
 
 #ifdef HAVE_PROPERTIES
+#ifdef HAVE_LABELS
 /* Aligned with linux/input.h.
    Note that there are holes in the ABS_ range, these are simply replaced with
    MISC here */
@@ -1735,6 +1743,7 @@ static char* rel_labels[] = {
     AXIS_LABEL_PROP_REL_WHEEL,
     AXIS_LABEL_PROP_REL_MISC
 };
+#endif /* HAVE_LABELS */
 
 
 static void
@@ -1791,6 +1800,7 @@ EvdevInitProperty(DeviceIntPtr dev)
 
         XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
 
+#ifdef HAVE_LABELS
         /* Axis labelling */
         if ((prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
@@ -1835,6 +1845,7 @@ EvdevInitProperty(DeviceIntPtr dev)
                                    PropModeReplace, natoms, &atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_label, FALSE);
         }
+#endif /* HAVE_LABELS */
     }
 
 }
