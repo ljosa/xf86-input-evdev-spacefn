@@ -954,23 +954,40 @@ static int
 EvdevAddRelClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+    int num_axes, axis, i = 0;
 
     pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
 
-    if (!InitValuatorClassDeviceStruct(device, 2,
+    if (!TestBit(EV_REL, pEvdev->bitmask))
+        return !Success;
+
+    num_axes = CountBits(pEvdev->rel_bitmask, NLONGS(REL_MAX));
+    if (num_axes < 1)
+        return !Success;
+
+    pEvdev->num_vals = num_axes;
+    memset(pEvdev->vals, 0, num_axes * sizeof(int));
+
+    if (!InitValuatorClassDeviceStruct(device, num_axes,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
                                        GetMotionHistorySize(), Relative))
         return !Success;
 
-    /* X valuator */
-    xf86InitValuatorAxisStruct(device, 0, -1, -1, 1, 0, 1);
-    xf86InitValuatorDefaults(device, 0);
+    for (axis = REL_X; axis <= REL_MAX; axis++)
+    {
+        pEvdev->axis_map[axis] = -1;
+        if (!TestBit(axis, pEvdev->rel_bitmask))
+            continue;
+        pEvdev->axis_map[axis] = i;
+        xf86InitValuatorAxisStruct(device, i, -1, -1, 1, 0, 1);
+        xf86InitValuatorDefaults(device, i);
+        i++;
+    }
 
-    /* Y valuator */
-    xf86InitValuatorAxisStruct(device, 1, -1, -1, 1, 0, 1);
-    xf86InitValuatorDefaults(device, 1);
     xf86MotionHistoryAllocate(pInfo);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
