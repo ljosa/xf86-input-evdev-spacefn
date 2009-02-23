@@ -457,77 +457,76 @@ EvdevReadInput(InputInfoPtr pInfo)
             break;
 
         case EV_SYN:
-            break;
+	    /* convert to relative motion for touchpads */
+	    if (abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
+		abs = 0;
+		if (pEvdev->tool) { /* meaning, touch is active */
+		    if (pEvdev->old_vals[0] != -1)
+			dx = pEvdev->vals[0] - pEvdev->old_vals[0];
+		    if (pEvdev->old_vals[1] != -1)
+			dy = pEvdev->vals[1] - pEvdev->old_vals[1];
+		    pEvdev->old_vals[0] = pEvdev->vals[0];
+		    pEvdev->old_vals[1] = pEvdev->vals[1];
+		} else {
+		    pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
+		}
+	    }
+
+	    if (dx != 0 || dy != 0) {
+		if (pEvdev->swap_axes) {
+		    tmp = dx;
+		    dx = dy;
+		    dy = tmp;
+		}
+		if (pEvdev->invert_x)
+		    dx *= -1;
+		if (pEvdev->invert_y)
+		    dy *= -1;
+		xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
+	    }
+
+	    /*
+	     * Some devices only generate valid abs coords when BTN_DIGI is
+	     * pressed.  On wacom tablets, this means that the pen is in
+	     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+	     * released, and a (0, 0) absolute event is generated.  Checking
+	     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+	     * initialized to 1 so devices that doesn't use this scheme still
+	     * just works.
+	     */
+	    if (abs && pEvdev->tool) {
+		int v[MAX_VALUATORS];
+
+		memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
+		if (pEvdev->flags & EVDEV_CALIBRATED)
+		{
+		    v[0] = xf86ScaleAxis(v[0],
+			    pEvdev->absinfo[ABS_X].maximum,
+			    pEvdev->absinfo[ABS_X].minimum,
+			    pEvdev->calibration.max_x, pEvdev->calibration.min_x);
+		    v[1] = xf86ScaleAxis(v[1],
+			    pEvdev->absinfo[ABS_Y].maximum,
+			    pEvdev->absinfo[ABS_Y].minimum,
+			    pEvdev->calibration.max_y, pEvdev->calibration.min_y);
+		}
+
+		if (pEvdev->swap_axes) {
+		    int tmp = v[0];
+		    v[0] = v[1];
+		    v[1] = tmp;
+		}
+
+		if (pEvdev->invert_x)
+		    v[0] = (pEvdev->absinfo[ABS_X].maximum - v[0] +
+			    pEvdev->absinfo[ABS_X].minimum);
+		if (pEvdev->invert_y)
+		    v[1] = (pEvdev->absinfo[ABS_Y].maximum - v[1] +
+			    pEvdev->absinfo[ABS_Y].minimum);
+
+		xf86PostMotionEventP(pInfo->dev, TRUE, 0, pEvdev->num_vals, v);
+	    }
+	    return;
         }
-    }
-
-    /* convert to relative motion for touchpads */
-    if (abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
-	abs = 0;
-	if (pEvdev->tool) { /* meaning, touch is active */
-            if (pEvdev->old_vals[0] != -1)
-                dx = pEvdev->vals[0] - pEvdev->old_vals[0];
-            if (pEvdev->old_vals[1] != -1)
-                dy = pEvdev->vals[1] - pEvdev->old_vals[1];
-            pEvdev->old_vals[0] = pEvdev->vals[0];
-            pEvdev->old_vals[1] = pEvdev->vals[1];
-	} else {
-            pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
-	}
-    }
-
-    if (dx != 0 || dy != 0) {
-        if (pEvdev->swap_axes) {
-            tmp = dx;
-            dx = dy;
-            dy = tmp;
-        }
-        if (pEvdev->invert_x)
-            dx *= -1;
-        if (pEvdev->invert_y)
-            dy *= -1;
-        xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
-    }
-
-    /*
-     * Some devices only generate valid abs coords when BTN_DIGI is
-     * pressed.  On wacom tablets, this means that the pen is in
-     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
-     * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->digi here, lets us ignore that event.  pEvdev is
-     * initialized to 1 so devices that doesn't use this scheme still
-     * just works.
-     */
-    if (abs && pEvdev->tool) {
-        int v[MAX_VALUATORS];
-
-        memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
-        if (pEvdev->flags & EVDEV_CALIBRATED)
-        {
-            v[0] = xf86ScaleAxis(v[0],
-                    pEvdev->absinfo[ABS_X].maximum,
-                    pEvdev->absinfo[ABS_X].minimum,
-                    pEvdev->calibration.max_x, pEvdev->calibration.min_x);
-            v[1] = xf86ScaleAxis(v[1],
-                    pEvdev->absinfo[ABS_Y].maximum,
-                    pEvdev->absinfo[ABS_Y].minimum,
-                    pEvdev->calibration.max_y, pEvdev->calibration.min_y);
-        }
-
-        if (pEvdev->swap_axes) {
-            int tmp = v[0];
-            v[0] = v[1];
-            v[1] = tmp;
-        }
-
-        if (pEvdev->invert_x)
-            v[0] = (pEvdev->absinfo[ABS_X].maximum - v[0] +
-                    pEvdev->absinfo[ABS_X].minimum);
-        if (pEvdev->invert_y)
-            v[1] = (pEvdev->absinfo[ABS_Y].maximum - v[1] +
-                    pEvdev->absinfo[ABS_Y].minimum);
-
-        xf86PostMotionEventP(pInfo->dev, TRUE, 0, pEvdev->num_vals, v);
     }
 }
 
