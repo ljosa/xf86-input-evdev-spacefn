@@ -295,7 +295,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
     EvdevPtr pEvdev = pInfo->private;
 
     do {
-        pInfo->fd = open(pEvdev->device, O_RDWR, 0);
+        pInfo->fd = open(pEvdev->device, O_RDWR | O_NONBLOCK, 0);
     } while (pInfo->fd < 0 && errno == EINTR);
 
     if (pInfo->fd != -1)
@@ -347,9 +347,12 @@ EvdevReadInput(InputInfoPtr pInfo)
     tmp = 0;
     abs = 0;
 
-    while (xf86WaitForInput (pInfo->fd, 0) > 0) {
+    while (1) {
         len = read(pInfo->fd, &ev, sizeof ev);
         if (len != sizeof ev) {
+	    if (errno == EAGAIN)
+		break;
+
             /* The kernel promises that we always only read a complete
              * event, so len != sizeof ev is an error. */
             xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name, strerror(errno));
@@ -1531,7 +1534,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     xf86Msg(X_CONFIG, "%s: Device: \"%s\"\n", pInfo->name, device);
     do {
-        pInfo->fd = open(device, O_RDWR, 0);
+        pInfo->fd = open(device, O_RDWR | O_NONBLOCK, 0);
     } while (pInfo->fd < 0 && errno == EINTR);
 
     if (pInfo->fd < 0) {
