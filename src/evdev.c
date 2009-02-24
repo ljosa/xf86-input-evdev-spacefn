@@ -338,8 +338,9 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
 static void
 EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
-    static int dx, dy, tmp, value;
-    static unsigned int abs;
+    static int delta[REL_CNT];
+    static int tmp, value;
+    static unsigned int abs, rel;
     unsigned int button;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -352,15 +353,9 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
             if (EvdevWheelEmuFilterMotion(pInfo, ev))
                 break;
 
+            rel = 1;
+
             switch (ev->code) {
-                case REL_X:
-                    dx += value;
-                    break;
-
-                case REL_Y:
-                    dy += value;
-                    break;
-
                 case REL_WHEEL:
                     if (value > 0)
                         PostButtonClicks(pInfo, wheel_up_button, value);
@@ -374,6 +369,11 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
                         PostButtonClicks(pInfo, wheel_right_button, value);
                     else if (value < 0)
                         PostButtonClicks(pInfo, wheel_left_button, -value);
+                    break;
+
+                /* We don't post wheel events as axis motion. */
+                default:
+                    delta[ev->code] += value;
                     break;
             }
             break;
@@ -436,9 +436,9 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
                 abs = 0;
                 if (pEvdev->tool) { /* meaning, touch is active */
                     if (pEvdev->old_vals[0] != -1)
-                        dx = pEvdev->vals[0] - pEvdev->old_vals[0];
+                        delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
                     if (pEvdev->old_vals[1] != -1)
-                        dy = pEvdev->vals[1] - pEvdev->old_vals[1];
+                        delta[REL_Y] = pEvdev->vals[1] - pEvdev->old_vals[1];
                     pEvdev->old_vals[0] = pEvdev->vals[0];
                     pEvdev->old_vals[1] = pEvdev->vals[1];
                 } else {
@@ -446,17 +446,36 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
                 }
             }
 
-            if (dx != 0 || dy != 0) {
+            if (rel) {
+                int post_deltas[REL_CNT] = {0}; /* axis-mapped deltas */
+                int first = REL_CNT, last = 0;
+                int i;
+
                 if (pEvdev->swap_axes) {
-                    tmp = dx;
-                    dx = dy;
-                    dy = tmp;
+                    tmp = delta[REL_X];
+                    delta[REL_X] = delta[REL_Y];
+                    delta[REL_Y] = tmp;
                 }
                 if (pEvdev->invert_x)
-                    dx *= -1;
+                    delta[REL_X] *= -1;
                 if (pEvdev->invert_y)
-                    dy *= -1;
-                xf86PostMotionEvent(pInfo->dev, FALSE, 0, 2, dx, dy);
+                    delta[REL_Y] *= -1;
+
+                for (i = 0; i < REL_CNT; i++)
+                {
+                    int map = pEvdev->axis_map[i];
+                    if (delta[i] && map != -1)
+                    {
+                        post_deltas[map] = delta[i];
+                        if (map < first)
+                            first = map;
+                        if (map > last)
+                            last = map;
+                    }
+                }
+
+                xf86PostMotionEventP(pInfo->dev, FALSE, first,
+                                     (last - first + 1), &post_deltas[first]);
             }
 
             /*
@@ -500,10 +519,10 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
                 xf86PostMotionEventP(pInfo->dev, TRUE, 0, pEvdev->num_vals, v);
             }
 
-            dx = 0;
-            dy = 0;
+            memset(delta, 0, sizeof(delta));
             tmp = 0;
             abs = 0;
+            rel = 0;
     }
 }
 
