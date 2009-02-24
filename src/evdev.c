@@ -1012,6 +1012,15 @@ EvdevAddRelClass(DeviceIntPtr device)
     if (num_axes < 1)
         return !Success;
 
+    /* Wheels are special, we post them as button events. So let's ignore them
+     * in the axes list too */
+    if (TestBit(REL_WHEEL, pEvdev->rel_bitmask))
+        num_axes--;
+    if (TestBit(REL_HWHEEL, pEvdev->rel_bitmask))
+        num_axes--;
+    if (TestBit(REL_DIAL, pEvdev->rel_bitmask))
+        num_axes--;
+
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
 
@@ -1024,7 +1033,11 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
+
         pEvdev->axis_map[axis] = -1;
+        /* We don't post wheel events, so ignore them here too */
+        if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
+            continue;
         if (!TestBit(axis, pEvdev->rel_bitmask))
             continue;
         pEvdev->axis_map[axis] = i;
