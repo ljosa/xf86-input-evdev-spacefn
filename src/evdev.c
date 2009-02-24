@@ -507,23 +507,21 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
     }
 }
 
+/* just a magic number to reduce the number of reads */
+#define NUM_EVENTS 16
+
 static void
 EvdevReadInput(InputInfoPtr pInfo)
 {
-    struct input_event ev;
-    int len;
+    struct input_event ev[NUM_EVENTS];
+    int i, len = sizeof(ev);
     EvdevPtr pEvdev = pInfo->private;
 
-    while (1) {
-        len = read(pInfo->fd, &ev, sizeof ev);
-        if (len != sizeof ev) {
-	    if (errno == EAGAIN)
-		break;
-
-            /* The kernel promises that we always only read a complete
-             * event, so len != sizeof ev is an error. */
-            xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name, strerror(errno));
-
+    while (len == sizeof(ev))
+    {
+        len = read(pInfo->fd, &ev, sizeof(ev));
+        if (len == 0)
+        {
             if (errno == ENODEV) /* May happen after resume */
             {
                 xf86RemoveEnabledDevice(pInfo);
@@ -531,11 +529,21 @@ EvdevReadInput(InputInfoPtr pInfo)
                 pInfo->fd = -1;
                 pEvdev->reopen_left = pEvdev->reopen_attempts;
                 pEvdev->reopen_timer = TimerSet(NULL, 0, 100, EvdevReopenTimer, pInfo);
-            }
+            } else if (errno != EAGAIN)
+                xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name,
+                        strerror(errno));
             break;
         }
 
-        EvdevProcessEvent(pInfo, &ev);
+        if (len % sizeof(ev[0])) {
+            /* The kernel promises that we always only read a complete
+             * event, so len != sizeof ev is an error. */
+            xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name, strerror(errno));
+            break;
+        }
+
+        for (i = 0; i < len/sizeof(ev[0]); i++)
+            EvdevProcessEvent(pInfo, &ev[i]);
     }
 }
 
