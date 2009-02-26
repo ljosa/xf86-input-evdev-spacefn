@@ -1450,6 +1450,11 @@ EvdevProbe(InputInfoPtr pInfo)
         TestBit(REL_HWHEEL, pEvdev->rel_bitmask)) {
         xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
         has_scroll = TRUE;
+        if (!num_buttons)
+            xf86Msg(X_INFO, "%s: Forcing buttons for scroll wheel(s)\n",
+                    pInfo->name);
+        num_buttons = (num_buttons < 3) ? 7 : num_buttons + 4;
+        pEvdev->buttons = num_buttons;
     }
 
     if (TestBit(ABS_X, pEvdev->abs_bitmask) &&
