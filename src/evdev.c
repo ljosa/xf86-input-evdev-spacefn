@@ -1892,7 +1892,7 @@ EvdevInitProperty(DeviceIntPtr dev)
 
                 atom = XIGetKnownProperty(labels[axis]);
                 if (!atom) /* Should not happen */
-                    atom = XIGetKnownProperty(misc_label);
+                    continue;
 
                 atoms[pEvdev->axis_map[axis]] = atom;
             }
