@@ -121,7 +121,7 @@ static Atom prop_invert = 0;
 static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
-static Atom prop_label = 0;
+static Atom prop_axis_label = 0;
 #endif
 
 /* All devices the evdev driver has allocated and knows about.
@@ -1858,7 +1858,7 @@ EvdevInitProperty(DeviceIntPtr dev)
 
 #ifdef HAVE_LABELS
         /* Axis labelling */
-        if ((prop_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
+        if ((prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
             Atom atom, atoms[pEvdev->num_vals];
             int natoms = pEvdev->num_vals;
@@ -1897,9 +1897,9 @@ EvdevInitProperty(DeviceIntPtr dev)
                 atoms[pEvdev->axis_map[axis]] = atom;
             }
 
-            XIChangeDeviceProperty(dev, prop_label, XA_ATOM, 32,
+            XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
                                    PropModeReplace, natoms, &atoms, FALSE);
-            XISetDevicePropertyDeletable(dev, prop_label, FALSE);
+            XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
 #endif /* HAVE_LABELS */
     }
@@ -1966,7 +1966,7 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
-    } else if (atom == prop_label)
+    } else if (atom == prop_axis_label)
         return BadAccess; /* Axis labels can't be changed */
 
     return Success;
