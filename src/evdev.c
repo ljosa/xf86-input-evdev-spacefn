@@ -122,6 +122,7 @@ static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
 static Atom prop_axis_label = 0;
+static Atom prop_btn_label = 0;
 #endif
 
 /* All devices the evdev driver has allocated and knows about.
@@ -1799,6 +1800,88 @@ static char* rel_labels[] = {
     AXIS_LABEL_PROP_REL_WHEEL,
     AXIS_LABEL_PROP_REL_MISC
 };
+
+static char* btn_labels[][16] = {
+    { /* BTN_MISC group                 offset 0x100*/
+        BTN_LABEL_PROP_BTN_0,           /* 0x00 */
+        BTN_LABEL_PROP_BTN_1,           /* 0x01 */
+        BTN_LABEL_PROP_BTN_2,           /* 0x02 */
+        BTN_LABEL_PROP_BTN_3,           /* 0x03 */
+        BTN_LABEL_PROP_BTN_4,           /* 0x04 */
+        BTN_LABEL_PROP_BTN_5,           /* 0x05 */
+        BTN_LABEL_PROP_BTN_6,           /* 0x06 */
+        BTN_LABEL_PROP_BTN_7,           /* 0x07 */
+        BTN_LABEL_PROP_BTN_8,           /* 0x08 */
+        BTN_LABEL_PROP_BTN_9            /* 0x09 */
+    },
+    { /* BTN_MOUSE group                offset 0x110 */
+        BTN_LABEL_PROP_BTN_LEFT,        /* 0x00 */
+        BTN_LABEL_PROP_BTN_RIGHT,       /* 0x01 */
+        BTN_LABEL_PROP_BTN_MIDDLE,      /* 0x02 */
+        BTN_LABEL_PROP_BTN_SIDE,        /* 0x03 */
+        BTN_LABEL_PROP_BTN_EXTRA,       /* 0x04 */
+        BTN_LABEL_PROP_BTN_FORWARD,     /* 0x05 */
+        BTN_LABEL_PROP_BTN_BACK,        /* 0x06 */
+        BTN_LABEL_PROP_BTN_TASK         /* 0x07 */
+    },
+    { /* BTN_JOYSTICK group             offset 0x120 */
+        BTN_LABEL_PROP_BTN_TRIGGER,     /* 0x00 */
+        BTN_LABEL_PROP_BTN_THUMB,       /* 0x01 */
+        BTN_LABEL_PROP_BTN_THUMB2,      /* 0x02 */
+        BTN_LABEL_PROP_BTN_TOP,         /* 0x03 */
+        BTN_LABEL_PROP_BTN_TOP2,        /* 0x04 */
+        BTN_LABEL_PROP_BTN_PINKIE,      /* 0x05 */
+        BTN_LABEL_PROP_BTN_BASE,        /* 0x06 */
+        BTN_LABEL_PROP_BTN_BASE2,       /* 0x07 */
+        BTN_LABEL_PROP_BTN_BASE3,       /* 0x08 */
+        BTN_LABEL_PROP_BTN_BASE4,       /* 0x09 */
+        BTN_LABEL_PROP_BTN_BASE5,       /* 0x0a */
+        BTN_LABEL_PROP_BTN_BASE6,       /* 0x0b */
+        NULL,
+        NULL,
+        NULL,
+        BTN_LABEL_PROP_BTN_DEAD         /* 0x0f */
+    },
+    { /* BTN_GAMEPAD group              offset 0x130 */
+        BTN_LABEL_PROP_BTN_A,           /* 0x00 */
+        BTN_LABEL_PROP_BTN_B,           /* 0x01 */
+        BTN_LABEL_PROP_BTN_C,           /* 0x02 */
+        BTN_LABEL_PROP_BTN_X,           /* 0x03 */
+        BTN_LABEL_PROP_BTN_Y,           /* 0x04 */
+        BTN_LABEL_PROP_BTN_Z,           /* 0x05 */
+        BTN_LABEL_PROP_BTN_TL,          /* 0x06 */
+        BTN_LABEL_PROP_BTN_TR,          /* 0x07 */
+        BTN_LABEL_PROP_BTN_TL2,         /* 0x08 */
+        BTN_LABEL_PROP_BTN_TR2,         /* 0x09 */
+        BTN_LABEL_PROP_BTN_SELECT,      /* 0x0a */
+        BTN_LABEL_PROP_BTN_START,       /* 0x0b */
+        BTN_LABEL_PROP_BTN_MODE,        /* 0x0c */
+        BTN_LABEL_PROP_BTN_THUMBL,      /* 0x0d */
+        BTN_LABEL_PROP_BTN_THUMBR       /* 0x0e */
+    },
+    { /* BTN_DIGI group                         offset 0x140 */
+        BTN_LABEL_PROP_BTN_TOOL_PEN,            /* 0x00 */
+        BTN_LABEL_PROP_BTN_TOOL_RUBBER,         /* 0x01 */
+        BTN_LABEL_PROP_BTN_TOOL_BRUSH,          /* 0x02 */
+        BTN_LABEL_PROP_BTN_TOOL_PENCIL,         /* 0x03 */
+        BTN_LABEL_PROP_BTN_TOOL_AIRBRUSH,       /* 0x04 */
+        BTN_LABEL_PROP_BTN_TOOL_FINGER,         /* 0x05 */
+        BTN_LABEL_PROP_BTN_TOOL_MOUSE,          /* 0x06 */
+        BTN_LABEL_PROP_BTN_TOOL_LENS,           /* 0x07 */
+        NULL,
+        NULL,
+        BTN_LABEL_PROP_BTN_TOUCH,               /* 0x0a */
+        BTN_LABEL_PROP_BTN_STYLUS,              /* 0x0b */
+        BTN_LABEL_PROP_BTN_STYLUS2,             /* 0x0c */
+        BTN_LABEL_PROP_BTN_TOOL_DOUBLETAP,      /* 0x0d */
+        BTN_LABEL_PROP_BTN_TOOL_TRIPLETAP       /* 0x0e */
+    },
+    { /* BTN_WHEEL group                        offset 0x150 */
+        BTN_LABEL_PROP_BTN_GEAR_DOWN,           /* 0x00 */
+        BTN_LABEL_PROP_BTN_GEAR_UP              /* 0x01 */
+    }
+};
+
 #endif /* HAVE_LABELS */
 
 
@@ -1901,6 +1984,44 @@ EvdevInitProperty(DeviceIntPtr dev)
                                    PropModeReplace, natoms, &atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
+        /* Button labelling */
+        if ((prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
+        {
+            Atom atom, atoms[pEvdev->buttons];
+            int button, bmap;
+
+            /* First, make sure all atoms are initialized */
+            atom = XIGetKnownProperty(BTN_LABEL_PROP_BTN_UNKNOWN);
+            for (button = 0; button < pEvdev->buttons; button++)
+                atoms[button] = atom;
+
+            for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
+            {
+                if (TestBit(button, pEvdev->key_bitmask))
+                {
+                    int group = (button % 0x100)/16;
+                    int idx = button - ((button/16) * 16);
+
+                    atom = XIGetKnownProperty(btn_labels[group][idx]);
+                    if (!atom)
+                        continue;
+
+                    /* Props are 0-indexed, button numbers start with 1 */
+                    bmap = EvdevUtilButtonEventToButtonNumber(pEvdev, button) - 1;
+                    atoms[bmap] = atom;
+                }
+            }
+
+            /* wheel buttons, hardcoded anyway */
+            atoms[3] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
+            atoms[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
+            atoms[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
+            atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
+
+            XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
+                                   PropModeReplace, pEvdev->buttons, &atoms, FALSE);
+            XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
+        }
 #endif /* HAVE_LABELS */
     }
 
@@ -1966,8 +2087,8 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
-    } else if (atom == prop_axis_label)
-        return BadAccess; /* Axis labels can't be changed */
+    } else if (atom == prop_axis_label || atom == prop_btn_label)
+        return BadAccess; /* Axis/Button labels can't be changed */
 
     return Success;
 }
