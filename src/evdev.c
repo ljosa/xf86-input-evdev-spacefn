@@ -2014,7 +2014,7 @@ EvdevInitProperty(DeviceIntPtr dev)
 
             /* wheel buttons, hardcoded anyway */
             atoms[3] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
-            atoms[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
+            atoms[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_DOWN);
             atoms[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
             atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
 
