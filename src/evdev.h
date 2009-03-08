@@ -59,6 +59,11 @@
 #define HAVE_PROPERTIES 1
 #endif
 
+#ifndef MAX_VALUATORS
+#define MAX_VALUATORS 36
+#endif
+
+
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
 typedef struct {
     char *rules;
