@@ -2002,6 +2002,9 @@ EvdevInitProperty(DeviceIntPtr dev)
                     int group = (button % 0x100)/16;
                     int idx = button - ((button/16) * 16);
 
+                    if (!btn_labels[group][idx])
+                        continue;
+
                     atom = XIGetKnownProperty(btn_labels[group][idx]);
                     if (!atom)
                         continue;
