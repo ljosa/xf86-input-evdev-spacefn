@@ -263,8 +263,17 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
     static char warned[KEY_CNT];
 
     /* Filter all repeated events from device.
-       We'll do softrepeat in the server */
-    if (value == 2)
+       We'll do softrepeat in the server, but only since 1.6 */
+    if (value == 2
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) <= 2
+        && (ev->code == KEY_LEFTCTRL || ev->code == KEY_RIGHTCTRL ||
+            ev->code == KEY_LEFTSHIFT || ev->code == KEY_RIGHTSHIFT ||
+            ev->code == KEY_LEFTALT || ev->code == KEY_RIGHTALT ||
+            ev->code == KEY_LEFTMETA || ev->code == KEY_RIGHTMETA ||
+            ev->code == KEY_CAPSLOCK || ev->code == KEY_NUMLOCK ||
+            ev->code == KEY_SCROLLLOCK) /* XXX windows keys? */
+#endif
+            )
 	return;
 
     if (code > 255)
