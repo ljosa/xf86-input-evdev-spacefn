@@ -112,6 +112,7 @@ static const char *evdevDefaults[] = {
 
 static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
+static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitProperty(DeviceIntPtr dev);
@@ -585,6 +586,7 @@ EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
     /* Nothing to do, dix handles all settings */
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
 static KeySym map[] = {
     /* 0x00 */  NoSymbol,       NoSymbol,
     /* 0x01 */  XK_Escape,      NoSymbol,
@@ -838,6 +840,63 @@ static KeySym map[] = {
     /* 0xf7 */  NoSymbol,	NoSymbol,
 };
 
+static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
+    { XK_Shift_L,		ShiftMask },
+    { XK_Shift_R,		ShiftMask },
+    { XK_Control_L,		ControlMask },
+    { XK_Control_R,		ControlMask },
+    { XK_Caps_Lock,		LockMask },
+    { XK_Alt_L,		AltMask },
+    { XK_Alt_R,		AltMask },
+    { XK_Meta_L,		Mod4Mask },
+    { XK_Meta_R,		Mod4Mask },
+    { XK_Num_Lock,		NumLockMask },
+    { XK_Scroll_Lock,	ScrollLockMask },
+    { XK_Mode_switch,	AltLangMask }
+};
+
+/* Server 1.6 and earlier */
+static int
+EvdevInitKeysyms(DeviceIntPtr device)
+{
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+    KeySymsRec keySyms;
+    CARD8 modMap[MAP_LENGTH];
+    KeySym sym;
+    int i, j;
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+     /* Compute the modifier map */
+    memset(modMap, 0, sizeof modMap);
+
+    for (i = 0; i < ArrayLength(map) / GLYPHS_PER_KEY; i++) {
+        sym = map[i * GLYPHS_PER_KEY];
+        for (j = 0; j < ArrayLength(modifiers); j++) {
+            if (modifiers[j].keysym == sym)
+                modMap[i + MIN_KEYCODE] = modifiers[j].mask;
+        }
+    }
+
+    keySyms.map        = map;
+    keySyms.mapWidth   = GLYPHS_PER_KEY;
+    keySyms.minKeyCode = MIN_KEYCODE;
+    keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
+
+    XkbSetRulesDflts(pEvdev->rmlvo.rules, pEvdev->rmlvo.model,
+            pEvdev->rmlvo.layout, pEvdev->rmlvo.variant,
+            pEvdev->rmlvo.options);
+    if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
+                &keySyms, modMap, NULL,
+                EvdevKbdCtrl))
+        return 0;
+
+    return 1;
+}
+#endif
+
 static void
 EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
 {
@@ -869,45 +928,10 @@ static int
 EvdevAddKeyClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
-    KeySymsRec keySyms;
-    CARD8 modMap[MAP_LENGTH];
-    KeySym sym;
-    int i, j;
     EvdevPtr pEvdev;
-
-    static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
-        { XK_Shift_L,		ShiftMask },
-        { XK_Shift_R,		ShiftMask },
-        { XK_Control_L,		ControlMask },
-        { XK_Control_R,		ControlMask },
-        { XK_Caps_Lock,		LockMask },
-        { XK_Alt_L,		AltMask },
-        { XK_Alt_R,		AltMask },
-	{ XK_Meta_L,		Mod4Mask },
-	{ XK_Meta_R,		Mod4Mask },
-        { XK_Num_Lock,		NumLockMask },
-        { XK_Scroll_Lock,	ScrollLockMask },
-        { XK_Mode_switch,	AltLangMask }
-    };
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
-
-     /* Compute the modifier map */
-    memset(modMap, 0, sizeof modMap);
-
-    for (i = 0; i < ArrayLength(map) / GLYPHS_PER_KEY; i++) {
-        sym = map[i * GLYPHS_PER_KEY];
-        for (j = 0; j < ArrayLength(modifiers); j++) {
-            if (modifiers[j].keysym == sym)
-                modMap[i + MIN_KEYCODE] = modifiers[j].mask;
-        }
-    }
-
-    keySyms.map        = map;
-    keySyms.mapWidth   = GLYPHS_PER_KEY;
-    keySyms.minKeyCode = MIN_KEYCODE;
-    keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
 
     /* sorry, no rules change allowed for you */
     xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
@@ -929,13 +953,9 @@ EvdevAddKeyClass(DeviceIntPtr device)
     if (!InitKeyboardDeviceStruct(device, &pEvdev->rmlvo, NULL, EvdevKbdCtrl))
         return !Success;
 #else
-    XkbSetRulesDflts(pEvdev->rmlvo.rules, pEvdev->rmlvo.model,
-            pEvdev->rmlvo.layout, pEvdev->rmlvo.variant,
-            pEvdev->rmlvo.options);
-    if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
-                &keySyms, modMap, NULL,
-                EvdevKbdCtrl))
+    if (!EvdevInitKeysyms(device))
         return !Success;
+
 #endif
 
     pInfo->flags |= XI86_KEYBOARD_CAPABLE;
