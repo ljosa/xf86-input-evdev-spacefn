@@ -444,6 +444,7 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
             /* convert to relative motion for touchpads */
             if (abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
                 abs = 0;
+                rel = 1;
                 if (pEvdev->tool) { /* meaning, touch is active */
                     if (pEvdev->old_vals[0] != -1)
                         delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
