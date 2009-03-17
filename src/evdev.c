@@ -1156,11 +1156,16 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 static int
 EvdevInit(DeviceIntPtr device)
 {
+    int i;
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
+
+    /* clear all axis_map entries */
+    for(i = 0; i < max(ABS_CNT,REL_CNT); i++)
+      pEvdev->axis_map[i]=-1;
 
     if (pEvdev->flags & EVDEV_KEYBOARD_EVENTS)
 	EvdevAddKeyClass(device);
