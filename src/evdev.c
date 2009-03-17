@@ -1525,7 +1525,10 @@ EvdevProbe(InputInfoPtr pInfo)
     if (has_axes && num_buttons) {
         pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
                         XI86_CONFIGURED;
-        if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask)) {
+	if (pEvdev->flags & EVDEV_TOUCHPAD) {
+	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
+	    pInfo->type_name = XI_TOUCHPAD;
+	} else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask)) {
 	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
 	    pInfo->type_name = XI_TABLET;
 	} else {
