@@ -343,6 +343,9 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
     return 100; /* come back in 100 ms */
 }
 
+#define ABS_X_VALUE 0x1
+#define ABS_Y_VALUE 0x2
+#define ABS_VALUE   0x4
 /**
  * Take one input event and process it accordingly.
  */
@@ -393,7 +396,12 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
             if (ev->code > ABS_MAX)
                 break;
             pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
-            abs = 1;
+            if (ev->code == ABS_X)
+                abs |= ABS_X_VALUE;
+            else if (ev->code == ABS_Y)
+                abs |= ABS_Y_VALUE;
+            else
+                abs |= ABS_VALUE;
             break;
 
         case EV_KEY:
@@ -444,18 +452,20 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
         case EV_SYN:
             /* convert to relative motion for touchpads */
             if (abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
-                abs = 0;
-                rel = 1;
                 if (pEvdev->tool) { /* meaning, touch is active */
                     if (pEvdev->old_vals[0] != -1)
                         delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
                     if (pEvdev->old_vals[1] != -1)
                         delta[REL_Y] = pEvdev->vals[1] - pEvdev->old_vals[1];
-                    pEvdev->old_vals[0] = pEvdev->vals[0];
-                    pEvdev->old_vals[1] = pEvdev->vals[1];
+                    if (abs & ABS_X_VALUE)
+                        pEvdev->old_vals[0] = pEvdev->vals[0];
+                    if (abs & ABS_Y_VALUE)
+                        pEvdev->old_vals[1] = pEvdev->vals[1];
                 } else {
                     pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
                 }
+                abs = 0;
+                rel = 1;
             }
 
             if (rel) {
@@ -537,6 +547,10 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
             rel = 0;
     }
 }
+
+#undef ABS_X_VALUE
+#undef ABS_Y_VALUE
+#undef ABS_VALUE
 
 /* just a magic number to reduce the number of reads */
 #define NUM_EVENTS 16
