@@ -2033,7 +2033,7 @@ EvdevInitProperty(DeviceIntPtr dev)
             }
 
             XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
-                                   PropModeReplace, natoms, &atoms, FALSE);
+                                   PropModeReplace, natoms, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
@@ -2074,7 +2074,7 @@ EvdevInitProperty(DeviceIntPtr dev)
             atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
 
             XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
-                                   PropModeReplace, pEvdev->buttons, &atoms, FALSE);
+                                   PropModeReplace, pEvdev->buttons, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
         }
 #endif /* HAVE_LABELS */
