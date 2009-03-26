@@ -23,11 +23,7 @@ AUTOMAKE_OPTIONS = foreign
 # Ensure headers are installed below $(prefix) for distcheck
 DISTCHECK_CONFIGURE_FLAGS = --with-sdkdir='$${includedir}/xorg'
 
-if BUILD_TEST
-test_dir=test
-endif
-
-SUBDIRS = src man include $(test_dir)
+SUBDIRS = src man include
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xorg-evdev.pc
