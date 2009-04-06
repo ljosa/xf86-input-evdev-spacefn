@@ -565,7 +565,7 @@ EvdevReadInput(InputInfoPtr pInfo)
     while (len == sizeof(ev))
     {
         len = read(pInfo->fd, &ev, sizeof(ev));
-        if (len == 0)
+        if (len <= 0)
         {
             if (errno == ENODEV) /* May happen after resume */
             {
