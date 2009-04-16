@@ -578,15 +578,19 @@ EvdevReadInput(InputInfoPtr pInfo)
                     pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 100, EvdevReopenTimer, pInfo);
                 }
             } else if (errno != EAGAIN)
-                xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name,
+            {
+                /* We use X_NONE here because it doesn't alloc */
+                xf86MsgVerb(X_NONE, 0, "%s: Read error: %s\n", pInfo->name,
                         strerror(errno));
+            }
             break;
         }
 
+        /* The kernel promises that we always only read a complete
+         * event, so len != sizeof ev is an error. */
         if (len % sizeof(ev[0])) {
-            /* The kernel promises that we always only read a complete
-             * event, so len != sizeof ev is an error. */
-            xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name, strerror(errno));
+            /* We use X_NONE here because it doesn't alloc */
+            xf86MsgVerb(X_NONE, 0, "%s: Read error: %s\n", pInfo->name, strerror(errno));
             break;
         }
 
