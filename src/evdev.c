@@ -572,8 +572,11 @@ EvdevReadInput(InputInfoPtr pInfo)
                 xf86RemoveEnabledDevice(pInfo);
                 close(pInfo->fd);
                 pInfo->fd = -1;
-                pEvdev->reopen_left = pEvdev->reopen_attempts;
-                pEvdev->reopen_timer = TimerSet(NULL, 0, 100, EvdevReopenTimer, pInfo);
+                if (pEvdev->reopen_timer)
+                {
+                    pEvdev->reopen_left = pEvdev->reopen_attempts;
+                    pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 100, EvdevReopenTimer, pInfo);
+                }
             } else if (errno != EAGAIN)
                 xf86Msg(X_ERROR, "%s: Read error: %s\n", pInfo->name,
                         strerror(errno));
@@ -1246,7 +1249,7 @@ EvdevOn(DeviceIntPtr device)
     if (pInfo->fd == -1)
     {
         pEvdev->reopen_left = pEvdev->reopen_attempts;
-        pEvdev->reopen_timer = TimerSet(NULL, 0, 100, EvdevReopenTimer, pInfo);
+        pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 100, EvdevReopenTimer, pInfo);
     } else
     {
         pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
@@ -1256,6 +1259,8 @@ EvdevOn(DeviceIntPtr device)
                     pInfo->name);
             return !Success;
         }
+
+        pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 0, NULL, NULL);
 
         xf86FlushInput(pInfo->fd);
         xf86AddEnabledDevice(pInfo);
