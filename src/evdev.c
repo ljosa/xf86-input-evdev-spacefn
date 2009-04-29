@@ -1461,7 +1461,7 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    int i, has_axes, has_keys, num_buttons, has_scroll;
+    int i, has_rel_axes, has_abs_axes, has_xy, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -1478,7 +1478,9 @@ EvdevProbe(InputInfoPtr pInfo)
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
-    has_axes = FALSE;
+    has_rel_axes = FALSE;
+    has_abs_axes = FALSE;
+    has_xy = FALSE;
     has_keys = FALSE;
     has_scroll = FALSE;
     num_buttons = 0;
@@ -1498,54 +1500,74 @@ EvdevProbe(InputInfoPtr pInfo)
                 num_buttons);
     }
 
-    if (TestBit(REL_X, pEvdev->rel_bitmask) &&
-        TestBit(REL_Y, pEvdev->rel_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
-	pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
-	has_axes = TRUE;
-    }
-
-    if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
-        TestBit(REL_HWHEEL, pEvdev->rel_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
-        has_scroll = TRUE;
-        if (!num_buttons)
-            xf86Msg(X_INFO, "%s: Forcing buttons for scroll wheel(s)\n",
-                    pInfo->name);
-        num_buttons = (num_buttons < 3) ? 7 : num_buttons + 4;
-        pEvdev->buttons = num_buttons;
-    }
-
-    if (TestBit(ABS_X, pEvdev->abs_bitmask) &&
-        TestBit(ABS_Y, pEvdev->abs_bitmask)) {
-        xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
-        pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
-        if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
-            TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
-            if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
-                xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
-                pEvdev->flags |= EVDEV_TOUCHPAD;
-                memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
-            } else {
-                xf86Msg(X_INFO, "%s: Found absolute touchscreen\n", pInfo->name);
-                pEvdev->flags |= EVDEV_TOUCHSCREEN;
-                pEvdev->flags |= EVDEV_BUTTON_EVENTS;
-            }
-	}
-	has_axes = TRUE;
-    }
-
-    for (i = 0; i < BTN_MISC; i++)
-        if (TestBit(i, pEvdev->key_bitmask))
+    for (i = 0; i < REL_MAX; i++) {
+        if (TestBit(i, pEvdev->rel_bitmask)) {
+            has_rel_axes = TRUE;
             break;
-
-    if (i < BTN_MISC) {
-        xf86Msg(X_INFO, "%s: Found keys\n", pInfo->name);
-	pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
-	has_keys = TRUE;
+        }
     }
 
-    if (has_axes && num_buttons) {
+    if (has_rel_axes) {
+        xf86Msg(X_INFO, "%s: found relative axes\n", pInfo->name);
+        pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
+        if (TestBit(REL_X, pEvdev->rel_bitmask) &&
+            TestBit(REL_Y, pEvdev->rel_bitmask)) {
+            xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+            has_xy = TRUE;
+        }
+
+        if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
+            TestBit(REL_HWHEEL, pEvdev->rel_bitmask)) {
+            xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
+            has_scroll = TRUE;
+            if (!num_buttons)
+                xf86Msg(X_INFO, "%s: Forcing buttons for scroll wheel(s)\n",
+                        pInfo->name);
+            num_buttons = (num_buttons < 3) ? 7 : num_buttons + 4;
+            pEvdev->buttons = num_buttons;
+        }
+    }
+
+    for (i = 0; i < ABS_MAX; i++) {
+        if (TestBit(i, pEvdev->abs_bitmask)) {
+            has_abs_axes = TRUE;
+            break;
+        }
+    }
+
+    if (has_abs_axes) {
+        xf86Msg(X_INFO, "%s: found absolute axes\n", pInfo->name);
+        pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
+
+        if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
+             TestBit(ABS_Y, pEvdev->abs_bitmask))) {
+            xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
+            if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
+                TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
+                if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
+                    xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
+                    pEvdev->flags |= EVDEV_TOUCHPAD;
+                    memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
+                } else {
+                    xf86Msg(X_INFO, "%s: Found absolute touchscreen\n", pInfo->name);
+                    pEvdev->flags |= EVDEV_TOUCHSCREEN;
+                    pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+                }
+            }
+            has_xy = TRUE;
+        }
+    }
+
+    for (i = 0; i < BTN_MISC; i++) {
+        if (TestBit(i, pEvdev->key_bitmask)) {
+            xf86Msg(X_INFO, "%s: Found keys\n", pInfo->name);
+            pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
+            has_keys = TRUE;
+            break;
+        }
+    }
+
+    if (has_rel_axes || has_abs_axes || num_buttons) {
         pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
                         XI86_CONFIGURED;
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
@@ -1554,17 +1576,13 @@ EvdevProbe(InputInfoPtr pInfo)
 	} else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask)) {
 	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
 	    pInfo->type_name = XI_TABLET;
+        } if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
+            xf86Msg(X_INFO, "%s: Configuring as touchscreen\n", pInfo->name);
+            pInfo->type_name = XI_TOUCHSCREEN;
 	} else {
 	    xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
 	    pInfo->type_name = XI_MOUSE;
 	}
-    }
-
-    if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
-        xf86Msg(X_INFO, "%s: Configuring as touchscreen\n", pInfo->name);
-        pInfo->type_name = XI_TOUCHSCREEN;
-        pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
-                        XI86_CONFIGURED;
     }
 
     if (has_keys) {
