@@ -1590,7 +1590,8 @@ EvdevProbe(InputInfoPtr pInfo)
         }
 
         if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
-            TestBit(REL_HWHEEL, pEvdev->rel_bitmask)) {
+            TestBit(REL_HWHEEL, pEvdev->rel_bitmask) ||
+            TestBit(REL_DIAL, pEvdev->rel_bitmask)) {
             xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
             has_scroll = TRUE;
             if (!num_buttons)
