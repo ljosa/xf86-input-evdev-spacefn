@@ -1576,7 +1576,7 @@ EvdevProbe(InputInfoPtr pInfo)
 	} else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask)) {
 	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
 	    pInfo->type_name = XI_TABLET;
-        } if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
+        } else if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
             xf86Msg(X_INFO, "%s: Configuring as touchscreen\n", pInfo->name);
             pInfo->type_name = XI_TOUCHSCREEN;
 	} else {
