@@ -320,7 +320,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
         {
             xf86Msg(X_ERROR, "%s: Device has changed - disabling.\n",
                     pInfo->name);
-            DisableDevice(pInfo->dev);
+            xf86DisableDevice(pInfo->dev, FALSE);
             close(pInfo->fd);
             pInfo->fd = -1;
             pEvdev->min_maj = 0; /* don't hog the device */
@@ -335,7 +335,7 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
     {
         xf86Msg(X_ERROR, "%s: Failed to reopen device after %d attempts.\n",
                 pInfo->name, pEvdev->reopen_attempts);
-        DisableDevice(pInfo->dev);
+        xf86DisableDevice(pInfo->dev, FALSE);
         pEvdev->min_maj = 0; /* don't hog the device */
         return 0;
     }
