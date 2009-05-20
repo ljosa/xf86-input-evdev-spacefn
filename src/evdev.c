@@ -2020,7 +2020,7 @@ EvdevInitProperty(DeviceIntPtr dev)
 
 #ifdef HAVE_LABELS
         /* Axis labelling */
-        if ((prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
+        if ((pEvdev->num_vals > 0) && (prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
             Atom atom, atoms[pEvdev->num_vals];
             int natoms = pEvdev->num_vals;
@@ -2064,7 +2064,7 @@ EvdevInitProperty(DeviceIntPtr dev)
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
-        if ((prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
+        if ((pEvdev->buttons > 0) && (prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
         {
             Atom atom, atoms[pEvdev->buttons];
             int button, bmap;
