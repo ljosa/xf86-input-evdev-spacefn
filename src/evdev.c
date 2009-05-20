@@ -2066,12 +2066,12 @@ EvdevInitProperty(DeviceIntPtr dev)
         /* Button labelling */
         if ((pEvdev->buttons > 0) && (prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
         {
-            Atom atom, atoms[pEvdev->buttons];
+            Atom atom, atoms[EVDEV_MAXBUTTONS];
             int button, bmap;
 
             /* First, make sure all atoms are initialized */
             atom = XIGetKnownProperty(BTN_LABEL_PROP_BTN_UNKNOWN);
-            for (button = 0; button < pEvdev->buttons; button++)
+            for (button = 0; button < ArrayLength(atoms); button++)
                 atoms[button] = atom;
 
             for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
