@@ -1488,8 +1488,14 @@ EvdevProbe(InputInfoPtr pInfo)
     /* count all buttons */
     for (i = BTN_MISC; i < BTN_JOYSTICK; i++)
     {
+        int mapping = 0;
         if (TestBit(i, pEvdev->key_bitmask))
-            num_buttons++;
+        {
+            mapping =
+                pEvdev->btnmap[EvdevUtilButtonEventToButtonNumber(pEvdev, i)];
+            if (mapping > num_buttons)
+                num_buttons = mapping;
+        }
     }
 
     if (num_buttons)
