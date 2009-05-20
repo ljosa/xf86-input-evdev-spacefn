@@ -201,8 +201,8 @@ EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char* axis_
 	    pAxis->down_button = down_button;
 
 	    /* Update the number of buttons if needed */
-	    if (up_button > pEvdev->buttons) pEvdev->buttons = up_button;
-	    if (down_button > pEvdev->buttons) pEvdev->buttons = down_button;
+	    if (up_button > pEvdev->num_buttons) pEvdev->num_buttons = up_button;
+	    if (down_button > pEvdev->num_buttons) pEvdev->num_buttons = down_button;
 
 	} else {
 	    xf86Msg(X_WARNING, "%s: Invalid %s value:\"%s\"\n",
@@ -285,8 +285,8 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 
         /* Simpler to check just the largest value in this case */
         /* XXX: we should post this to the server */
-        if (5 > pEvdev->buttons)
-            pEvdev->buttons = 5;
+        if (5 > pEvdev->num_buttons)
+            pEvdev->num_buttons = 5;
 
         /* Display default Configuration */
         xf86Msg(X_CONFIG, "%s: YAxisMapping: buttons %d and %d\n",

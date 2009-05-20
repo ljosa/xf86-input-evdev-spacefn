@@ -1501,7 +1501,7 @@ EvdevProbe(InputInfoPtr pInfo)
     if (num_buttons)
     {
         pEvdev->flags |= EVDEV_BUTTON_EVENTS;
-        pEvdev->buttons = num_buttons;
+        pEvdev->num_buttons = num_buttons;
         xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name,
                 num_buttons);
     }
@@ -1530,7 +1530,7 @@ EvdevProbe(InputInfoPtr pInfo)
                 xf86Msg(X_INFO, "%s: Forcing buttons for scroll wheel(s)\n",
                         pInfo->name);
             num_buttons = (num_buttons < 3) ? 7 : num_buttons + 4;
-            pEvdev->buttons = num_buttons;
+            pEvdev->num_buttons = num_buttons;
         }
     }
 
@@ -2070,7 +2070,7 @@ EvdevInitProperty(DeviceIntPtr dev)
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
-        if ((pEvdev->buttons > 0) && (prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
+        if ((pEvdev->num_buttons > 0) && (prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
         {
             Atom atom, atoms[EVDEV_MAXBUTTONS];
             int button, bmap;
@@ -2107,7 +2107,7 @@ EvdevInitProperty(DeviceIntPtr dev)
             atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
 
             XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
-                                   PropModeReplace, pEvdev->buttons, atoms, FALSE);
+                                   PropModeReplace, pEvdev->num_buttons, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
         }
 #endif /* HAVE_LABELS */
