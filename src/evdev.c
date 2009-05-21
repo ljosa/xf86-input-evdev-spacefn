@@ -1115,9 +1115,7 @@ EvdevAddButtonClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    /* FIXME: count number of actual buttons */
-    if (!InitButtonClassDeviceStruct(device, ArrayLength(pEvdev->btnmap),
-                                     pEvdev->btnmap))
+    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons, pEvdev->btnmap))
         return !Success;
 
     return Success;
