@@ -363,6 +363,10 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     switch (ev->type) {
         case EV_REL:
+            /* Ignore EV_REL events if we never set up for them. */
+            if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
+                break;
+
             /* Handle mouse wheel emulation */
             if (EvdevWheelEmuFilterMotion(pInfo, ev))
                 break;
@@ -393,6 +397,10 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
             break;
 
         case EV_ABS:
+            /* Ignore EV_ABS events if we never set up for them. */
+            if (!(pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+                break;
+
             if (ev->code > ABS_MAX)
                 break;
             pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
@@ -1199,9 +1207,13 @@ EvdevInit(DeviceIntPtr device)
 
         FIXME: somebody volunteer to fix this.
      */
-    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS) {
 	EvdevAddRelClass(device);
-    else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+        if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+            xf86Msg(X_INFO,"%s: relative axes found, ignoring absolute "
+                           "axes.\n", device->name);
+	pEvdev->flags &= ~EVDEV_ABSOLUTE_EVENTS;
+    } else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
         EvdevAddAbsClass(device);
 
 #ifdef HAVE_PROPERTIES
