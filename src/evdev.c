@@ -115,6 +115,8 @@ static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 
 #ifdef HAVE_PROPERTIES
+static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
+static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
@@ -1990,6 +1992,89 @@ static char* btn_labels[][16] = {
 
 #endif /* HAVE_LABELS */
 
+static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
+{
+#ifdef HAVE_LABELS
+    Atom atom;
+    int axis;
+    char **labels;
+    int labels_len = 0;
+    char *misc_label;
+
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+    {
+        labels     = rel_labels;
+        labels_len = ArrayLength(rel_labels);
+        misc_label = AXIS_LABEL_PROP_REL_MISC;
+    } else if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+    {
+        labels     = abs_labels;
+        labels_len = ArrayLength(abs_labels);
+        misc_label = AXIS_LABEL_PROP_ABS_MISC;
+    }
+
+    /* First, make sure all atoms are initialized */
+    atom = XIGetKnownProperty(misc_label);
+    for (axis = 0; axis < pEvdev->num_vals; axis++)
+        atoms[axis] = atom;
+
+    /* Now fill the ones we know */
+    for (axis = 0; axis < labels_len; axis++)
+    {
+        if (pEvdev->axis_map[axis] == -1)
+            continue;
+
+        atom = XIGetKnownProperty(labels[axis]);
+        if (!atom) /* Should not happen */
+            continue;
+
+        atoms[pEvdev->axis_map[axis]] = atom;
+    }
+#endif
+}
+
+static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
+{
+#ifdef HAVE_LABELS
+    Atom atom;
+    int button, bmap;
+
+    /* First, make sure all atoms are initialized */
+    atom = XIGetKnownProperty(BTN_LABEL_PROP_BTN_UNKNOWN);
+    for (button = 0; button < natoms; button++)
+        atoms[button] = atom;
+
+    for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
+    {
+        if (TestBit(button, pEvdev->key_bitmask))
+        {
+            int group = (button % 0x100)/16;
+            int idx = button - ((button/16) * 16);
+
+            if (!btn_labels[group][idx])
+                continue;
+
+            atom = XIGetKnownProperty(btn_labels[group][idx]);
+            if (!atom)
+                continue;
+
+            /* Props are 0-indexed, button numbers start with 1 */
+            bmap = EvdevUtilButtonEventToButtonNumber(pEvdev, button) - 1;
+            atoms[bmap] = atom;
+        }
+    }
+
+    /* wheel buttons, hardcoded anyway */
+    if (natoms > 3)
+        atoms[3] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
+    if (natoms > 4)
+        atoms[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_DOWN);
+    if (natoms > 5)
+        atoms[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
+    if (natoms > 6)
+        atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
+#endif
+}
 
 static void
 EvdevInitProperty(DeviceIntPtr dev)
@@ -2049,84 +2134,17 @@ EvdevInitProperty(DeviceIntPtr dev)
         /* Axis labelling */
         if ((pEvdev->num_vals > 0) && (prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
-            Atom atom, atoms[pEvdev->num_vals];
-            int natoms = pEvdev->num_vals;
-            int axis;
-            char **labels;
-            int labels_len = 0;
-            char *misc_label;
-
-            if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
-            {
-                labels     = rel_labels;
-                labels_len = ArrayLength(rel_labels);
-                misc_label = AXIS_LABEL_PROP_REL_MISC;
-            } else if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
-            {
-                labels     = abs_labels;
-                labels_len = ArrayLength(abs_labels);
-                misc_label = AXIS_LABEL_PROP_ABS_MISC;
-            }
-
-            /* First, make sure all atoms are initialized */
-            atom = XIGetKnownProperty(misc_label);
-            for (axis = 0; axis < pEvdev->num_vals; axis++)
-                atoms[axis] = atom;
-
-            /* Now fill the ones we know */
-            for (axis = 0; axis < labels_len; axis++)
-            {
-                if (pEvdev->axis_map[axis] == -1)
-                    continue;
-
-                atom = XIGetKnownProperty(labels[axis]);
-                if (!atom) /* Should not happen */
-                    continue;
-
-                atoms[pEvdev->axis_map[axis]] = atom;
-            }
-
+            Atom atoms[pEvdev->num_vals];
+            EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
             XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
-                                   PropModeReplace, natoms, atoms, FALSE);
+                                   PropModeReplace, pEvdev->num_vals, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
         if ((pEvdev->num_buttons > 0) && (prop_btn_label = XIGetKnownProperty(BTN_LABEL_PROP)))
         {
-            Atom atom, atoms[EVDEV_MAXBUTTONS];
-            int button, bmap;
-
-            /* First, make sure all atoms are initialized */
-            atom = XIGetKnownProperty(BTN_LABEL_PROP_BTN_UNKNOWN);
-            for (button = 0; button < ArrayLength(atoms); button++)
-                atoms[button] = atom;
-
-            for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
-            {
-                if (TestBit(button, pEvdev->key_bitmask))
-                {
-                    int group = (button % 0x100)/16;
-                    int idx = button - ((button/16) * 16);
-
-                    if (!btn_labels[group][idx])
-                        continue;
-
-                    atom = XIGetKnownProperty(btn_labels[group][idx]);
-                    if (!atom)
-                        continue;
-
-                    /* Props are 0-indexed, button numbers start with 1 */
-                    bmap = EvdevUtilButtonEventToButtonNumber(pEvdev, button) - 1;
-                    atoms[bmap] = atom;
-                }
-            }
-
-            /* wheel buttons, hardcoded anyway */
-            atoms[3] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_UP);
-            atoms[4] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_WHEEL_DOWN);
-            atoms[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
-            atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
-
+            Atom atoms[EVDEV_MAXBUTTONS];
+            EvdevInitButtonLabels(pEvdev, EVDEV_MAXBUTTONS, atoms);
             XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
                                    PropModeReplace, pEvdev->num_buttons, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
