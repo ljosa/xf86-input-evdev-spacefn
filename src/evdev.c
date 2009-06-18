@@ -1033,7 +1033,10 @@ EvdevAddAbsClass(DeviceIntPtr device)
         if (!TestBit(axis, pEvdev->abs_bitmask))
             continue;
         pEvdev->axis_map[axis] = i;
-        xf86InitValuatorAxisStruct(device, i, atoms[axis],
+        xf86InitValuatorAxisStruct(device, i,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+                                   atoms[axis],
+#endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
                                    10000, 0, 10000);
@@ -1127,7 +1130,11 @@ EvdevAddRelClass(DeviceIntPtr device)
 
         if (axnum == -1)
             continue;
-        xf86InitValuatorAxisStruct(device, axnum, atoms[axnum], -1, -1, 1, 0, 1);
+        xf86InitValuatorAxisStruct(device, axnum,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+                atoms[axnum],
+#endif
+                -1, -1, 1, 0, 1);
         xf86InitValuatorDefaults(device, axnum);
     }
 
@@ -1154,7 +1161,11 @@ EvdevAddButtonClass(DeviceIntPtr device)
     labels = xalloc(pEvdev->num_buttons * sizeof(Atom));
     EvdevInitButtonLabels(pEvdev, pEvdev->num_buttons, labels);
 
-    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons, labels, pEvdev->btnmap))
+    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+                                     labels,
+#endif
+                                     pEvdev->btnmap))
         return !Success;
 
     xfree(labels);
