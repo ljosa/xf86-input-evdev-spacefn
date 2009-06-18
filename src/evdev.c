@@ -1000,6 +1000,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
+    Atom *atoms;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1013,8 +1014,14 @@ EvdevAddAbsClass(DeviceIntPtr device)
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
     memset(pEvdev->old_vals, -1, num_axes * sizeof(int));
+    atoms = xalloc(pEvdev->num_vals * sizeof(Atom));
+
+    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+                                       atoms,
+#endif
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
@@ -1026,7 +1033,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
         if (!TestBit(axis, pEvdev->abs_bitmask))
             continue;
         pEvdev->axis_map[axis] = i;
-        xf86InitValuatorAxisStruct(device, i,
+        xf86InitValuatorAxisStruct(device, i, atoms[axis],
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
                                    10000, 0, 10000);
@@ -1034,6 +1041,8 @@ EvdevAddAbsClass(DeviceIntPtr device)
         pEvdev->old_vals[i] = -1;
         i++;
     }
+
+    xfree(atoms);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
@@ -1063,6 +1072,7 @@ EvdevAddRelClass(DeviceIntPtr device)
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
+    Atom *atoms;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1085,8 +1095,26 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
+    atoms = xalloc(pEvdev->num_vals * sizeof(Atom));
+
+    for (axis = REL_X; axis <= REL_MAX; axis++)
+    {
+        pEvdev->axis_map[axis] = -1;
+        /* We don't post wheel events, so ignore them here too */
+        if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
+            continue;
+        if (!TestBit(axis, pEvdev->rel_bitmask))
+            continue;
+        pEvdev->axis_map[axis] = i;
+        i++;
+    }
+
+    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
+                                       atoms,
+#endif
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
@@ -1095,18 +1123,15 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
+        int axnum = pEvdev->axis_map[axis];
 
-        pEvdev->axis_map[axis] = -1;
-        /* We don't post wheel events, so ignore them here too */
-        if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
+        if (axnum == -1)
             continue;
-        if (!TestBit(axis, pEvdev->rel_bitmask))
-            continue;
-        pEvdev->axis_map[axis] = i;
-        xf86InitValuatorAxisStruct(device, i, -1, -1, 1, 0, 1);
-        xf86InitValuatorDefaults(device, i);
-        i++;
+        xf86InitValuatorAxisStruct(device, axnum, atoms[axnum], -1, -1, 1, 0, 1);
+        xf86InitValuatorDefaults(device, axnum);
     }
+
+    xfree(atoms);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
@@ -1121,13 +1146,18 @@ EvdevAddButtonClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
+    Atom *labels;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons, pEvdev->btnmap))
+    labels = xalloc(pEvdev->num_buttons * sizeof(Atom));
+    EvdevInitButtonLabels(pEvdev, pEvdev->num_buttons, labels);
+
+    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons, labels, pEvdev->btnmap))
         return !Success;
 
+    xfree(labels);
     return Success;
 }
 
