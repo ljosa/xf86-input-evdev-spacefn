@@ -2054,10 +2054,7 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
         misc_label = AXIS_LABEL_PROP_ABS_MISC;
     }
 
-    /* First, make sure all atoms are initialized */
-    atom = XIGetKnownProperty(misc_label);
-    for (axis = 0; axis < pEvdev->num_vals; axis++)
-        atoms[axis] = atom;
+    memset(atoms, 0, natoms * sizeof(Atom));
 
     /* Now fill the ones we know */
     for (axis = 0; axis < labels_len; axis++)
