@@ -1035,7 +1035,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
         pEvdev->axis_map[axis] = i;
         xf86InitValuatorAxisStruct(device, i,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                                   atoms[axis],
+                                   atoms[i],
 #endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
