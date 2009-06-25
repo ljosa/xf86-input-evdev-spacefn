@@ -1016,6 +1016,14 @@ EvdevAddAbsClass(DeviceIntPtr device)
     memset(pEvdev->old_vals, -1, num_axes * sizeof(int));
     atoms = xalloc(pEvdev->num_vals * sizeof(Atom));
 
+    for (axis = ABS_X; axis <= ABS_MAX; axis++) {
+        pEvdev->axis_map[axis] = -1;
+        if (!TestBit(axis, pEvdev->abs_bitmask))
+            continue;
+        pEvdev->axis_map[axis] = i;
+        i++;
+    }
+
     EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes,
@@ -1029,20 +1037,18 @@ EvdevAddAbsClass(DeviceIntPtr device)
         return !Success;
 
     for (axis = ABS_X; axis <= ABS_MAX; axis++) {
-        pEvdev->axis_map[axis] = -1;
-        if (!TestBit(axis, pEvdev->abs_bitmask))
+        int axnum = pEvdev->axis_map[axis];
+        if (axnum == -1)
             continue;
-        pEvdev->axis_map[axis] = i;
-        xf86InitValuatorAxisStruct(device, i,
+        xf86InitValuatorAxisStruct(device, axnum,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                                   atoms[i],
+                                   atoms[axnum],
 #endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
                                    10000, 0, 10000);
-        xf86InitValuatorDefaults(device, i);
-        pEvdev->old_vals[i] = -1;
-        i++;
+        xf86InitValuatorDefaults(device, axnum);
+        pEvdev->old_vals[axnum] = -1;
     }
 
     xfree(atoms);
