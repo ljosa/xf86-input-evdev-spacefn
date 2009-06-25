@@ -1612,7 +1612,7 @@ EvdevProbe(InputInfoPtr pInfo)
             if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
                 TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
                 if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
-                    xf86Msg(X_INFO, "%s: Found absolute touchpad\n", pInfo->name);
+                    xf86Msg(X_INFO, "%s: Found absolute touchpad or tablet.\n", pInfo->name);
                     pEvdev->flags |= EVDEV_TOUCHPAD;
                     memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
                 } else {
