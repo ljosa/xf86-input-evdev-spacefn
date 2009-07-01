@@ -171,7 +171,7 @@ server, such as touchscreens that require run-time calibration.
 .BI "Evdev Axis Inversion"
 2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.
 .TP 7
-.BI "Evdev Axis Swap"
+.BI "Evdev Axes Swap"
 1 boolean value (8 bit, 0 or 1). 1 swaps x/y axes.
 .TP 7
 .BI "Evdev Drag Lock Buttons"
