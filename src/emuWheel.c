@@ -337,15 +337,6 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                             16, PropModeReplace, 1,
                             &pEvdev->emulateWheel.inertia, TRUE);
             }
-
-            /* Don't enable with negative timeout */
-            if (pEvdev->emulateWheel.timeout < 0)
-            {
-                pEvdev->emulateWheel.timeout = 200;
-                XIChangeDeviceProperty(dev, prop_wheel_timeout, XA_INTEGER, 16,
-                        PropModeReplace, 1,
-                        &pEvdev->emulateWheel.timeout, TRUE);
-            }
         }
     }
     else if (atom == prop_wheel_button)
