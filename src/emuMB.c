@@ -327,6 +327,9 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
 void
 EvdevMBEmuOn(InputInfoPtr pInfo)
 {
+    if (!pInfo->dev->button) /* don't init for keyboards */
+        return;
+
     RegisterBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
                                     EvdevMBEmuWakeupHandler,
                                     (pointer)pInfo);
@@ -335,6 +338,9 @@ EvdevMBEmuOn(InputInfoPtr pInfo)
 void
 EvdevMBEmuFinalize(InputInfoPtr pInfo)
 {
+    if (!pInfo->dev->button) /* don't cleanup for keyboards */
+        return;
+
     RemoveBlockAndWakeupHandlers (EvdevMBEmuBlockHandler,
                                   EvdevMBEmuWakeupHandler,
                                   (pointer)pInfo);
