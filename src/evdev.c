@@ -249,21 +249,12 @@ static int wheel_left_button = 6;
 static int wheel_right_button = 7;
 
 static void
-PostButtonClicks(InputInfoPtr pInfo, int button, int count)
-{
-    int i;
-
-    for (i = 0; i < count; i++) {
-        xf86PostButtonEvent(pInfo->dev, 0, button, 1, 0, 0);
-        xf86PostButtonEvent(pInfo->dev, 0, button, 0, 0, 0);
-    }
-}
-
-static void
 PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
     static char warned[KEY_CNT];
+    EventQueuePtr pQueue;
+    EvdevPtr pEvdev = pInfo->private;
 
     /* Filter all repeated events from device.
        We'll do softrepeat in the server, but only since 1.6 */
@@ -292,7 +283,47 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
         return;
     }
 
-    xf86PostKeyboardEvent(pInfo->dev, code, value);
+    if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
+    {
+        xf86Msg(X_NONE, "%s: dropping event due to full queue!\n", pInfo->name);
+        return;
+    }
+
+    pQueue = &pEvdev->queue[pEvdev->num_queue];
+    pQueue->type = EV_QUEUE_KEY;
+    pQueue->key = code;
+    pQueue->val = value;
+    pEvdev->num_queue++;
+}
+
+static void
+PostButtonEvent(InputInfoPtr pInfo, int button, int value)
+{
+    EventQueuePtr pQueue;
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
+    {
+        xf86Msg(X_NONE, "%s: dropping event due to full queue!\n", pInfo->name);
+        return;
+    }
+
+    pQueue = &pEvdev->queue[pEvdev->num_queue];
+    pQueue->type = EV_QUEUE_BTN;
+    pQueue->key = button;
+    pQueue->val = value;
+    pEvdev->num_queue++;
+}
+
+static void
+PostButtonClicks(InputInfoPtr pInfo, int button, int count)
+{
+    int i;
+
+    for (i = 0; i < count; i++) {
+        PostButtonEvent(pInfo, button, 1);
+        PostButtonEvent(pInfo, button, 0);
+    }
 }
 
 /**
@@ -349,212 +380,358 @@ EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
 #define ABS_Y_VALUE 0x2
 #define ABS_VALUE   0x4
 /**
- * Take one input event and process it accordingly.
+ * Take the valuators and process them accordingly.
  */
 static void
-EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
+EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
+                      int *first_v)
 {
-    static int delta[REL_CNT];
-    static int tmp, value;
-    static unsigned int abs, rel;
+    int tmp;
+    EvdevPtr pEvdev = pInfo->private;
+
+    *num_v = *first_v = 0;
+
+    /* convert to relative motion for touchpads */
+    if (pEvdev->abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
+        if (pEvdev->tool) { /* meaning, touch is active */
+            if (pEvdev->old_vals[0] != -1)
+                pEvdev->delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
+            if (pEvdev->old_vals[1] != -1)
+                pEvdev->delta[REL_Y] = pEvdev->vals[1] - pEvdev->old_vals[1];
+            if (pEvdev->abs & ABS_X_VALUE)
+                pEvdev->old_vals[0] = pEvdev->vals[0];
+            if (pEvdev->abs & ABS_Y_VALUE)
+                pEvdev->old_vals[1] = pEvdev->vals[1];
+        } else {
+            pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
+        }
+        pEvdev->abs = 0;
+        pEvdev->rel = 1;
+    }
+
+    if (pEvdev->rel) {
+        int first = REL_CNT, last = 0;
+        int i;
+
+        if (pEvdev->swap_axes) {
+            tmp = pEvdev->delta[REL_X];
+            pEvdev->delta[REL_X] = pEvdev->delta[REL_Y];
+            pEvdev->delta[REL_Y] = tmp;
+        }
+        if (pEvdev->invert_x)
+            pEvdev->delta[REL_X] *= -1;
+        if (pEvdev->invert_y)
+            pEvdev->delta[REL_Y] *= -1;
+
+        for (i = 0; i < REL_CNT; i++)
+        {
+            int map = pEvdev->axis_map[i];
+            if (pEvdev->delta[i] && map != -1)
+            {
+                v[map] = pEvdev->delta[i];
+                if (map < first)
+                    first = map;
+                if (map > last)
+                    last = map;
+            }
+        }
+
+        *num_v = (last - first + 1);
+        *first_v = first;
+    }
+    /*
+     * Some devices only generate valid abs coords when BTN_DIGI is
+     * pressed.  On wacom tablets, this means that the pen is in
+     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * released, and a (0, 0) absolute event is generated.  Checking
+     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+     * initialized to 1 so devices that doesn't use this scheme still
+     * just works.
+     */
+    else if (pEvdev->abs && pEvdev->tool) {
+        memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
+        if (pEvdev->flags & EVDEV_CALIBRATED)
+        {
+            v[0] = xf86ScaleAxis(v[0],
+                    pEvdev->absinfo[ABS_X].maximum,
+                    pEvdev->absinfo[ABS_X].minimum,
+                    pEvdev->calibration.max_x, pEvdev->calibration.min_x);
+            v[1] = xf86ScaleAxis(v[1],
+                    pEvdev->absinfo[ABS_Y].maximum,
+                    pEvdev->absinfo[ABS_Y].minimum,
+                    pEvdev->calibration.max_y, pEvdev->calibration.min_y);
+        }
+
+        if (pEvdev->swap_axes) {
+            int tmp = v[0];
+            v[0] = v[1];
+            v[1] = tmp;
+        }
+
+        if (pEvdev->invert_x)
+            v[0] = (pEvdev->absinfo[ABS_X].maximum - v[0] +
+                    pEvdev->absinfo[ABS_X].minimum);
+        if (pEvdev->invert_y)
+            v[1] = (pEvdev->absinfo[ABS_Y].maximum - v[1] +
+                    pEvdev->absinfo[ABS_Y].minimum);
+
+        *num_v = pEvdev->num_vals;
+        *first_v = 0;
+    }
+}
+
+/**
+ * Take a button input event and process it accordingly.
+ */
+static void
+EvdevProcessButtonEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
     unsigned int button;
+    int value;
+    EvdevPtr pEvdev = pInfo->private;
+
+    button = EvdevUtilButtonEventToButtonNumber(pEvdev, ev->code);
+
+    /* Get the signed value, earlier kernels had this as unsigned */
+    value = ev->value;
+
+    /* Handle drag lock */
+    if (EvdevDragLockFilterEvent(pInfo, button, value))
+        return;
+
+    if (EvdevWheelEmuFilterButton(pInfo, button, value))
+        return;
+
+    if (EvdevMBEmuFilterEvent(pInfo, button, value))
+        return;
+
+    if (button)
+        PostButtonEvent(pInfo, button, value);
+    else
+        PostKbdEvent(pInfo, ev, value);
+}
+
+/**
+ * Take the relative motion input event and process it accordingly.
+ */
+static void
+EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    static int value;
     EvdevPtr pEvdev = pInfo->private;
 
     /* Get the signed value, earlier kernels had this as unsigned */
     value = ev->value;
 
+    /* Ignore EV_REL events if we never set up for them. */
+    if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
+        return;
+
+    /* Handle mouse wheel emulation */
+    if (EvdevWheelEmuFilterMotion(pInfo, ev))
+        return;
+
+    pEvdev->rel = 1;
+
+    switch (ev->code) {
+        case REL_WHEEL:
+            if (value > 0)
+                PostButtonClicks(pInfo, wheel_up_button, value);
+            else if (value < 0)
+                PostButtonClicks(pInfo, wheel_down_button, -value);
+            break;
+
+        case REL_DIAL:
+        case REL_HWHEEL:
+            if (value > 0)
+                PostButtonClicks(pInfo, wheel_right_button, value);
+            else if (value < 0)
+                PostButtonClicks(pInfo, wheel_left_button, -value);
+            break;
+
+        /* We don't post wheel events as axis motion. */
+        default:
+            pEvdev->delta[ev->code] += value;
+            break;
+    }
+}
+
+/**
+ * Take the absolute motion input event and process it accordingly.
+ */
+static void
+EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    static int value;
+    EvdevPtr pEvdev = pInfo->private;
+
+    /* Get the signed value, earlier kernels had this as unsigned */
+    value = ev->value;
+
+    /* Ignore EV_ABS events if we never set up for them. */
+    if (!(pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+        return;
+
+    if (ev->code > ABS_MAX)
+        return;
+
+    pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
+    if (ev->code == ABS_X)
+        pEvdev->abs |= ABS_X_VALUE;
+    else if (ev->code == ABS_Y)
+        pEvdev->abs |= ABS_Y_VALUE;
+    else
+        pEvdev->abs |= ABS_VALUE;
+}
+
+/**
+ * Take the key press/release input event and process it accordingly.
+ */
+static void
+EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    static int value;
+    EvdevPtr pEvdev = pInfo->private;
+
+    /* Get the signed value, earlier kernels had this as unsigned */
+    value = ev->value;
+
+    /* don't repeat mouse buttons */
+    if (ev->code >= BTN_MOUSE && ev->code < KEY_OK)
+        if (value == 2)
+            return;
+
+    switch (ev->code) {
+        case BTN_TOUCH:
+        case BTN_TOOL_PEN:
+        case BTN_TOOL_RUBBER:
+        case BTN_TOOL_BRUSH:
+        case BTN_TOOL_PENCIL:
+        case BTN_TOOL_AIRBRUSH:
+        case BTN_TOOL_FINGER:
+        case BTN_TOOL_MOUSE:
+        case BTN_TOOL_LENS:
+            pEvdev->tool = value ? ev->code : 0;
+            if (!(pEvdev->flags & EVDEV_TOUCHSCREEN))
+                break;
+            /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
+             * BTN_LEFT. */
+            ev->code = BTN_LEFT;
+            /* Intentional fallthrough! */
+
+        default:
+            EvdevProcessButtonEvent(pInfo, ev);
+            break;
+    }
+}
+
+/**
+ * Post the relative motion events.
+ */
+static void
+EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+                              int v[MAX_VALUATORS])
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (pEvdev->rel) {
+        xf86PostMotionEventP(pInfo->dev, FALSE, *first_v, *num_v, v + *first_v);
+    }
+}
+
+/**
+ * Post the absolute motion events.
+ */
+static void
+EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+                              int v[MAX_VALUATORS])
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    /*
+     * Some devices only generate valid abs coords when BTN_DIGI is
+     * pressed.  On wacom tablets, this means that the pen is in
+     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * released, and a (0, 0) absolute event is generated.  Checking
+     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+     * initialized to 1 so devices that doesn't use this scheme still
+     * just works.
+     */
+    if (pEvdev->abs && pEvdev->tool) {
+        xf86PostMotionEventP(pInfo->dev, TRUE, *first_v, *num_v, v);
+    }
+}
+
+/**
+ * Post the queued key/button events.
+ */
+static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+                                  int v[MAX_VALUATORS])
+{
+    int i;
+    EvdevPtr pEvdev = pInfo->private;
+
+    for (i = 0; i < pEvdev->num_queue; i++) {
+        switch (pEvdev->queue[i].type) {
+        case EV_QUEUE_KEY:
+            xf86PostKeyboardEvent(pInfo->dev, pEvdev->queue[i].key,
+                                  pEvdev->queue[i].val);
+            break;
+        case EV_QUEUE_BTN:
+            /* FIXME: Add xf86PostButtonEventP to the X server so that we may
+             * pass the valuators on ButtonPress/Release events, too.  Currently
+             * only MotionNotify events contain the pointer position. */
+            xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
+                                pEvdev->queue[i].val, 0, 0);
+            break;
+        }
+    }
+}
+
+/**
+ * Take the synchronization input event and process it accordingly; the motion
+ * notify events are sent first, then any button/key press/release events.
+ */
+static void
+EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    int num_v = 0, first_v = 0;
+    int v[MAX_VALUATORS];
+    EvdevPtr pEvdev = pInfo->private;
+
+    EvdevProcessValuators(pInfo, v, &num_v, &first_v);
+
+    EvdevPostRelativeMotionEvents(pInfo, &num_v, &first_v, v);
+    EvdevPostAbsoluteMotionEvents(pInfo, &num_v, &first_v, v);
+    EvdevPostQueuedEvents(pInfo, &num_v, &first_v, v);
+
+    memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
+    memset(pEvdev->queue, 0, sizeof(pEvdev->queue));
+    pEvdev->num_queue = 0;
+    pEvdev->abs = 0;
+    pEvdev->rel = 0;
+}
+
+/**
+ * Process the events from the device; nothing is actually posted to the server
+ * until an EV_SYN event is received.
+ */
+static void
+EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
     switch (ev->type) {
         case EV_REL:
-            /* Ignore EV_REL events if we never set up for them. */
-            if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
-                break;
-
-            /* Handle mouse wheel emulation */
-            if (EvdevWheelEmuFilterMotion(pInfo, ev))
-                break;
-
-            rel = 1;
-
-            switch (ev->code) {
-                case REL_WHEEL:
-                    if (value > 0)
-                        PostButtonClicks(pInfo, wheel_up_button, value);
-                    else if (value < 0)
-                        PostButtonClicks(pInfo, wheel_down_button, -value);
-                    break;
-
-                case REL_DIAL:
-                case REL_HWHEEL:
-                    if (value > 0)
-                        PostButtonClicks(pInfo, wheel_right_button, value);
-                    else if (value < 0)
-                        PostButtonClicks(pInfo, wheel_left_button, -value);
-                    break;
-
-                /* We don't post wheel events as axis motion. */
-                default:
-                    delta[ev->code] += value;
-                    break;
-            }
+            EvdevProcessRelativeMotionEvent(pInfo, ev);
             break;
-
         case EV_ABS:
-            /* Ignore EV_ABS events if we never set up for them. */
-            if (!(pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
-                break;
-
-            if (ev->code > ABS_MAX)
-                break;
-            pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
-            if (ev->code == ABS_X)
-                abs |= ABS_X_VALUE;
-            else if (ev->code == ABS_Y)
-                abs |= ABS_Y_VALUE;
-            else
-                abs |= ABS_VALUE;
+            EvdevProcessAbsoluteMotionEvent(pInfo, ev);
             break;
-
         case EV_KEY:
-            /* don't repeat mouse buttons */
-            if (ev->code >= BTN_MOUSE && ev->code < KEY_OK)
-                if (value == 2)
-                    break;
-
-            switch (ev->code) {
-                case BTN_TOUCH:
-                case BTN_TOOL_PEN:
-                case BTN_TOOL_RUBBER:
-                case BTN_TOOL_BRUSH:
-                case BTN_TOOL_PENCIL:
-                case BTN_TOOL_AIRBRUSH:
-                case BTN_TOOL_FINGER:
-                case BTN_TOOL_MOUSE:
-                case BTN_TOOL_LENS:
-                    pEvdev->tool = value ? ev->code : 0;
-                    if (!(pEvdev->flags & EVDEV_TOUCHSCREEN))
-                        break;
-                    /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
-                     * BTN_LEFT. */
-                    ev->code = BTN_LEFT;
-                    /* Intentional fallthrough! */
-
-                default:
-                    button = EvdevUtilButtonEventToButtonNumber(pEvdev, ev->code);
-
-                    /* Handle drag lock */
-                    if (EvdevDragLockFilterEvent(pInfo, button, value))
-                        break;
-
-                    if (EvdevWheelEmuFilterButton(pInfo, button, value))
-                        break;
-
-                    if (EvdevMBEmuFilterEvent(pInfo, button, value))
-                        break;
-
-                    if (button)
-                        xf86PostButtonEvent(pInfo->dev, 0, button, value, 0, 0);
-                    else
-                        PostKbdEvent(pInfo, ev, value);
-                    break;
-            }
+            EvdevProcessKeyEvent(pInfo, ev);
             break;
-
         case EV_SYN:
-            /* convert to relative motion for touchpads */
-            if (abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
-                if (pEvdev->tool) { /* meaning, touch is active */
-                    if (pEvdev->old_vals[0] != -1)
-                        delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
-                    if (pEvdev->old_vals[1] != -1)
-                        delta[REL_Y] = pEvdev->vals[1] - pEvdev->old_vals[1];
-                    if (abs & ABS_X_VALUE)
-                        pEvdev->old_vals[0] = pEvdev->vals[0];
-                    if (abs & ABS_Y_VALUE)
-                        pEvdev->old_vals[1] = pEvdev->vals[1];
-                } else {
-                    pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
-                }
-                abs = 0;
-                rel = 1;
-            }
-
-            if (rel) {
-                int post_deltas[REL_CNT] = {0}; /* axis-mapped deltas */
-                int first = REL_CNT, last = 0;
-                int i;
-
-                if (pEvdev->swap_axes) {
-                    tmp = delta[REL_X];
-                    delta[REL_X] = delta[REL_Y];
-                    delta[REL_Y] = tmp;
-                }
-                if (pEvdev->invert_x)
-                    delta[REL_X] *= -1;
-                if (pEvdev->invert_y)
-                    delta[REL_Y] *= -1;
-
-                for (i = 0; i < REL_CNT; i++)
-                {
-                    int map = pEvdev->axis_map[i];
-                    if (delta[i] && map != -1)
-                    {
-                        post_deltas[map] = delta[i];
-                        if (map < first)
-                            first = map;
-                        if (map > last)
-                            last = map;
-                    }
-                }
-
-                xf86PostMotionEventP(pInfo->dev, FALSE, first,
-                                     (last - first + 1), &post_deltas[first]);
-            }
-
-            /*
-             * Some devices only generate valid abs coords when BTN_DIGI is
-             * pressed.  On wacom tablets, this means that the pen is in
-             * proximity of the tablet.  After the pen is removed, BTN_DIGI is
-             * released, and a (0, 0) absolute event is generated.  Checking
-             * pEvdev->digi here, lets us ignore that event.  pEvdev is
-             * initialized to 1 so devices that doesn't use this scheme still
-             * just works.
-             */
-            if (abs && pEvdev->tool) {
-                int v[MAX_VALUATORS];
-
-                memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
-                if (pEvdev->flags & EVDEV_CALIBRATED)
-                {
-                    v[0] = xf86ScaleAxis(v[0],
-                            pEvdev->absinfo[ABS_X].maximum,
-                            pEvdev->absinfo[ABS_X].minimum,
-                            pEvdev->calibration.max_x, pEvdev->calibration.min_x);
-                    v[1] = xf86ScaleAxis(v[1],
-                            pEvdev->absinfo[ABS_Y].maximum,
-                            pEvdev->absinfo[ABS_Y].minimum,
-                            pEvdev->calibration.max_y, pEvdev->calibration.min_y);
-                }
-
-                if (pEvdev->swap_axes) {
-                    int tmp = v[0];
-                    v[0] = v[1];
-                    v[1] = tmp;
-                }
-
-                if (pEvdev->invert_x)
-                    v[0] = (pEvdev->absinfo[ABS_X].maximum - v[0] +
-                            pEvdev->absinfo[ABS_X].minimum);
-                if (pEvdev->invert_y)
-                    v[1] = (pEvdev->absinfo[ABS_Y].maximum - v[1] +
-                            pEvdev->absinfo[ABS_Y].minimum);
-
-                xf86PostMotionEventP(pInfo->dev, TRUE, 0, pEvdev->num_vals, v);
-            }
-
-            memset(delta, 0, sizeof(delta));
-            tmp = 0;
-            abs = 0;
-            rel = 0;
+            EvdevProcessSyncEvent(pInfo, ev);
+            break;
     }
 }
 

@@ -54,6 +54,7 @@
 #endif
 
 #define EVDEV_MAXBUTTONS 32
+#define EVDEV_MAXQUEUE 32
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
 #define HAVE_PROPERTIES 1
@@ -87,6 +88,16 @@ typedef struct {
     int traveled_distance;
 } WheelAxis, *WheelAxisPtr;
 
+/* Event queue used to defer keyboard/button events until EV_SYN time. */
+typedef struct {
+    enum {
+        EV_QUEUE_KEY,	/* xf86PostKeyboardEvent() */
+        EV_QUEUE_BTN,	/* xf86PostButtonEvent() */
+    } type;
+    int key;		/* May be either a key code or button number. */
+    int val;		/* State of the key/button; pressed or released. */
+} EventQueueRec, *EventQueuePtr;
+
 typedef struct {
     const char *device;
     int grabDevice;         /* grab the event device? */
@@ -102,6 +113,9 @@ typedef struct {
     BOOL swap_axes;
     BOOL invert_x;
     BOOL invert_y;
+
+    int delta[REL_CNT];
+    unsigned int abs, rel;
 
     /* XKB stuff has to be per-device rather than per-driver */
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
@@ -159,6 +173,10 @@ typedef struct {
 
     /* minor/major number */
     dev_t min_maj;
+
+    /* Event queue used to defer keyboard/button events until EV_SYN time. */
+    int                     num_queue;
+    EventQueueRec           queue[EVDEV_MAXQUEUE];
 } EvdevRec, *EvdevPtr;
 
 unsigned int EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code);
