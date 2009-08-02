@@ -152,13 +152,13 @@ void
 EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    BOOL state=0;
+    BOOL state = 0;
 
     /* update button state */
     state = pEvdev->dragLock.lock_state[button - 1] ? FALSE : TRUE;
     pEvdev->dragLock.lock_state[button - 1] = state;
 
-    xf86PostButtonEvent(pInfo->dev, 0, button, state, 0, 0);
+    EvdevPostButtonEvent(pInfo, button, state);
 }
 
 /* Filter button presses looking for either a meta button or the

@@ -24,6 +24,7 @@
  *	Kristian Høgsberg (krh@redhat.com)
  *	Adam Jackson (ajax@redhat.com)
  *	Peter Hutterer (peter.hutterer@redhat.com)
+ *	Oliver McFadden (oliver.mcfadden@nokia.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -248,8 +249,8 @@ static int wheel_down_button = 5;
 static int wheel_left_button = 6;
 static int wheel_right_button = 7;
 
-static void
-PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
+void
+EvdevPostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
     static char warned[KEY_CNT];
@@ -296,8 +297,8 @@ PostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
     pEvdev->num_queue++;
 }
 
-static void
-PostButtonEvent(InputInfoPtr pInfo, int button, int value)
+void
+EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
 {
     EventQueuePtr pQueue;
     EvdevPtr pEvdev = pInfo->private;
@@ -315,14 +316,14 @@ PostButtonEvent(InputInfoPtr pInfo, int button, int value)
     pEvdev->num_queue++;
 }
 
-static void
-PostButtonClicks(InputInfoPtr pInfo, int button, int count)
+void
+EvdevPostButtonClicks(InputInfoPtr pInfo, int button, int count)
 {
     int i;
 
     for (i = 0; i < count; i++) {
-        PostButtonEvent(pInfo, button, 1);
-        PostButtonEvent(pInfo, button, 0);
+        EvdevPostButtonEvent(pInfo, button, 1);
+        EvdevPostButtonEvent(pInfo, button, 0);
     }
 }
 
@@ -506,9 +507,9 @@ EvdevProcessButtonEvent(InputInfoPtr pInfo, struct input_event *ev)
         return;
 
     if (button)
-        PostButtonEvent(pInfo, button, value);
+        EvdevPostButtonEvent(pInfo, button, value);
     else
-        PostKbdEvent(pInfo, ev, value);
+        EvdevPostKbdEvent(pInfo, ev, value);
 }
 
 /**
@@ -536,17 +537,17 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     switch (ev->code) {
         case REL_WHEEL:
             if (value > 0)
-                PostButtonClicks(pInfo, wheel_up_button, value);
+                EvdevPostButtonClicks(pInfo, wheel_up_button, value);
             else if (value < 0)
-                PostButtonClicks(pInfo, wheel_down_button, -value);
+                EvdevPostButtonClicks(pInfo, wheel_down_button, -value);
             break;
 
         case REL_DIAL:
         case REL_HWHEEL:
             if (value > 0)
-                PostButtonClicks(pInfo, wheel_right_button, value);
+                EvdevPostButtonClicks(pInfo, wheel_right_button, value);
             else if (value < 0)
-                PostButtonClicks(pInfo, wheel_left_button, -value);
+                EvdevPostButtonClicks(pInfo, wheel_left_button, -value);
             break;
 
         /* We don't post wheel events as axis motion. */
@@ -628,7 +629,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
 /**
  * Post the relative motion events.
  */
-static void
+void
 EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
                               int v[MAX_VALUATORS])
 {
@@ -642,7 +643,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
 /**
  * Post the absolute motion events.
  */
-static void
+void
 EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
                               int v[MAX_VALUATORS])
 {

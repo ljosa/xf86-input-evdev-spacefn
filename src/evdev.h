@@ -25,6 +25,7 @@
  *	Kristian Høgsberg (krh@redhat.com)
  *	Adam Jackson (ajax@redhat.com)
  *	Peter Hutterer (peter@cs.unisa.edu.au)
+ *	Oliver McFadden (oliver.mcfadden@nokia.com)
  */
 
 #ifndef EVDEV_H
@@ -179,6 +180,14 @@ typedef struct {
     EventQueueRec           queue[EVDEV_MAXQUEUE];
 } EvdevRec, *EvdevPtr;
 
+/* Event posting functions */
+void EvdevPostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
+void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
+void EvdevPostButtonClicks(InputInfoPtr pInfo, int button, int count);
+void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+				   int v[MAX_VALUATORS]);
+void EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+				   int v[MAX_VALUATORS]);
 unsigned int EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code);
 
 /* Middle Button emulation */

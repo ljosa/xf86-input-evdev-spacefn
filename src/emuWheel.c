@@ -82,8 +82,7 @@ EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value)
                  * If the button is released early enough emit the button
                  * press/release events
                  */
-                xf86PostButtonEvent(pInfo->dev, 0, button, 1, 0, 0);
-                xf86PostButtonEvent(pInfo->dev, 0, button, 0, 0, 0);
+                EvdevPostButtonClicks(pInfo, button, 1);
             }
         }
 
@@ -163,10 +162,8 @@ EvdevWheelEmuInertia(InputInfoPtr pInfo, WheelAxisPtr axis, int value)
 
     /* Produce button press events for wheel motion */
     while(abs(axis->traveled_distance) > pEvdev->emulateWheel.inertia) {
-
 	axis->traveled_distance -= inertia;
-	xf86PostButtonEvent(pInfo->dev, 0, button, 1, 0, 0);
-	xf86PostButtonEvent(pInfo->dev, 0, button, 0, 0, 0);
+	EvdevPostButtonClicks(pInfo, button, 1);
     }
 }
 
