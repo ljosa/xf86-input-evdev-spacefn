@@ -1410,6 +1410,64 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 
 }
 
+static void
+EvdevInitAbsClass(DeviceIntPtr device, EvdevPtr pEvdev)
+{
+    if (EvdevAddAbsClass(device) == Success) {
+
+        xf86Msg(X_INFO,"%s: initialized for absolute axes.\n", device->name);
+
+    } else {
+
+        xf86Msg(X_ERROR,"%s: failed to initialize for absolute axes.\n",
+                device->name);
+
+        pEvdev->flags &= ~EVDEV_ABSOLUTE_EVENTS;
+
+    }
+}
+
+static void
+EvdevInitRelClass(DeviceIntPtr device, EvdevPtr pEvdev)
+{
+    int has_abs_axes = pEvdev->flags & EVDEV_ABSOLUTE_EVENTS;
+
+    if (EvdevAddRelClass(device) == Success) {
+
+        xf86Msg(X_INFO,"%s: initialized for relative axes.\n", device->name);
+
+        if (has_abs_axes) {
+
+            xf86Msg(X_WARNING,"%s: ignoring absolute axes.\n", device->name);
+            pEvdev->flags &= ~EVDEV_ABSOLUTE_EVENTS;
+        }
+
+    } else {
+
+        xf86Msg(X_ERROR,"%s: failed to initialize for relative axes.\n",
+                device->name);
+
+        pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
+
+        if (has_abs_axes)
+            EvdevInitAbsClass(device, pEvdev);
+    }
+}
+
+static void
+EvdevInitTouchDevice(DeviceIntPtr device, EvdevPtr pEvdev)
+{
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS) {
+
+        xf86Msg(X_WARNING,"%s: touchpads and touchscreens ignore relative "
+                "axes.\n", device->name);
+
+        pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
+    }
+
+    EvdevInitAbsClass(device, pEvdev);
+}
+
 static int
 EvdevInit(DeviceIntPtr device)
 {
@@ -1428,28 +1486,27 @@ EvdevInit(DeviceIntPtr device)
 	EvdevAddKeyClass(device);
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
 	EvdevAddButtonClass(device);
-    /* We don't allow relative and absolute axes on the same device. Reason
-       Reason being that some devices (MS Optical Desktop 2000) register both
-       rel and abs axes for x/y.
-       The abs axes register min/max, this min/max then also applies to the
-       relative device (the mouse) and caps it at 0..255 for both axis.
-       So unless you have a small screen, you won't be enjoying it much.
 
-        FIXME: somebody volunteer to fix this.
+    /* We don't allow relative and absolute axes on the same device. The
+     * reason is that some devices (MS Optical Desktop 2000) register both
+     * rel and abs axes for x/y.
+     *
+     * The abs axes register min/max; this min/max then also applies to the
+     * relative device (the mouse) and caps it at 0..255 for both axes.
+     * So, unless you have a small screen, you won't be enjoying it much;
+     * consequently, absolute axes are generally ignored.
+     *
+     * However, currenly only a device with absolute axes can be registered
+     * as a touch{pad,screen}. Thus, given such a device, absolute axes are
+     * used and relative axes are ignored.
      */
-    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS) {
-        if (EvdevAddRelClass(device) == Success)
-        {
-            if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
-                xf86Msg(X_INFO,"%s: relative axes found, ignoring absolute "
-                        "axes.\n", device->name);
-            pEvdev->flags &= ~EVDEV_ABSOLUTE_EVENTS;
-        } else
-            pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
-    }
 
-    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
-        EvdevAddAbsClass(device);
+    if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN))
+        EvdevInitTouchDevice(device, pEvdev);
+    else if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+        EvdevInitRelClass(device, pEvdev);
+    else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+        EvdevInitAbsClass(device, pEvdev);
 
 #ifdef HAVE_PROPERTIES
     /* We drop the return value, the only time we ever want the handlers to
