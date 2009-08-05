@@ -524,14 +524,6 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     /* Get the signed value, earlier kernels had this as unsigned */
     value = ev->value;
 
-    /* Ignore EV_REL events if we never set up for them. */
-    if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
-        return;
-
-    /* Handle mouse wheel emulation */
-    if (EvdevWheelEmuFilterMotion(pInfo, ev))
-        return;
-
     pEvdev->rel = 1;
 
     switch (ev->code) {
@@ -552,6 +544,14 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 
         /* We don't post wheel events as axis motion. */
         default:
+            /* Ignore EV_REL events if we never set up for them. */
+            if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
+                return;
+
+            /* Handle mouse wheel emulation */
+            if (EvdevWheelEmuFilterMotion(pInfo, ev))
+                return;
+
             pEvdev->delta[ev->code] += value;
             break;
     }
