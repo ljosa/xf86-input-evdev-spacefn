@@ -181,9 +181,9 @@ typedef struct {
 } EvdevRec, *EvdevPtr;
 
 /* Event posting functions */
-void EvdevPostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
-void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
-void EvdevPostButtonClicks(InputInfoPtr pInfo, int button, int count);
+void EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
+void EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value);
+void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
 				   int v[MAX_VALUATORS]);
 void EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,

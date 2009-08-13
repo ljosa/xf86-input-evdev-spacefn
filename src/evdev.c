@@ -250,7 +250,7 @@ static int wheel_left_button = 6;
 static int wheel_right_button = 7;
 
 void
-EvdevPostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
+EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
     static char warned[KEY_CNT];
@@ -298,7 +298,7 @@ EvdevPostKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 }
 
 void
-EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
+EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value)
 {
     EventQueuePtr pQueue;
     EvdevPtr pEvdev = pInfo->private;
@@ -317,13 +317,13 @@ EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
 }
 
 void
-EvdevPostButtonClicks(InputInfoPtr pInfo, int button, int count)
+EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
 {
     int i;
 
     for (i = 0; i < count; i++) {
-        EvdevPostButtonEvent(pInfo, button, 1);
-        EvdevPostButtonEvent(pInfo, button, 0);
+        EvdevQueueButtonEvent(pInfo, button, 1);
+        EvdevQueueButtonEvent(pInfo, button, 0);
     }
 }
 
@@ -507,9 +507,9 @@ EvdevProcessButtonEvent(InputInfoPtr pInfo, struct input_event *ev)
         return;
 
     if (button)
-        EvdevPostButtonEvent(pInfo, button, value);
+        EvdevQueueButtonEvent(pInfo, button, value);
     else
-        EvdevPostKbdEvent(pInfo, ev, value);
+        EvdevQueueKbdEvent(pInfo, ev, value);
 }
 
 /**
@@ -529,17 +529,17 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     switch (ev->code) {
         case REL_WHEEL:
             if (value > 0)
-                EvdevPostButtonClicks(pInfo, wheel_up_button, value);
+                EvdevQueueButtonClicks(pInfo, wheel_up_button, value);
             else if (value < 0)
-                EvdevPostButtonClicks(pInfo, wheel_down_button, -value);
+                EvdevQueueButtonClicks(pInfo, wheel_down_button, -value);
             break;
 
         case REL_DIAL:
         case REL_HWHEEL:
             if (value > 0)
-                EvdevPostButtonClicks(pInfo, wheel_right_button, value);
+                EvdevQueueButtonClicks(pInfo, wheel_right_button, value);
             else if (value < 0)
-                EvdevPostButtonClicks(pInfo, wheel_left_button, -value);
+                EvdevQueueButtonClicks(pInfo, wheel_left_button, -value);
             break;
 
         /* We don't post wheel events as axis motion. */

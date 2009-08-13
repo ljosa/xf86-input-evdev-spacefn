@@ -158,7 +158,7 @@ EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button)
     state = pEvdev->dragLock.lock_state[button - 1] ? FALSE : TRUE;
     pEvdev->dragLock.lock_state[button - 1] = state;
 
-    EvdevPostButtonEvent(pInfo, button, state);
+    EvdevQueueButtonEvent(pInfo, button, state);
 }
 
 /* Filter button presses looking for either a meta button or the
