@@ -89,6 +89,7 @@
 #define EVDEV_INITIALIZED	(1 << 5) /* WheelInit etc. called already? */
 #define EVDEV_TOUCHSCREEN	(1 << 6)
 #define EVDEV_CALIBRATED	(1 << 7) /* run-time calibrated? */
+#define EVDEV_TABLET		(1 << 8) /* run-time calibrated? */
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
@@ -1469,8 +1470,8 @@ EvdevInitTouchDevice(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     if (pEvdev->flags & EVDEV_RELATIVE_EVENTS) {
 
-        xf86Msg(X_WARNING,"%s: touchpads and touchscreens ignore relative "
-                "axes.\n", device->name);
+        xf86Msg(X_WARNING,"%s: touchpads, tablets and touchscreens ignore "
+                "relative axes.\n", device->name);
 
         pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
     }
@@ -1511,7 +1512,7 @@ EvdevInit(DeviceIntPtr device)
      * used and relative axes are ignored.
      */
 
-    if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN))
+    if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN | EVDEV_TABLET))
         EvdevInitTouchDevice(device, pEvdev);
     else if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
         EvdevInitRelClass(device, pEvdev);
@@ -1861,10 +1862,14 @@ EvdevProbe(InputInfoPtr pInfo)
         if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
              TestBit(ABS_Y, pEvdev->abs_bitmask))) {
             xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
-            if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
+            if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask))
+            {
+                xf86Msg(X_INFO, "%s: Found absolute tablet.\n", pInfo->name);
+                pEvdev->flags |= EVDEV_TABLET;
+            } else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
                 TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
                 if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
-                    xf86Msg(X_INFO, "%s: Found absolute touchpad or tablet.\n", pInfo->name);
+                    xf86Msg(X_INFO, "%s: Found absolute touchpad.\n", pInfo->name);
                     pEvdev->flags |= EVDEV_TOUCHPAD;
                     memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
                 } else {
@@ -1892,7 +1897,7 @@ EvdevProbe(InputInfoPtr pInfo)
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
 	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
 	    pInfo->type_name = XI_TOUCHPAD;
-	} else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask)) {
+	} else if (pEvdev->flags & EVDEV_TABLET) {
 	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
 	    pInfo->type_name = XI_TABLET;
         } else if (pEvdev->flags & EVDEV_TOUCHSCREEN) {
