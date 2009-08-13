@@ -147,7 +147,7 @@ EvdevDragLockPreInit(InputInfoPtr pInfo)
     }
 }
 
-/* Updates DragLock button state and firest button event messges */
+/* Updates DragLock button state and fires button event messges */
 void
 EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button)
 {
