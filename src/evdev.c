@@ -316,6 +316,16 @@ EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value)
     pEvdev->num_queue++;
 }
 
+/**
+ * Post button event right here, right now.
+ * Interface for MB emulation since these need to post immediately.
+ */
+void
+EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
+{
+    xf86PostButtonEvent(pInfo->dev, 0, button, value, 0, 0);
+}
+
 void
 EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
 {
