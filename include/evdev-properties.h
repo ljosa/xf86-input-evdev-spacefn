@@ -43,7 +43,7 @@
 #define EVDEV_PROP_WHEEL_INERTIA "Evdev Wheel Emulation Inertia"
 /* CARD16 */
 #define EVDEV_PROP_WHEEL_TIMEOUT "Evdev Wheel Emulation Timeout"
-/* CARD8, value range 0-32, 0 to disable a value */
+/* CARD8, value range 0-32  */
 #define EVDEV_PROP_WHEEL_BUTTON "Evdev Wheel Emulation Button"
 
 /* Drag lock */
