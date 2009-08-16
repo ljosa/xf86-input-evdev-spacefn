@@ -54,7 +54,7 @@ static Atom prop_wheel_button   = 0;
 
 /* Local Funciton Prototypes */
 static BOOL EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char *axis_name);
-static void EvdevWheelEmuInertia(InputInfoPtr pInfo, WheelAxisPtr axis, int value);
+static int EvdevWheelEmuInertia(InputInfoPtr pInfo, WheelAxisPtr axis, int value);
 
 /* Filter mouse button events */
 BOOL
@@ -98,7 +98,7 @@ BOOL
 EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    WheelAxisPtr pAxis = NULL;
+    WheelAxisPtr pAxis = NULL, pOtherAxis = NULL;
     int value = pEv->value;
     int ms;
 
@@ -117,19 +117,28 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 	switch(pEv->code) {
 	case REL_X:
 	    pAxis = &(pEvdev->emulateWheel.X);
+	    pOtherAxis = &(pEvdev->emulateWheel.Y);
 	    break;
 
 	case REL_Y:
 	    pAxis = &(pEvdev->emulateWheel.Y);
+	    pOtherAxis = &(pEvdev->emulateWheel.X);
 	    break;
 
 	default:
 	    break;
 	}
 
-	/* If we found REL_X or REL_Y, emulate a mouse wheel */
+	/* If we found REL_X or REL_Y, emulate a mouse wheel.
+           Reset the inertia of the other axis when a scroll event was sent
+           to avoid the buildup of erroneous scroll events if the user
+           doesn't move in a perfectly straight line.
+         */
 	if (pAxis)
-	    EvdevWheelEmuInertia(pInfo, pAxis, value);
+	{
+	    if (EvdevWheelEmuInertia(pInfo, pAxis, value))
+		pOtherAxis->traveled_distance = 0;
+	}
 
 	/* Eat motion events while emulateWheel button pressed. */
 	return TRUE;
@@ -138,17 +147,20 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
     return FALSE;
 }
 
-/* Simulate inertia for our emulated mouse wheel */
-static void
+/* Simulate inertia for our emulated mouse wheel.
+   Returns the number of wheel events generated.
+ */
+static int
 EvdevWheelEmuInertia(InputInfoPtr pInfo, WheelAxisPtr axis, int value)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     int button;
     int inertia;
+    int rc = 0;
 
     /* if this axis has not been configured, just eat the motion */
     if (!axis->up_button)
-	return;
+	return rc;
 
     axis->traveled_distance += value;
 
@@ -164,7 +176,9 @@ EvdevWheelEmuInertia(InputInfoPtr pInfo, WheelAxisPtr axis, int value)
     while(abs(axis->traveled_distance) > pEvdev->emulateWheel.inertia) {
 	axis->traveled_distance -= inertia;
 	EvdevQueueButtonClicks(pInfo, button, 1);
+	rc++;
     }
+    return rc;
 }
 
 /* Handle button mapping here to avoid code duplication,
