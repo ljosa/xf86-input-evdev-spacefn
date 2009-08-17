@@ -100,18 +100,20 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     WheelAxisPtr pAxis = NULL, pOtherAxis = NULL;
     int value = pEv->value;
-    int ms;
 
     /* Has wheel emulation been configured to be enabled? */
     if (!pEvdev->emulateWheel.enabled)
 	return FALSE;
 
-    /* Handle our motion events if the emuWheel button is pressed*/
-    if (pEvdev->emulateWheel.button_state) {
+    /* Handle our motion events if the emuWheel button is pressed
+     * wheel button of 0 means always emulate wheel.
+     */
+    if (pEvdev->emulateWheel.button_state || !pEvdev->emulateWheel.button) {
         /* Just return if the timeout hasn't expired yet */
-        ms = pEvdev->emulateWheel.expires - GetTimeInMillis();
-        if (ms > 0)
+        if (pEvdev->emulateWheel.button &&
+            pEvdev->emulateWheel.expires - GetTimeInMillis() > 0) {
             return TRUE;
+        }
 
 	/* We don't want to intercept real mouse wheel events */
 	switch(pEv->code) {

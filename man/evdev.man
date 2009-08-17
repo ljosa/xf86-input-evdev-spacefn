@@ -105,7 +105,10 @@ press/release events as specified for the
 .B XAxisMapping
 and
 .B YAxisMapping
-settings.  Default: 4. Property: "Evdev Wheel Emulation Button".
+settings. If the button is 0 and
+.BR EmulateWheel
+is on, any motion of the device is converted into wheel events. Default: 4.
+Property: "Evdev Wheel Emulation Button".
 .TP 7
 .BI "Option \*qEmulateWheelInertia\*q \*q" integer \*q
 Specifies how far (in pixels) the pointer must move to generate button
