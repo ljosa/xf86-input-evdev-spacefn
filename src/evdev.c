@@ -1804,8 +1804,7 @@ EvdevProbe(InputInfoPtr pInfo)
         int mapping = 0;
         if (TestBit(i, pEvdev->key_bitmask))
         {
-            mapping =
-                pEvdev->btnmap[EvdevUtilButtonEventToButtonNumber(pEvdev, i)];
+            mapping = EvdevUtilButtonEventToButtonNumber(pEvdev, i);
             if (mapping > num_buttons)
                 num_buttons = mapping;
         }
