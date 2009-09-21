@@ -110,9 +110,11 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
      */
     if (pEvdev->emulateWheel.button_state || !pEvdev->emulateWheel.button) {
         /* Just return if the timeout hasn't expired yet */
-        if (pEvdev->emulateWheel.button &&
-            pEvdev->emulateWheel.expires - GetTimeInMillis() > 0) {
-            return TRUE;
+        if (pEvdev->emulateWheel.button)
+        {
+            int ms = pEvdev->emulateWheel.expires - GetTimeInMillis();
+            if (ms > 0)
+                return TRUE;
         }
 
 	/* We don't want to intercept real mouse wheel events */
