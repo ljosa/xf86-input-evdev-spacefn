@@ -1776,6 +1776,7 @@ EvdevProbe(InputInfoPtr pInfo)
 {
     int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
+    int ignore_rel, ignore_abs;
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
@@ -1790,6 +1791,9 @@ EvdevProbe(InputInfoPtr pInfo)
     } else if (pEvdev->grabDevice) {
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
+
+    ignore_rel = xf86SetBoolOption(pInfo->options, "IgnoreRelativeAxes", FALSE);
+    ignore_abs = xf86SetBoolOption(pInfo->options, "IgnoreAbsoluteAxes", FALSE);
 
     has_rel_axes = FALSE;
     has_abs_axes = FALSE;
@@ -1825,13 +1829,6 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_rel_axes) {
-        xf86Msg(X_INFO, "%s: found relative axes\n", pInfo->name);
-        pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
-        if (TestBit(REL_X, pEvdev->rel_bitmask) &&
-            TestBit(REL_Y, pEvdev->rel_bitmask)) {
-            xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
-        }
-
         if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
             TestBit(REL_HWHEEL, pEvdev->rel_bitmask) ||
             TestBit(REL_DIAL, pEvdev->rel_bitmask)) {
@@ -1843,6 +1840,20 @@ EvdevProbe(InputInfoPtr pInfo)
             num_buttons = (num_buttons < 3) ? 7 : num_buttons + 4;
             pEvdev->num_buttons = num_buttons;
         }
+
+        if (!ignore_rel)
+        {
+            xf86Msg(X_INFO, "%s: found relative axes\n", pInfo->name);
+            pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
+
+            if (TestBit(REL_X, pEvdev->rel_bitmask) &&
+                TestBit(REL_Y, pEvdev->rel_bitmask)) {
+                xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+            }
+        } else {
+            xf86Msg(X_INFO, "%s: relative axes present but ignored.\n", pInfo->name);
+            has_rel_axes = FALSE;
+        }
     }
 
     for (i = 0; i < ABS_MAX; i++) {
@@ -1852,7 +1863,11 @@ EvdevProbe(InputInfoPtr pInfo)
         }
     }
 
-    if (has_abs_axes) {
+    if (ignore_abs && has_abs_axes)
+    {
+        xf86Msg(X_INFO, "%s: absolute axes present but ignored.\n", pInfo->name);
+        has_abs_axes = FALSE;
+    } else if (has_abs_axes) {
         xf86Msg(X_INFO, "%s: found absolute axes\n", pInfo->name);
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 
