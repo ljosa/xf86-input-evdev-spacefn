@@ -1774,7 +1774,7 @@ error:
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
-    int i, has_rel_axes, has_abs_axes, has_xy, has_keys, num_buttons, has_scroll;
+    int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -1793,7 +1793,6 @@ EvdevProbe(InputInfoPtr pInfo)
 
     has_rel_axes = FALSE;
     has_abs_axes = FALSE;
-    has_xy = FALSE;
     has_keys = FALSE;
     has_scroll = FALSE;
     num_buttons = 0;
@@ -1831,7 +1830,6 @@ EvdevProbe(InputInfoPtr pInfo)
         if (TestBit(REL_X, pEvdev->rel_bitmask) &&
             TestBit(REL_Y, pEvdev->rel_bitmask)) {
             xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
-            has_xy = TRUE;
         }
 
         if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
@@ -1877,7 +1875,6 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
             }
-            has_xy = TRUE;
         }
     }
 
