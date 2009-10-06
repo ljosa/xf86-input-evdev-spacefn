@@ -768,6 +768,7 @@ EvdevReadInput(InputInfoPtr pInfo)
         {
             if (errno == ENODEV) /* May happen after resume */
             {
+                EvdevMBEmuFinalize(pInfo);
                 xf86RemoveEnabledDevice(pInfo);
                 close(pInfo->fd);
                 pInfo->fd = -1;
