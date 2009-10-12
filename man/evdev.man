@@ -150,6 +150,14 @@ be set in the configuration.
 Number of reopen attempts after a read error occurs on the device (e.g. after
 waking up from suspend). In between each attempt is a 100ms wait. Default: 10.
 .TP 7
+.BI "Option \*qCalibration\*q \*q" "min-x max-x min-y max-y" \*q
+Calibrates the X and Y axes for devices that need to scale to a different
+coordinate system than reported to the X server. This feature is required
+for devices that need to scale to a different coordinate system than
+originally reported by the kernel (e.g. touchscreens). The scaling to the
+custom coordinate system is done in-driver and the X server is unaware of
+the transformation. Property: "Evdev Axis Calibration".
+.TP 7
 .BI "Option \*qSwapAxes\*q \*q" Bool \*q
 Swap x/y axes. Default: off. Property: "Evdev Axes Swap".
 .TP 7
@@ -178,9 +186,7 @@ driver.
 .TP 7
 .BI "Evdev Axis Calibration"
 4 32-bit values, order min-x, max-x, min-y, max-y or 0 values to disable
-run-time axis calibration. This feature is required for devices that need to
-scale to a different coordinate system than originally reported to the X
-server, such as touchscreens that require run-time calibration.
+in-driver axis calibration.
 .TP 7
 .BI "Evdev Axis Inversion"
 2 boolean values (8 bit, 0 or 1), order X, Y. 1 inverts the axis.

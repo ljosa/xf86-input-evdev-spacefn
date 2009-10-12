@@ -1950,12 +1950,32 @@ EvdevProbe(InputInfoPtr pInfo)
     return 0;
 }
 
+static void
+EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4])
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (num_calibration == 0) {
+        pEvdev->flags &= ~EVDEV_CALIBRATED;
+        pEvdev->calibration.min_x = 0;
+        pEvdev->calibration.max_x = 0;
+        pEvdev->calibration.min_y = 0;
+        pEvdev->calibration.max_y = 0;
+    } else if (num_calibration == 4) {
+        pEvdev->flags |= EVDEV_CALIBRATED;
+        pEvdev->calibration.min_x = calibration[0];
+        pEvdev->calibration.max_x = calibration[1];
+        pEvdev->calibration.min_y = calibration[2];
+        pEvdev->calibration.max_y = calibration[3];
+    }
+}
 
 static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    const char *device;
+    const char *device, *str;
+    int num_calibration = 0, calibration[4] = { 0, 0, 0, 0 };
     EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
@@ -2027,6 +2047,19 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
     pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
+
+    str = xf86CheckStrOption(pInfo->options, "Calibration", NULL);
+    if (str) {
+        num_calibration = sscanf(str, "%d %d %d %d",
+                                 &calibration[0], &calibration[1],
+                                 &calibration[2], &calibration[3]);
+        if (num_calibration == 4)
+            EvdevSetCalibration(pInfo, num_calibration, calibration);
+        else
+            xf86Msg(X_ERROR,
+                    "%s: Insufficient calibration factors (%d). Ignoring calibration\n",
+                    pInfo->name, num_calibration);
+    }
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
@@ -2503,25 +2536,7 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
             return BadMatch;
 
         if (!checkonly)
-        {
-            if (val->size == 0)
-            {
-                pEvdev->flags &= ~EVDEV_CALIBRATED;
-                pEvdev->calibration.min_x = 0;
-                pEvdev->calibration.max_x = 0;
-                pEvdev->calibration.min_y = 0;
-                pEvdev->calibration.max_y = 0;
-            } else if (val->size == 4)
-            {
-                CARD32 *vals = (CARD32*)val->data;
-
-                pEvdev->flags |= EVDEV_CALIBRATED;
-                pEvdev->calibration.min_x = vals[0];
-                pEvdev->calibration.max_x = vals[1];
-                pEvdev->calibration.min_y = vals[2];
-                pEvdev->calibration.max_y = vals[3];
-            }
-        }
+            EvdevSetCalibration(pInfo, val->size, val->data);
     } else if (atom == prop_swap)
     {
         if (val->format != 8 || val->type != XA_INTEGER || val->size != 1)
