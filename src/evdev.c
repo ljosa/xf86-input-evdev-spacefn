@@ -125,7 +125,6 @@ static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
 static Atom prop_invert = 0;
-static Atom prop_reopen = 0;
 static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
 static Atom prop_axis_label = 0;
@@ -338,56 +337,6 @@ EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
         EvdevQueueButtonEvent(pInfo, button, 1);
         EvdevQueueButtonEvent(pInfo, button, 0);
     }
-}
-
-/**
- * Coming back from resume may leave us with a file descriptor that can be
- * opened but fails on the first read (ENODEV).
- * In this case, try to open the device until it becomes available or until
- * the predefined count expires.
- */
-static CARD32
-EvdevReopenTimer(OsTimerPtr timer, CARD32 time, pointer arg)
-{
-    InputInfoPtr pInfo = (InputInfoPtr)arg;
-    EvdevPtr pEvdev = pInfo->private;
-
-    do {
-        pInfo->fd = open(pEvdev->device, O_RDWR | O_NONBLOCK, 0);
-    } while (pInfo->fd < 0 && errno == EINTR);
-
-    if (pInfo->fd != -1)
-    {
-        if (EvdevCacheCompare(pInfo, TRUE) == Success)
-        {
-            xf86Msg(X_INFO, "%s: Device reopened after %d attempts.\n", pInfo->name,
-                    pEvdev->reopen_attempts - pEvdev->reopen_left + 1);
-            EvdevOn(pInfo->dev);
-        } else
-        {
-            xf86Msg(X_ERROR, "%s: Device has changed - disabling.\n",
-                    pInfo->name);
-            xf86DisableDevice(pInfo->dev, FALSE);
-            close(pInfo->fd);
-            pInfo->fd = -1;
-            pEvdev->min_maj = 0; /* don't hog the device */
-        }
-        pEvdev->reopen_left = 0;
-        return 0;
-    }
-
-    pEvdev->reopen_left--;
-
-    if (!pEvdev->reopen_left)
-    {
-        xf86Msg(X_ERROR, "%s: Failed to reopen device after %d attempts.\n",
-                pInfo->name, pEvdev->reopen_attempts);
-        xf86DisableDevice(pInfo->dev, FALSE);
-        pEvdev->min_maj = 0; /* don't hog the device */
-        return 0;
-    }
-
-    return 100; /* come back in 100 ms */
 }
 
 #define ABS_X_VALUE 0x1
@@ -761,7 +710,6 @@ EvdevReadInput(InputInfoPtr pInfo)
 {
     struct input_event ev[NUM_EVENTS];
     int i, len = sizeof(ev);
-    EvdevPtr pEvdev = pInfo->private;
 
     while (len == sizeof(ev))
     {
@@ -774,11 +722,6 @@ EvdevReadInput(InputInfoPtr pInfo)
                 xf86RemoveEnabledDevice(pInfo);
                 close(pInfo->fd);
                 pInfo->fd = -1;
-                if (pEvdev->reopen_timer)
-                {
-                    pEvdev->reopen_left = pEvdev->reopen_attempts;
-                    pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 100, EvdevReopenTimer, pInfo);
-                }
             } else if (errno != EAGAIN)
             {
                 /* We use X_NONE here because it doesn't alloc */
@@ -1551,9 +1494,6 @@ EvdevInit(DeviceIntPtr device)
 
 /**
  * Init all extras (wheel emulation, etc.) and grab the device.
- *
- * Coming from a resume, the grab may fail with ENODEV. In this case, we set a
- * timer to wake up and try to reopen the device later.
  */
 static int
 EvdevOn(DeviceIntPtr device)
@@ -1565,42 +1505,36 @@ EvdevOn(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    if (pInfo->fd != -1 && pEvdev->grabDevice &&
-        (rc = ioctl(pInfo->fd, EVIOCGRAB, (void *)1)))
+    if (pInfo->fd == -1) /* after PreInit fd is still open */
     {
+        do {
+            pInfo->fd = open(pEvdev->device, O_RDWR | O_NONBLOCK, 0);
+        } while (pInfo->fd < 0 && errno == EINTR);
+
+        if (pInfo->fd < 0) {
+            xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n",
+                    pEvdev->device);
+            return !Success;
+        }
+    }
+
+    if (pEvdev->grabDevice && (rc = ioctl(pInfo->fd, EVIOCGRAB, (void *)1)))
         xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
                 strerror(errno));
 
-        /* ENODEV - device has disappeared after resume */
-        if (rc && errno == ENODEV)
-        {
-            close(pInfo->fd);
-            pInfo->fd = -1;
-        }
+    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
+    if (EvdevIsDuplicate(pInfo))
+    {
+        xf86Msg(X_WARNING, "%s: Refusing to enable duplicate device.\n",
+                pInfo->name);
+        return !Success;
     }
 
-    if (pInfo->fd == -1)
-    {
-        pEvdev->reopen_left = pEvdev->reopen_attempts;
-        pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 100, EvdevReopenTimer, pInfo);
-    } else
-    {
-        pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
-        if (EvdevIsDuplicate(pInfo))
-        {
-            xf86Msg(X_WARNING, "%s: Refusing to enable duplicate device.\n",
-                    pInfo->name);
-            return !Success;
-        }
-
-        pEvdev->reopen_timer = TimerSet(pEvdev->reopen_timer, 0, 0, NULL, NULL);
-
-        xf86FlushInput(pInfo->fd);
-        xf86AddEnabledDevice(pInfo);
-        EvdevMBEmuOn(pInfo);
-        pEvdev->flags |= EVDEV_INITIALIZED;
-        device->public.on = TRUE;
-    }
+    xf86FlushInput(pInfo->fd);
+    xf86AddEnabledDevice(pInfo);
+    EvdevMBEmuOn(pInfo);
+    pEvdev->flags |= EVDEV_INITIALIZED;
+    device->public.on = TRUE;
 
     return Success;
 }
@@ -1638,11 +1572,6 @@ EvdevProc(DeviceIntPtr device, int what)
         pEvdev->min_maj = 0;
         pEvdev->flags &= ~EVDEV_INITIALIZED;
 	device->public.on = FALSE;
-        if (pEvdev->reopen_timer)
-        {
-            TimerFree(pEvdev->reopen_timer);
-            pEvdev->reopen_timer = NULL;
-        }
 	break;
 
     case DEVICE_CLOSE:
@@ -2076,7 +2005,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         return NULL;
     }
 
-    pEvdev->reopen_attempts = xf86SetIntOption(pInfo->options, "ReopenAttempts", 10);
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
     pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
     pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
@@ -2464,18 +2392,6 @@ EvdevInitProperty(DeviceIntPtr dev)
     EvdevPtr     pEvdev = pInfo->private;
     int          rc;
     BOOL         invert[2];
-    char         reopen;
-
-    prop_reopen = MakeAtom(EVDEV_PROP_REOPEN, strlen(EVDEV_PROP_REOPEN),
-            TRUE);
-
-    reopen = pEvdev->reopen_attempts;
-    rc = XIChangeDeviceProperty(dev, prop_reopen, XA_INTEGER, 8,
-                                PropModeReplace, 1, &reopen, FALSE);
-    if (rc != Success)
-        return;
-
-    XISetDevicePropertyDeletable(dev, prop_reopen, FALSE);
 
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
     {
@@ -2554,13 +2470,6 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
             pEvdev->invert_x = data[0];
             pEvdev->invert_y = data[1];
         }
-    } else if (atom == prop_reopen)
-    {
-        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
-            return BadMatch;
-
-        if (!checkonly)
-            pEvdev->reopen_attempts = *((CARD8*)val->data);
     } else if (atom == prop_calibration)
     {
         if (val->format != 32 || val->type != XA_INTEGER)

@@ -56,7 +56,7 @@
 
 /* Reopen attempts. */
 /* CARD8 */
-#define EVDEV_PROP_REOPEN "Evdev Reopen Attempts"
+#define EVDEV_PROP_REOPEN "Evdev Reopen Attempts" /* OBSOLETE */
 
 /* Run-time calibration */
 /* CARD32, 4 values [minx, maxx, miny, maxy], or no values for unset */
