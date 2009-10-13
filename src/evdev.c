@@ -1844,7 +1844,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
         if (!ignore_rel)
         {
-            xf86Msg(X_INFO, "%s: found relative axes\n", pInfo->name);
+            xf86Msg(X_INFO, "%s: Found relative axes\n", pInfo->name);
             pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 
             if (TestBit(REL_X, pEvdev->rel_bitmask) &&
@@ -1852,7 +1852,7 @@ EvdevProbe(InputInfoPtr pInfo)
                 xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
             }
         } else {
-            xf86Msg(X_INFO, "%s: relative axes present but ignored.\n", pInfo->name);
+            xf86Msg(X_INFO, "%s: Relative axes present but ignored.\n", pInfo->name);
             has_rel_axes = FALSE;
         }
     }
@@ -1866,10 +1866,10 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (ignore_abs && has_abs_axes)
     {
-        xf86Msg(X_INFO, "%s: absolute axes present but ignored.\n", pInfo->name);
+        xf86Msg(X_INFO, "%s: Absolute axes present but ignored.\n", pInfo->name);
         has_abs_axes = FALSE;
     } else if (has_abs_axes) {
-        xf86Msg(X_INFO, "%s: found absolute axes\n", pInfo->name);
+        xf86Msg(X_INFO, "%s: Found absolute axes\n", pInfo->name);
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 
         if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
