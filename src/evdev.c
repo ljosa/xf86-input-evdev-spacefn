@@ -89,7 +89,7 @@
 #define EVDEV_INITIALIZED	(1 << 5) /* WheelInit etc. called already? */
 #define EVDEV_TOUCHSCREEN	(1 << 6)
 #define EVDEV_CALIBRATED	(1 << 7) /* run-time calibrated? */
-#define EVDEV_TABLET		(1 << 8) /* run-time calibrated? */
+#define EVDEV_TABLET		(1 << 8) /* device looks like a tablet? */
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
