@@ -138,13 +138,18 @@ Invert the given axis. Default: off. Property: "Evdev Axis Inversion".
 .BI "Option \*qIgnoreRelativeAxes\*q \*q" Bool \*q
 .TP 7
 .BI "Option \*qIgnoreAbsoluteAxes\*q \*q" Bool \*q
-Ignore the specified type of axis. Default: off. The X server cannot deal
+Ignore the specified type of axis. Default: unset. The X server cannot deal
 with devices that have both relative and absolute axes. Evdev tries to guess
 wich axes to ignore given the device type and disables absolute axes for
 mice and relative axes for tablets, touchscreens and touchpad. These options
 allow to forcibly disable an axis type. Mouse wheel axes are exempt and will
 work even if relative axes are ignored. No property, this configuration must
 be set in the configuration.
+.br
+If either option is set to False, the driver will not ignore the specified
+axes regardless of the presence of other axes. This may trigger buggy
+behavior and events from this axis are always forwarded. Users are
+discouraged from setting this option.
 .TP 7
 .BI "Option \*qReopenAttempts\*q \*q" integer \*q
 Number of reopen attempts after a read error occurs on the device (e.g. after

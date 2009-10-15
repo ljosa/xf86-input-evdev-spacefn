@@ -90,6 +90,8 @@
 #define EVDEV_TOUCHSCREEN	(1 << 6)
 #define EVDEV_CALIBRATED	(1 << 7) /* run-time calibrated? */
 #define EVDEV_TABLET		(1 << 8) /* device looks like a tablet? */
+#define EVDEV_UNIGNORE_ABSOLUTE (1 << 9) /* explicitly unignore abs axes */
+#define EVDEV_UNIGNORE_RELATIVE (1 << 10) /* explicitly unignore rel axes */
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
@@ -1423,6 +1425,17 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 }
 
 static void
+EvdevInitAnyClass(DeviceIntPtr device, EvdevPtr pEvdev)
+{
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS &&
+        EvdevAddRelClass(device) == Success)
+        xf86Msg(X_INFO, "%s: initialized for relative axes.\n", device->name);
+    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS &&
+        EvdevAddAbsClass(device) == Success)
+        xf86Msg(X_INFO, "%s: initialized for absolute axes.\n", device->name);
+}
+
+static void
 EvdevInitAbsClass(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     if (EvdevAddAbsClass(device) == Success) {
@@ -1513,7 +1526,9 @@ EvdevInit(DeviceIntPtr device)
      * used and relative axes are ignored.
      */
 
-    if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN | EVDEV_TABLET))
+    if (pEvdev->flags & (EVDEV_UNIGNORE_RELATIVE | EVDEV_UNIGNORE_ABSOLUTE))
+        EvdevInitAnyClass(device, pEvdev);
+    else if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN | EVDEV_TABLET))
         EvdevInitTouchDevice(device, pEvdev);
     else if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
         EvdevInitRelClass(device, pEvdev);
@@ -1777,7 +1792,7 @@ EvdevProbe(InputInfoPtr pInfo)
 {
     int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
     int kernel24 = 0;
-    int ignore_rel, ignore_abs;
+    int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
@@ -1793,8 +1808,26 @@ EvdevProbe(InputInfoPtr pInfo)
         ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
     }
 
-    ignore_rel = xf86SetBoolOption(pInfo->options, "IgnoreRelativeAxes", FALSE);
-    ignore_abs = xf86SetBoolOption(pInfo->options, "IgnoreAbsoluteAxes", FALSE);
+    /* Trinary state for ignoring axes:
+       - unset: do the normal thing.
+       - TRUE: explicitly ignore them.
+       - FALSE: unignore axes, use them at all cost if they're present.
+     */
+    if (xf86FindOption(pInfo->options, "IgnoreRelativeAxes"))
+    {
+        if (xf86SetBoolOption(pInfo->options, "IgnoreRelativeAxes", FALSE))
+            ignore_rel = TRUE;
+        else
+            pEvdev->flags |= EVDEV_UNIGNORE_RELATIVE;
+
+    }
+    if (xf86FindOption(pInfo->options, "IgnoreAbsoluteAxes"))
+    {
+        if (xf86SetBoolOption(pInfo->options, "IgnoreAbsoluteAxes", FALSE))
+           ignore_abs = TRUE;
+        else
+            pEvdev->flags |= EVDEV_UNIGNORE_ABSOLUTE;
+    }
 
     has_rel_axes = FALSE;
     has_abs_axes = FALSE;
@@ -2352,16 +2385,16 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
     int labels_len = 0;
     char *misc_label;
 
-    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
-    {
-        labels     = rel_labels;
-        labels_len = ArrayLength(rel_labels);
-        misc_label = AXIS_LABEL_PROP_REL_MISC;
-    } else if ((pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
     {
         labels     = abs_labels;
         labels_len = ArrayLength(abs_labels);
         misc_label = AXIS_LABEL_PROP_ABS_MISC;
+    } else if ((pEvdev->flags & EVDEV_RELATIVE_EVENTS))
+    {
+        labels     = rel_labels;
+        labels_len = ArrayLength(rel_labels);
+        misc_label = AXIS_LABEL_PROP_REL_MISC;
     }
 
     memset(atoms, 0, natoms * sizeof(Atom));
