@@ -255,7 +255,6 @@ void
 EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
-    static char warned[KEY_CNT];
     EventQueuePtr pQueue;
     EvdevPtr pEvdev = pInfo->private;
 
@@ -272,19 +271,6 @@ EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 #endif
             )
 	return;
-
-    if (code > 255)
-    {
-        if (ev->code <= KEY_MAX && !warned[ev->code])
-        {
-            xf86Msg(X_WARNING, "%s: unable to handle keycode %d\n",
-                    pInfo->name, ev->code);
-            warned[ev->code] = 1;
-        }
-
-        /* The X server can't handle keycodes > 255. */
-        return;
-    }
 
     if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
     {
