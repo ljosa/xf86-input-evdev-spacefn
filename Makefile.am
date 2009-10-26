@@ -28,9 +28,6 @@ SUBDIRS = src man include
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xorg-evdev.pc
 
-EXTRA_DIST = ChangeLog
-
-MAINTAINERCLEANFILES=ChangeLog
 
 .PHONY: ChangeLog
 
