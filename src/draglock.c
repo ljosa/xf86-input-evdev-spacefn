@@ -256,7 +256,7 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                 pEvdev->dragLock.meta = meta;
                 memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
             }
-        } else
+        } else if ((val->size % 2) == 0)
         {
             CARD8* vals = (CARD8*)val->data;
 
@@ -269,10 +269,11 @@ EvdevDragLockSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                 pEvdev->dragLock.meta = 0;
                 memset(pEvdev->dragLock.lock_pair, 0, sizeof(pEvdev->dragLock.lock_pair));
 
-                for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i++)
-                    pEvdev->dragLock.lock_pair[i] = vals[i];
+                for (i = 0; i < val->size && i < EVDEV_MAXBUTTONS; i += 2)
+                    pEvdev->dragLock.lock_pair[vals[i] - 1] = vals[i + 1];
             }
-        }
+        } else
+            return BadMatch;
     }
 
     return Success;
