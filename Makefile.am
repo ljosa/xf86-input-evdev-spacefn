@@ -23,6 +23,7 @@
 DISTCHECK_CONFIGURE_FLAGS = --with-sdkdir='$${includedir}/xorg'
 
 SUBDIRS = src man include
+MAINTAINERCLEANFILES = ChangeLog INSTALL
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xorg-evdev.pc
