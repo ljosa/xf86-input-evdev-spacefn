@@ -38,7 +38,7 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
-#ifndef EV_CNT /* linux 2.4 kernels and earlier lack _CNT defines */
+#ifndef EV_CNT /* linux 2.6.23 kernels and earlier lack _CNT defines */
 #define EV_CNT (EV_MAX+1)
 #endif
 #ifndef KEY_CNT
