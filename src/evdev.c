@@ -2413,8 +2413,22 @@ EvdevInitProperty(DeviceIntPtr dev)
 
         prop_calibration = MakeAtom(EVDEV_PROP_CALIBRATION,
                 strlen(EVDEV_PROP_CALIBRATION), TRUE);
-        rc = XIChangeDeviceProperty(dev, prop_calibration, XA_INTEGER, 32,
-                PropModeReplace, 0, NULL, FALSE);
+        if (pEvdev->flags & EVDEV_CALIBRATED) {
+            int calibration[4];
+
+            calibration[0] = pEvdev->calibration.min_x;
+            calibration[1] = pEvdev->calibration.max_x;
+            calibration[2] = pEvdev->calibration.min_y;
+            calibration[3] = pEvdev->calibration.max_y;
+
+            rc = XIChangeDeviceProperty(dev, prop_calibration, XA_INTEGER,
+                    32, PropModeReplace, 4, calibration,
+                    FALSE);
+        } else {
+            rc = XIChangeDeviceProperty(dev, prop_calibration, XA_INTEGER,
+                    32, PropModeReplace, 0, NULL,
+                    FALSE);
+        }
         if (rc != Success)
             return;
 
