@@ -552,7 +552,6 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
             return;
 
     switch (ev->code) {
-        case BTN_TOUCH:
         case BTN_TOOL_PEN:
         case BTN_TOOL_RUBBER:
         case BTN_TOOL_BRUSH:
@@ -562,7 +561,11 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
         case BTN_TOOL_MOUSE:
         case BTN_TOOL_LENS:
             pEvdev->tool = value ? ev->code : 0;
-            if (!(pEvdev->flags & EVDEV_TOUCHSCREEN))
+            break;
+
+        case BTN_TOUCH:
+            pEvdev->tool = value ? ev->code : 0;
+            if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
                 break;
             /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
              * BTN_LEFT. */
@@ -1844,6 +1847,11 @@ EvdevProbe(InputInfoPtr pInfo)
             {
                 xf86Msg(X_INFO, "%s: Found absolute tablet.\n", pInfo->name);
                 pEvdev->flags |= EVDEV_TABLET;
+                if (!pEvdev->num_buttons)
+                {
+                    pEvdev->num_buttons = 7; /* LMR + scroll wheels */
+                    pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+                }
             } else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
                 TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
                 if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
