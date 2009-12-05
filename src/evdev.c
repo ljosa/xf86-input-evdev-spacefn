@@ -467,7 +467,7 @@ EvdevProcessButtonEvent(InputInfoPtr pInfo, struct input_event *ev)
 static void
 EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
-    static int value;
+    int value;
     EvdevPtr pEvdev = pInfo->private;
 
     /* Get the signed value, earlier kernels had this as unsigned */
@@ -512,7 +512,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 static void
 EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
-    static int value;
+    int value;
     EvdevPtr pEvdev = pInfo->private;
 
     /* Get the signed value, earlier kernels had this as unsigned */
@@ -540,7 +540,7 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 static void
 EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
-    static int value;
+    int value;
     EvdevPtr pEvdev = pInfo->private;
 
     /* Get the signed value, earlier kernels had this as unsigned */
