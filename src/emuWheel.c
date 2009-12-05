@@ -100,6 +100,7 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     WheelAxisPtr pAxis = NULL, pOtherAxis = NULL;
     int value = pEv->value;
+    int oldValue;
 
     /* Has wheel emulation been configured to be enabled? */
     if (!pEvdev->emulateWheel.enabled)
@@ -118,12 +119,21 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
         }
 
 	/* We don't want to intercept real mouse wheel events */
+	if(pEv->type == EV_ABS) {
+	    oldValue = pEvdev->vals[pEvdev->axis_map[pEv->code]];
+	    pEvdev->vals[pEvdev->axis_map[pEv->code]] = value;
+	    value -= oldValue; /* make value into a differential measurement */
+	}
+
 	switch(pEv->code) {
+
+	/* ABS_X has the same value as REL_X, so this case catches both */
 	case REL_X:
 	    pAxis = &(pEvdev->emulateWheel.X);
 	    pOtherAxis = &(pEvdev->emulateWheel.Y);
 	    break;
 
+	/* ABS_Y has the same value as REL_Y, so this case catches both */
 	case REL_Y:
 	    pAxis = &(pEvdev->emulateWheel.Y);
 	    pOtherAxis = &(pEvdev->emulateWheel.X);
@@ -133,11 +143,11 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 	    break;
 	}
 
-	/* If we found REL_X or REL_Y, emulate a mouse wheel.
-           Reset the inertia of the other axis when a scroll event was sent
-           to avoid the buildup of erroneous scroll events if the user
-           doesn't move in a perfectly straight line.
-         */
+	/* If we found REL_X, REL_Y, ABS_X or ABS_Y then emulate a mouse
+	   wheel.  Reset the inertia of the other axis when a scroll event
+	   was sent to avoid the buildup of erroneous scroll events if the
+	   user doesn't move in a perfectly straight line.
+	 */
 	if (pAxis)
 	{
 	    if (EvdevWheelEmuInertia(pInfo, pAxis, value))

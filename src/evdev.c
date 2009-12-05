@@ -525,6 +525,9 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     if (ev->code > ABS_MAX)
         return;
 
+    if (EvdevWheelEmuFilterMotion(pInfo, ev))
+        return;
+
     pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
     if (ev->code == ABS_X)
         pEvdev->abs |= ABS_X_VALUE;
