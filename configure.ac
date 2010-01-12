@@ -55,6 +55,9 @@ AC_ARG_WITH(xorg-module-dir,
 inputdir=${moduledir}/input
 AC_SUBST(inputdir)
 
+# Checks for extensions
+XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
+
 # Checks for pkg-config packages. We need to be able to override sdkdir
 # to satisfy silly distcheck requirements.
 PKG_CHECK_MODULES(XORG, xorg-server xproto $REQUIRED_MODULES)

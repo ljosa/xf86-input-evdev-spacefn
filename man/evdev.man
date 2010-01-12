@@ -159,6 +159,11 @@ originally reported by the kernel (e.g. touchscreens). The scaling to the
 custom coordinate system is done in-driver and the X server is unaware of
 the transformation. Property: "Evdev Axis Calibration".
 .TP 7
+.B Option \*qMode\*q \*qRelative\*q\fP|\fP\*qAbsolute\*q
+Sets the mode of the device if device has absolute axes.
+The default value for touchpads is relative, for other absolute.
+This option has no effect on devices without absolute axes.
+.TP 7
 .BI "Option \*qSwapAxes\*q \*q" Bool \*q
 Swap x/y axes. Default: off. Property: "Evdev Axes Swap".
 .TP 7

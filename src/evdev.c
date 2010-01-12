@@ -32,6 +32,7 @@
 #endif
 
 #include <X11/keysym.h>
+#include <X11/extensions/XI.h>
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -92,6 +93,7 @@
 #define EVDEV_TABLET		(1 << 8) /* device looks like a tablet? */
 #define EVDEV_UNIGNORE_ABSOLUTE (1 << 9) /* explicitly unignore abs axes */
 #define EVDEV_UNIGNORE_RELATIVE (1 << 10) /* explicitly unignore rel axes */
+#define EVDEV_RELATIVE_MODE	(1 << 11) /* Force relative events for devices with absolute axes */
 
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
@@ -117,6 +119,7 @@ static const char *evdevDefaults[] = {
 static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
+static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -135,6 +138,38 @@ static Atom prop_btn_label = 0;
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
  * cannot be used by evdev, leaving us with a space of 2 at the end. */
 static EvdevPtr evdev_devices[MAXDEVICES] = {NULL};
+
+static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode)
+{
+    InputInfoPtr pInfo;
+    EvdevPtr pEvdev;
+
+    pInfo = device->public.devicePrivate;
+    pEvdev = pInfo->private;
+
+    if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+    {
+        if (mode == Relative)
+            return Success;
+        else
+            return XI_BadMode;
+    }
+
+    switch (mode) {
+        case Absolute:
+            pEvdev->flags &= ~EVDEV_RELATIVE_MODE;
+            break;
+
+        case Relative:
+            pEvdev->flags |= EVDEV_RELATIVE_MODE;
+            break;
+
+        default:
+            return XI_BadMode;
+    }
+
+    return Success;
+}
 
 static size_t CountBits(unsigned long *array, size_t nlongs)
 {
@@ -341,7 +376,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
     *num_v = *first_v = 0;
 
     /* convert to relative motion for touchpads */
-    if (pEvdev->abs && (pEvdev->flags & EVDEV_TOUCHPAD)) {
+    if (pEvdev->abs && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
         if (pEvdev->tool) { /* meaning, touch is active */
             if (pEvdev->old_vals[0] != -1)
                 pEvdev->delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
@@ -1129,6 +1164,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
     Atom *atoms;
+    const char *mode;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1199,6 +1235,22 @@ EvdevAddAbsClass(DeviceIntPtr device)
         (TestBit(ABS_TILT_X, pEvdev->abs_bitmask) &&
          TestBit(ABS_TILT_Y, pEvdev->abs_bitmask)))
         pInfo->flags |= XI86_POINTER_CAPABLE;
+
+    if (pEvdev->flags & EVDEV_TOUCHPAD)
+        pEvdev->flags |= EVDEV_RELATIVE_MODE;
+    else
+        pEvdev->flags &= ~EVDEV_RELATIVE_MODE;
+
+    if (xf86FindOption(pInfo->options, "Mode"))
+    {
+        mode = xf86SetStrOption(pInfo->options, "Mode", NULL);
+        if (!strcasecmp("absolute", mode))
+            pEvdev->flags &= ~EVDEV_RELATIVE_MODE;
+        else if (!strcasecmp("relative", mode))
+            pEvdev->flags |= EVDEV_RELATIVE_MODE;
+        else
+            xf86Msg(X_INFO, "%s: unknown mode, use default\n", pInfo->name);
+    }
 
     return Success;
 }
@@ -1966,7 +2018,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->history_size = 0;
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
-    pInfo->switch_mode = NULL;
+    pInfo->switch_mode = EvdevSwitchMode;
     pInfo->conversion_proc = NULL;
     pInfo->reverse_conversion_proc = NULL;
     pInfo->dev = NULL;
