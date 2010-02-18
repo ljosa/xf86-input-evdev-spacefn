@@ -83,6 +83,7 @@ button event is registered. Property: "Evdev Middle Button Emulation".
 Sets the timeout (in milliseconds) that the driver waits before deciding
 if two buttons where pressed "simultaneously" when 3 button emulation is
 enabled.  Default: 50. Property: "Evdev Middle Button Timeout".
+.TP 7
 .BI "Option \*qEmulateWheel\*q \*q" boolean \*q
 Enable/disable "wheel" emulation.  Wheel emulation means emulating button
 press/release events when the mouse is moved while a specific real button
