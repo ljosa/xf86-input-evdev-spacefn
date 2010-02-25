@@ -309,7 +309,11 @@ void
 EvdevMBEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    pEvdev->emulateMB.enabled = MBEMU_AUTO;
+
+    if (pEvdev->flags & EVDEV_TOUCHSCREEN)
+        pEvdev->emulateMB.enabled = MBEMU_DISABLED;
+    else
+        pEvdev->emulateMB.enabled = MBEMU_AUTO;
 
     if (xf86FindOption(pInfo->options, "Emulate3Buttons"))
     {

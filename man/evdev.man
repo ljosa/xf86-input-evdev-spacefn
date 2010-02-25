@@ -76,8 +76,9 @@ indicating that the next button pressed is to be
 .BI "Option \*qEmulate3Buttons\*q \*q" boolean \*q
 Enable/disable the emulation of the third (middle) mouse button for mice
 which only have two physical buttons.  The third button is emulated by
-pressing both buttons simultaneously.  Default: on, until a middle mouse
-button event is registered. Property: "Evdev Middle Button Emulation".
+pressing both buttons simultaneously.  Default: off for touchscreens, otherwise
+on until a middle mouse button event is registered. Property: "Evdev Middle
+Button Emulation".
 .TP 7
 .BI "Option \*qEmulate3Timeout\*q \*q" integer \*q
 Sets the timeout (in milliseconds) that the driver waits before deciding

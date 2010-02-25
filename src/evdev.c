@@ -81,20 +81,6 @@
 
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
-/* evdev flags */
-#define EVDEV_KEYBOARD_EVENTS	(1 << 0)
-#define EVDEV_BUTTON_EVENTS	(1 << 1)
-#define EVDEV_RELATIVE_EVENTS	(1 << 2)
-#define EVDEV_ABSOLUTE_EVENTS	(1 << 3)
-#define EVDEV_TOUCHPAD		(1 << 4)
-#define EVDEV_INITIALIZED	(1 << 5) /* WheelInit etc. called already? */
-#define EVDEV_TOUCHSCREEN	(1 << 6)
-#define EVDEV_CALIBRATED	(1 << 7) /* run-time calibrated? */
-#define EVDEV_TABLET		(1 << 8) /* device looks like a tablet? */
-#define EVDEV_UNIGNORE_ABSOLUTE (1 << 9) /* explicitly unignore abs axes */
-#define EVDEV_UNIGNORE_RELATIVE (1 << 10) /* explicitly unignore rel axes */
-#define EVDEV_RELATIVE_MODE	(1 << 11) /* Force relative events for devices with absolute axes */
-
 #define MIN_KEYCODE 8
 #define GLYPHS_PER_KEY 2
 #define AltMask		Mod1Mask
