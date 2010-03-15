@@ -1767,6 +1767,7 @@ static int
 EvdevProbe(InputInfoPtr pInfo)
 {
     int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
+    int has_lmr; /* left middle right */
     int kernel24 = 0;
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
@@ -1809,6 +1810,7 @@ EvdevProbe(InputInfoPtr pInfo)
     has_abs_axes = FALSE;
     has_keys = FALSE;
     has_scroll = FALSE;
+    has_lmr = FALSE;
     num_buttons = 0;
 
     /* count all buttons */
@@ -1822,6 +1824,10 @@ EvdevProbe(InputInfoPtr pInfo)
                 num_buttons = mapping;
         }
     }
+
+    has_lmr = TestBit(BTN_LEFT, pEvdev->key_bitmask) ||
+                TestBit(BTN_MIDDLE, pEvdev->key_bitmask) ||
+                TestBit(BTN_RIGHT, pEvdev->key_bitmask);
 
     if (num_buttons)
     {
@@ -1895,7 +1901,7 @@ EvdevProbe(InputInfoPtr pInfo)
                 }
             } else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
                 TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
-                if (num_buttons || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
+                if (has_lmr || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
                     xf86Msg(X_INFO, "%s: Found absolute touchpad.\n", pInfo->name);
                     pEvdev->flags |= EVDEV_TOUCHPAD;
                     memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
