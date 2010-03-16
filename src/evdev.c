@@ -1299,6 +1299,9 @@ EvdevAddRelClass(DeviceIntPtr device)
                                        GetMotionHistorySize(), Relative))
         return !Success;
 
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+        return !Success;
+
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
         int axnum = pEvdev->axis_map[axis];
@@ -1314,9 +1317,6 @@ EvdevAddRelClass(DeviceIntPtr device)
     }
 
     xfree(atoms);
-
-    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
-        return !Success;
 
     pInfo->flags |= XI86_POINTER_CAPABLE;
 
