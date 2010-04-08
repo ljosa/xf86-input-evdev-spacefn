@@ -1833,7 +1833,7 @@ EvdevProbe(InputInfoPtr pInfo)
     {
         pEvdev->flags |= EVDEV_BUTTON_EVENTS;
         pEvdev->num_buttons = num_buttons;
-        xf86Msg(X_INFO, "%s: Found %d mouse buttons\n", pInfo->name,
+        xf86Msg(X_PROBED, "%s: Found %d mouse buttons\n", pInfo->name,
                 num_buttons);
     }
 
@@ -1848,7 +1848,7 @@ EvdevProbe(InputInfoPtr pInfo)
         if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
             TestBit(REL_HWHEEL, pEvdev->rel_bitmask) ||
             TestBit(REL_DIAL, pEvdev->rel_bitmask)) {
-            xf86Msg(X_INFO, "%s: Found scroll wheel(s)\n", pInfo->name);
+            xf86Msg(X_PROBED, "%s: Found scroll wheel(s)\n", pInfo->name);
             has_scroll = TRUE;
             if (!num_buttons)
                 xf86Msg(X_INFO, "%s: Forcing buttons for scroll wheel(s)\n",
@@ -1859,12 +1859,12 @@ EvdevProbe(InputInfoPtr pInfo)
 
         if (!ignore_rel)
         {
-            xf86Msg(X_INFO, "%s: Found relative axes\n", pInfo->name);
+            xf86Msg(X_PROBED, "%s: Found relative axes\n", pInfo->name);
             pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 
             if (TestBit(REL_X, pEvdev->rel_bitmask) &&
                 TestBit(REL_Y, pEvdev->rel_bitmask)) {
-                xf86Msg(X_INFO, "%s: Found x and y relative axes\n", pInfo->name);
+                xf86Msg(X_PROBED, "%s: Found x and y relative axes\n", pInfo->name);
             }
         } else {
             xf86Msg(X_INFO, "%s: Relative axes present but ignored.\n", pInfo->name);
@@ -1884,15 +1884,15 @@ EvdevProbe(InputInfoPtr pInfo)
         xf86Msg(X_INFO, "%s: Absolute axes present but ignored.\n", pInfo->name);
         has_abs_axes = FALSE;
     } else if (has_abs_axes) {
-        xf86Msg(X_INFO, "%s: Found absolute axes\n", pInfo->name);
+        xf86Msg(X_PROBED, "%s: Found absolute axes\n", pInfo->name);
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 
         if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
              TestBit(ABS_Y, pEvdev->abs_bitmask))) {
-            xf86Msg(X_INFO, "%s: Found x and y absolute axes\n", pInfo->name);
+            xf86Msg(X_PROBED, "%s: Found x and y absolute axes\n", pInfo->name);
             if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask))
             {
-                xf86Msg(X_INFO, "%s: Found absolute tablet.\n", pInfo->name);
+                xf86Msg(X_PROBED, "%s: Found absolute tablet.\n", pInfo->name);
                 pEvdev->flags |= EVDEV_TABLET;
                 if (!pEvdev->num_buttons)
                 {
@@ -1902,11 +1902,11 @@ EvdevProbe(InputInfoPtr pInfo)
             } else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
                 TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
                 if (has_lmr || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
-                    xf86Msg(X_INFO, "%s: Found absolute touchpad.\n", pInfo->name);
+                    xf86Msg(X_PROBED, "%s: Found absolute touchpad.\n", pInfo->name);
                     pEvdev->flags |= EVDEV_TOUCHPAD;
                     memset(pEvdev->old_vals, -1, sizeof(int) * pEvdev->num_vals);
                 } else {
-                    xf86Msg(X_INFO, "%s: Found absolute touchscreen\n", pInfo->name);
+                    xf86Msg(X_PROBED, "%s: Found absolute touchscreen\n", pInfo->name);
                     pEvdev->flags |= EVDEV_TOUCHSCREEN;
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
@@ -1916,7 +1916,7 @@ EvdevProbe(InputInfoPtr pInfo)
 
     for (i = 0; i < BTN_MISC; i++) {
         if (TestBit(i, pEvdev->key_bitmask)) {
-            xf86Msg(X_INFO, "%s: Found keys\n", pInfo->name);
+            xf86Msg(X_PROBED, "%s: Found keys\n", pInfo->name);
             pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
             has_keys = TRUE;
             break;
