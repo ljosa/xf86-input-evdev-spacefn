@@ -494,8 +494,6 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     /* Get the signed value, earlier kernels had this as unsigned */
     value = ev->value;
 
-    pEvdev->rel = 1;
-
     switch (ev->code) {
         case REL_WHEEL:
             if (value > 0)
@@ -522,6 +520,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
             if (EvdevWheelEmuFilterMotion(pInfo, ev))
                 return;
 
+            pEvdev->rel = 1;
             pEvdev->delta[ev->code] += value;
             break;
     }
