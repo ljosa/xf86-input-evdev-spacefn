@@ -60,12 +60,16 @@ XORG_DRIVER_CHECK_EXT(XINPUT, inputproto)
 # to satisfy silly distcheck requirements.
 PKG_CHECK_MODULES(XORG, xorg-server xproto $REQUIRED_MODULES)
 
-AC_ARG_WITH([sdkdir], [],
-    [sdkdir="$withval"],
-    [sdkdir=`$PKG_CONFIG --variable=sdkdir xorg-server`])
-AC_SUBST([sdkdir])
-
 # Checks for libraries.
+
+# X Server SDK location is required to install evdev header files
+# This location is also relayed in the xorg-evdev.pc file
+sdkdir=`$PKG_CONFIG --variable=sdkdir xorg-server`
+
+# Workaround overriding sdkdir to be able to create a tarball when user has no
+# write permission in sdkdir. See DISTCHECK_CONFIGURE_FLAGS in Makefile.am
+AC_ARG_WITH([sdkdir], [], [sdkdir="$withval"])
+AC_SUBST([sdkdir])
 
 DRIVER_NAME=evdev
 AC_SUBST([DRIVER_NAME])
