@@ -67,9 +67,6 @@ AC_SUBST([sdkdir])
 
 # Checks for libraries.
 
-# Checks for header files.
-AC_HEADER_STDC
-
 DRIVER_NAME=evdev
 AC_SUBST([DRIVER_NAME])
 
