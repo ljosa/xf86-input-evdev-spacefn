@@ -30,6 +30,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <xorg-server.h>
 
 #include <X11/keysym.h>
 #include <X11/extensions/XI.h>
