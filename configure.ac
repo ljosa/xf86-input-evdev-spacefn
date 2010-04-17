@@ -20,31 +20,37 @@
 #
 # Process this file with autoconf to produce a configure script
 
-AC_PREREQ(2.60)
+# Initialize Autoconf
+AC_PREREQ([2.60])
 AC_INIT([xf86-input-evdev],
-        2.4.0,
+        [2.4.0],
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
-        xf86-input-evdev)
-
+        [xf86-input-evdev])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
 
+# Initialize Automake
 AM_INIT_AUTOMAKE([foreign dist-bzip2])
 AM_MAINTAINER_MODE
 
-# Require xorg-macros: XORG_DEFAULT_OPTIONS
+# Initialize libtool
+AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+
+# Initialize X.Org macros
 m4_ifndef([XORG_MACROS_VERSION], 
-          [m4_fatal([must install xorg-macros 1.3 or later before running autoconf/autogen])])
-XORG_MACROS_VERSION(1.3)
+          [m4_fatal([must install xorg-macros 1.4 or later before running autoconf/autogen])])
+XORG_MACROS_VERSION(1.4)
 XORG_DEFAULT_OPTIONS
 
 # Checks for programs.
-AC_DISABLE_STATIC
-AC_PROG_LIBTOOL
-AC_PROG_CC
+AC_PROG_INSTALL
 
+# Obtain compiler/linker options from server and required extensions
+PKG_CHECK_MODULES(XORG, xorg-server xproto inputproto)
 
+# Define a configure option for an alternate input module directory
 AC_ARG_WITH(xorg-module-dir,
             AC_HELP_STRING([--with-xorg-module-dir=DIR],
                            [Default xorg module directory [[default=$libdir/xorg/modules]]]),
@@ -52,12 +58,6 @@ AC_ARG_WITH(xorg-module-dir,
             [moduledir="$libdir/xorg/modules"])
 inputdir=${moduledir}/input
 AC_SUBST(inputdir)
-
-# Checks for pkg-config packages. We need to be able to override sdkdir
-# to satisfy silly distcheck requirements.
-PKG_CHECK_MODULES(XORG, xorg-server xproto inputproto)
-
-# Checks for libraries.
 
 # X Server SDK location is required to install evdev header files
 # This location is also relayed in the xorg-evdev.pc file
@@ -71,8 +71,9 @@ AC_SUBST([sdkdir])
 DRIVER_NAME=evdev
 AC_SUBST([DRIVER_NAME])
 
-AC_OUTPUT([Makefile
-           src/Makefile
-           man/Makefile
-           include/Makefile
-           xorg-evdev.pc])
+AC_CONFIG_FILES([Makefile
+                 src/Makefile
+                 man/Makefile
+                 include/Makefile
+                 xorg-evdev.pc])
+AC_OUTPUT
