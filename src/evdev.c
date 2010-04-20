@@ -1782,8 +1782,9 @@ EvdevProbe(InputInfoPtr pInfo)
             xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
             return 1;
         }
-    } else if (pEvdev->grabDevice) {
-        ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
+    } else if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0)) {
+        xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
+               strerror(errno));
     }
 
     /* Trinary state for ignoring axes:
