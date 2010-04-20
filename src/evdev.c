@@ -1236,6 +1236,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
             pEvdev->flags |= EVDEV_RELATIVE_MODE;
         else
             xf86Msg(X_INFO, "%s: unknown mode, use default\n", pInfo->name);
+        xfree(mode);
     }
 
     return Success;
@@ -1371,15 +1372,16 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
     /* Check for user-defined button mapping */
     if ((mapping = xf86CheckStrOption(pInfo->options, "ButtonMapping", NULL)))
     {
-        char    *s  = " ";
+        char    *map, *s = " ";
         int     btn = 0;
 
         xf86Msg(X_CONFIG, "%s: ButtonMapping '%s'\n", pInfo->name, mapping);
+        map = mapping;
         while (s && *s != '\0' && nbuttons < EVDEV_MAXBUTTONS)
         {
-            btn = strtol(mapping, &s, 10);
+            btn = strtol(map, &s, 10);
 
-            if (s == mapping || btn < 0 || btn > EVDEV_MAXBUTTONS)
+            if (s == map || btn < 0 || btn > EVDEV_MAXBUTTONS)
             {
                 xf86Msg(X_ERROR,
                         "%s: ... Invalid button mapping. Using defaults\n",
@@ -1389,8 +1391,9 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
             }
 
             pEvdev->btnmap[nbuttons++] = btn;
-            mapping = s;
+            map = s;
         }
+        xfree(mapping);
     }
 
     for (i = nbuttons; i < ArrayLength(pEvdev->btnmap); i++)
@@ -1631,8 +1634,7 @@ static int
 EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
 {
     EvdevPtr pEvdev = pInfo->private;
-    size_t len;
-    int i;
+    int i, len;
 
     char name[1024]                  = {0};
     unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
@@ -1781,8 +1783,9 @@ EvdevProbe(InputInfoPtr pInfo)
             xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
             return 1;
         }
-    } else if (pEvdev->grabDevice) {
-        ioctl(pInfo->fd, EVIOCGRAB, (void *)0);
+    } else if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0)) {
+        xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
+               strerror(errno));
     }
 
     /* Trinary state for ignoring axes:
@@ -2072,6 +2075,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         num_calibration = sscanf(str, "%d %d %d %d",
                                  &calibration[0], &calibration[1],
                                  &calibration[2], &calibration[3]);
+        xfree(str);
         if (num_calibration == 4)
             EvdevSetCalibration(pInfo, num_calibration, calibration);
         else

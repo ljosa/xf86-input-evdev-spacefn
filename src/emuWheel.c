@@ -232,8 +232,8 @@ EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char* axis_
 	} else {
 	    xf86Msg(X_WARNING, "%s: Invalid %s value:\"%s\"\n",
 		    pInfo->name, axis_name, option_string);
-
 	}
+	xfree(option_string);
 
 	/* Clean up and log what happened */
 	if (msg) {
