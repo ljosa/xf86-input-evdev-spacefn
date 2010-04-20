@@ -1633,8 +1633,7 @@ static int
 EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
 {
     EvdevPtr pEvdev = pInfo->private;
-    size_t len;
-    int i;
+    int i, len;
 
     char name[1024]                  = {0};
     unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
