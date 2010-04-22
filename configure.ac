@@ -33,6 +33,7 @@ AC_CONFIG_AUX_DIR(.)
 # Initialize Automake
 AM_INIT_AUTOMAKE([foreign dist-bzip2])
 AM_MAINTAINER_MODE
+AH_TOP([#include "xorg-server.h"])
 
 # Initialize libtool
 AC_DISABLE_STATIC
