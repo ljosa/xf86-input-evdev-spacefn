@@ -35,6 +35,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include "evdev.h"
 
 #include <xf86.h>
 #include <xf86Xinput.h>
@@ -42,7 +43,6 @@
 #include <exevents.h>
 
 #include <evdev-properties.h>
-#include "evdev.h"
 
 #ifdef HAVE_PROPERTIES
 static Atom prop_dlock     = 0; /* Drag lock buttons. */

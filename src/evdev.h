@@ -34,6 +34,7 @@
 #include <linux/input.h>
 #include <linux/types.h>
 
+#include <xorg-server.h>
 #include <xf86Xinput.h>
 #include <xf86_OSproc.h>
 #include <xkbstr.h>

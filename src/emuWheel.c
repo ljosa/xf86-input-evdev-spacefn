@@ -33,6 +33,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include "evdev.h"
 
 #include <X11/Xatom.h>
 #include <xf86.h>
@@ -40,7 +41,6 @@
 #include <exevents.h>
 
 #include <evdev-properties.h>
-#include "evdev.h"
 
 #define WHEEL_NOT_CONFIGURED 0
 

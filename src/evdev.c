@@ -31,6 +31,8 @@
 #include "config.h"
 #endif
 
+#include "evdev.h"
+
 #include <X11/keysym.h>
 #include <X11/extensions/XI.h>
 
@@ -44,8 +46,6 @@
 #include <exevents.h>
 #include <xorgVersion.h>
 #include <xkbsrv.h>
-
-#include "evdev.h"
 
 #ifdef HAVE_PROPERTIES
 #include <X11/Xatom.h>
