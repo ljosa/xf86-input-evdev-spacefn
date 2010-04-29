@@ -36,6 +36,7 @@
 #include <X11/keysym.h>
 #include <X11/extensions/XI.h>
 
+#include <linux/version.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -1187,15 +1188,24 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     for (axis = ABS_X; axis <= ABS_MAX; axis++) {
         int axnum = pEvdev->axis_map[axis];
+        int resolution = 10000;
+
         if (axnum == -1)
             continue;
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 30)
+        /* Kernel provides units/mm, X wants units/m */
+        if (pEvdev->absinfo[axis].resolution)
+            resolution = pEvdev->absinfo[axis].resolution * 1000;
+#endif
+
         xf86InitValuatorAxisStruct(device, axnum,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
                                    atoms[axnum],
 #endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
-                                   10000, 0, 10000);
+                                   resolution, 0, resolution);
         xf86InitValuatorDefaults(device, axnum);
         pEvdev->old_vals[axnum] = -1;
     }
