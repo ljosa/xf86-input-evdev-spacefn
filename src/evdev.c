@@ -630,9 +630,9 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
      * pressed.  On wacom tablets, this means that the pen is in
      * proximity of the tablet.  After the pen is removed, BTN_DIGI is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->digi here, lets us ignore that event.  pEvdev is
-     * initialized to 1 so devices that doesn't use this scheme still
-     * just works.
+     * pEvdev->tool here, lets us ignore that event.  pEvdev->tool is
+     * initialized to 1 so devices that don't use this scheme still
+     * just work.
      */
     if (pEvdev->abs && pEvdev->tool) {
         xf86PostMotionEventP(pInfo->dev, TRUE, *first_v, *num_v, v);
