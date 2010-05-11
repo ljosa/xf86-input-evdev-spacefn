@@ -46,6 +46,7 @@ XORG_DEFAULT_OPTIONS
 
 # Checks for programs.
 AC_PROG_INSTALL
+AC_PROG_SED
 
 # Obtain compiler/linker options from server and required extensions
 PKG_CHECK_MODULES(XORG, xorg-server xproto inputproto)
