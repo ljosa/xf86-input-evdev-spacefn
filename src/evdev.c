@@ -1993,6 +1993,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 	return NULL;
 
     /* Initialise the InputInfoRec. */
+    pInfo->fd = -1;
     pInfo->name = dev->identifier;
     pInfo->flags = 0;
     pInfo->type_name = "UNKNOWN";
@@ -2008,9 +2009,10 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->private_flags = 0;
     pInfo->always_core_feedback = NULL;
     pInfo->conf_idev = dev;
+    pInfo->private = NULL;
 
     if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))
-        return pInfo;
+        goto error;
 
     pInfo->private = pEvdev;
 
@@ -2026,8 +2028,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
     if (!device) {
         xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
-	xf86DeleteInput(pInfo, 0);
-        return NULL;
+        goto error;
     }
 
     pEvdev->device = device;
@@ -2039,8 +2040,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (pInfo->fd < 0) {
         xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
-	xf86DeleteInput(pInfo, 0);
-        return NULL;
+        goto error;
     }
 
     /* Check major/minor of device node to avoid adding duplicate devices. */
@@ -2049,9 +2049,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     {
         xf86Msg(X_WARNING, "%s: device file already in use. Ignoring.\n",
                 pInfo->name);
-        close(pInfo->fd);
-        xf86DeleteInput(pInfo, 0);
-        return NULL;
+        goto error;
     }
 
     pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
@@ -2081,9 +2079,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (EvdevCacheCompare(pInfo, FALSE) ||
         EvdevProbe(pInfo)) {
-	close(pInfo->fd);
-	xf86DeleteInput(pInfo, 0);
-        return NULL;
+        goto error;
     }
 
     EvdevAddDevice(pInfo);
@@ -2096,6 +2092,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     }
 
     return pInfo;
+
+error:
+    if (pInfo->fd >= 0)
+        close(pInfo->fd);
+    xf86DeleteInput(pInfo, 0);
+    return NULL;
 }
 
 _X_EXPORT InputDriverRec EVDEV = {
