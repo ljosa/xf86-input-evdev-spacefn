@@ -93,6 +93,7 @@ static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
+static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -1529,7 +1530,6 @@ EvdevOn(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
-    int rc = 0;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1547,9 +1547,7 @@ EvdevOn(DeviceIntPtr device)
         }
     }
 
-    if (pEvdev->grabDevice && (rc = ioctl(pInfo->fd, EVIOCGRAB, (void *)1)))
-        xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
-                strerror(errno));
+    EvdevGrabDevice(pInfo, 1, 0);
 
     pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
     if (EvdevIsDuplicate(pInfo))
@@ -1591,9 +1589,7 @@ EvdevProc(DeviceIntPtr device, int what)
             EvdevMBEmuFinalize(pInfo);
         if (pInfo->fd != -1)
         {
-            if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
-                xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
-                        strerror(errno));
+            EvdevGrabDevice(pInfo, 0, 1);
             xf86RemoveEnabledDevice(pInfo);
             close(pInfo->fd);
             pInfo->fd = -1;
@@ -1760,6 +1756,31 @@ error:
 
 }
 
+/**
+ * Issue an EVIOCGRAB on the device file, either as a grab or to ungrab, or
+ * both. Return TRUE on success, otherwise FALSE. Failing the release is a
+ * still considered a success, because it's not as if you could do anything
+ * about it.
+ */
+static BOOL
+EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab)
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (pEvdev->grabDevice)
+    {
+        if (grab && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
+            xf86Msg(X_WARNING, "%s: Grab failed (%s)\n", pInfo->name,
+                    strerror(errno));
+            return FALSE;
+        } else if (ungrab && ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
+            xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
+                    strerror(errno));
+    }
+
+    return TRUE;
+}
+
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
@@ -1767,19 +1788,6 @@ EvdevProbe(InputInfoPtr pInfo)
     int has_lmr; /* left middle right */
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
-
-    /* If grabDevice is set, ungrab immediately since we only want to grab
-     * between DEVICE_ON and DEVICE_OFF. If we never get DEVICE_ON, don't
-     * hold a grab. */
-    if (pEvdev->grabDevice)
-    {
-        if (ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
-            xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
-            return 1;
-        } else if (ioctl(pInfo->fd, EVIOCGRAB, (void *)0))
-            xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
-                    strerror(errno));
-    }
 
     /* Trinary state for ignoring axes:
        - unset: do the normal thing.
@@ -2074,6 +2082,16 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
        words, it disables rfkill and the "Macintosh mouse button emulation".
        Note that this needs a server that sets the console to RAW mode. */
     pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
+
+    /* If grabDevice is set, ungrab immediately since we only want to grab
+     * between DEVICE_ON and DEVICE_OFF. If we never get DEVICE_ON, don't
+     * hold a grab. */
+    if (!EvdevGrabDevice(pInfo, 1, 1))
+    {
+        xf86Msg(X_WARNING, "%s: Device may already be configured.\n",
+                pInfo->name);
+        goto error;
+    }
 
     EvdevInitButtonMapping(pInfo);
 
