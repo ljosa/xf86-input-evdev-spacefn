@@ -66,20 +66,6 @@
 #define MAXDEVICES MAX_DEVICES
 #endif
 
-/* 2.4 compatibility */
-#ifndef EVIOCGRAB
-#define EVIOCGRAB _IOW('E', 0x90, int)
-#endif
-
-#ifndef BTN_TASK
-#define BTN_TASK 0x117
-#endif
-
-#ifndef EV_SYN
-#define EV_SYN EV_RST
-#endif
-/* end compat */
-
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
 #define MIN_KEYCODE 8
@@ -1779,19 +1765,12 @@ EvdevProbe(InputInfoPtr pInfo)
 {
     int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
     int has_lmr; /* left middle right */
-    int kernel24 = 0;
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)1)) {
-        if (errno == EINVAL) {
-            /* keyboards are unsafe in 2.4 */
-            kernel24 = 1;
-            pEvdev->grabDevice = 0;
-        } else {
             xf86Msg(X_ERROR, "Grab failed. Device already configured?\n");
             return 1;
-        }
     } else if (pEvdev->grabDevice && ioctl(pInfo->fd, EVIOCGRAB, (void *)0)) {
         xf86Msg(X_WARNING, "%s: Release failed (%s)\n", pInfo->name,
                strerror(errno));
@@ -1954,14 +1933,9 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_keys) {
-        if (kernel24) {
-            xf86Msg(X_INFO, "%s: Kernel < 2.6 is too old, ignoring keyboard\n",
-                    pInfo->name);
-        } else {
-            xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
-            pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
-	    pInfo->type_name = XI_KEYBOARD;
-        }
+        xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
+        pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
+        pInfo->type_name = XI_KEYBOARD;
     }
 
     if (has_scroll && (pInfo->flags & XI86_CONFIGURED) &&
