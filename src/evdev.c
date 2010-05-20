@@ -94,6 +94,7 @@ static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
+static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -1927,6 +1928,30 @@ EvdevProbe(InputInfoPtr pInfo)
         }
     }
 
+    if (has_rel_axes || has_abs_axes)
+    {
+        char *str;
+        int num_calibration = 0, calibration[4] = { 0, 0, 0, 0 };
+
+        pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
+        pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
+        pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
+
+        str = xf86CheckStrOption(pInfo->options, "Calibration", NULL);
+        if (str) {
+            num_calibration = sscanf(str, "%d %d %d %d",
+                    &calibration[0], &calibration[1],
+                    &calibration[2], &calibration[3]);
+            xfree(str);
+            if (num_calibration == 4)
+                EvdevSetCalibration(pInfo, num_calibration, calibration);
+            else
+                xf86Msg(X_ERROR,
+                        "%s: Insufficient calibration factors (%d). Ignoring calibration\n",
+                        pInfo->name, num_calibration);
+        }
+    }
+
     if (has_rel_axes || has_abs_axes || num_buttons) {
         pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
                         XI86_CONFIGURED;
@@ -1993,8 +2018,7 @@ static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    const char *device, *str;
-    int num_calibration = 0, calibration[4] = { 0, 0, 0, 0 };
+    const char *device;
     EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
@@ -2058,24 +2082,6 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         xf86Msg(X_WARNING, "%s: device file already in use. Ignoring.\n",
                 pInfo->name);
         goto error;
-    }
-
-    pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
-    pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
-    pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
-
-    str = xf86CheckStrOption(pInfo->options, "Calibration", NULL);
-    if (str) {
-        num_calibration = sscanf(str, "%d %d %d %d",
-                                 &calibration[0], &calibration[1],
-                                 &calibration[2], &calibration[3]);
-        xfree(str);
-        if (num_calibration == 4)
-            EvdevSetCalibration(pInfo, num_calibration, calibration);
-        else
-            xf86Msg(X_ERROR,
-                    "%s: Insufficient calibration factors (%d). Ignoring calibration\n",
-                    pInfo->name, num_calibration);
     }
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
