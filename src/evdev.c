@@ -95,6 +95,7 @@ static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
+static BOOL EvdevOpenDevice(InputInfoPtr pInfo);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -1534,29 +1535,11 @@ EvdevOn(DeviceIntPtr device)
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
-
-    if (pInfo->fd == -1) /* after PreInit fd is still open */
-    {
-        do {
-            pInfo->fd = open(pEvdev->device, O_RDWR | O_NONBLOCK, 0);
-        } while (pInfo->fd < 0 && errno == EINTR);
-
-        if (pInfo->fd < 0) {
-            xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n",
-                    pEvdev->device);
-            return !Success;
-        }
-    }
+    /* after PreInit fd is still open */
+    if (!EvdevOpenDevice(pInfo))
+        return !Success;
 
     EvdevGrabDevice(pInfo, 1, 0);
-
-    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
-    if (EvdevIsDuplicate(pInfo))
-    {
-        xf86Msg(X_WARNING, "%s: Refusing to enable duplicate device.\n",
-                pInfo->name);
-        return !Success;
-    }
 
     xf86FlushInput(pInfo->fd);
     xf86AddEnabledDevice(pInfo);
@@ -2014,11 +1997,53 @@ EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4])
     }
 }
 
+static BOOL
+EvdevOpenDevice(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    char *device = (char*)pEvdev->device;
+
+    if (!device)
+    {
+        device = xf86CheckStrOption(pInfo->options, "Device", NULL);
+        if (!device) {
+            xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
+            return FALSE;
+        }
+
+        pEvdev->device = device;
+        xf86Msg(X_CONFIG, "%s: Device: \"%s\"\n", pInfo->name, device);
+    }
+
+    if (pInfo->fd < 0)
+    {
+        do {
+            pInfo->fd = open(device, O_RDWR | O_NONBLOCK, 0);
+        } while (pInfo->fd < 0 && errno == EINTR);
+
+        if (pInfo->fd < 0) {
+            xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
+            return FALSE;
+        }
+    }
+
+    /* Check major/minor of device node to avoid adding duplicate devices. */
+    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
+    if (EvdevIsDuplicate(pInfo))
+    {
+        xf86Msg(X_WARNING, "%s: device file is duplicate. Ignoring.\n",
+                pInfo->name);
+        close(pInfo->fd);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    const char *device;
     EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
@@ -2051,38 +2076,14 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
+    if (!EvdevOpenDevice(pInfo))
+        goto error;
+
     /*
      * We initialize pEvdev->tool to 1 so that device that doesn't use
      * proximity will still report events.
      */
     pEvdev->tool = 1;
-
-    device = xf86CheckStrOption(dev->commonOptions, "Device", NULL);
-    if (!device) {
-        xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
-        goto error;
-    }
-
-    pEvdev->device = device;
-
-    xf86Msg(X_CONFIG, "%s: Device: \"%s\"\n", pInfo->name, device);
-    do {
-        pInfo->fd = open(device, O_RDWR | O_NONBLOCK, 0);
-    } while (pInfo->fd < 0 && errno == EINTR);
-
-    if (pInfo->fd < 0) {
-        xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
-        goto error;
-    }
-
-    /* Check major/minor of device node to avoid adding duplicate devices. */
-    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
-    if (EvdevIsDuplicate(pInfo))
-    {
-        xf86Msg(X_WARNING, "%s: device file already in use. Ignoring.\n",
-                pInfo->name);
-        goto error;
-    }
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
