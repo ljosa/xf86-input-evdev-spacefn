@@ -146,7 +146,7 @@ EvdevDragLockPreInit(InputInfoPtr pInfo)
             next_num = NULL;
     }
 
-    xfree(option_string);
+    free(option_string);
 }
 
 /* Updates DragLock button state and fires button event messges */

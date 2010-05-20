@@ -249,7 +249,7 @@ SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
 
     if ((s = xf86SetStrOption(pInfo->options, name, NULL))) {
         if (!s[0]) {
-            xfree(s);
+            free(s);
             *option = NULL;
         } else {
             *option = s;
@@ -1152,7 +1152,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
     memset(pEvdev->old_vals, -1, num_axes * sizeof(int));
-    atoms = xalloc(pEvdev->num_vals * sizeof(Atom));
+    atoms = malloc(pEvdev->num_vals * sizeof(Atom));
 
     for (axis = ABS_X; axis <= ABS_MAX; axis++) {
         pEvdev->axis_map[axis] = -1;
@@ -1198,7 +1198,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
         pEvdev->old_vals[axnum] = -1;
     }
 
-    xfree(atoms);
+    free(atoms);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
@@ -1234,7 +1234,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
             pEvdev->flags |= EVDEV_RELATIVE_MODE;
         else
             xf86Msg(X_INFO, "%s: unknown mode, use default\n", pInfo->name);
-        xfree(mode);
+        free(mode);
     }
 
     return Success;
@@ -1272,7 +1272,7 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
-    atoms = xalloc(pEvdev->num_vals * sizeof(Atom));
+    atoms = malloc(pEvdev->num_vals * sizeof(Atom));
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
@@ -1315,7 +1315,7 @@ EvdevAddRelClass(DeviceIntPtr device)
         xf86InitValuatorDefaults(device, axnum);
     }
 
-    xfree(atoms);
+    free(atoms);
 
     pInfo->flags |= XI86_POINTER_CAPABLE;
 
@@ -1332,7 +1332,7 @@ EvdevAddButtonClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    labels = xalloc(pEvdev->num_buttons * sizeof(Atom));
+    labels = malloc(pEvdev->num_buttons * sizeof(Atom));
     EvdevInitButtonLabels(pEvdev, pEvdev->num_buttons, labels);
 
     if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons,
@@ -1342,7 +1342,7 @@ EvdevAddButtonClass(DeviceIntPtr device)
                                      pEvdev->btnmap))
         return !Success;
 
-    xfree(labels);
+    free(labels);
     return Success;
 }
 
@@ -1391,7 +1391,7 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
             pEvdev->btnmap[nbuttons++] = btn;
             map = s;
         }
-        xfree(mapping);
+        free(mapping);
     }
 
     for (i = nbuttons; i < ArrayLength(pEvdev->btnmap); i++)
@@ -1925,7 +1925,7 @@ EvdevProbe(InputInfoPtr pInfo)
             num_calibration = sscanf(str, "%d %d %d %d",
                     &calibration[0], &calibration[1],
                     &calibration[2], &calibration[3]);
-            xfree(str);
+            free(str);
             if (num_calibration == 4)
                 EvdevSetCalibration(pInfo, num_calibration, calibration);
             else
@@ -2068,7 +2068,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->conf_idev = dev;
     pInfo->private = NULL;
 
-    if (!(pEvdev = xcalloc(sizeof(EvdevRec), 1)))
+    if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
         goto error;
 
     pInfo->private = pEvdev;
