@@ -1139,7 +1139,6 @@ EvdevAddAbsClass(DeviceIntPtr device)
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
     Atom *atoms;
-    const char *mode;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1227,6 +1226,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     if (xf86FindOption(pInfo->options, "Mode"))
     {
+        char *mode;
         mode = xf86SetStrOption(pInfo->options, "Mode", NULL);
         if (!strcasecmp("absolute", mode))
             pEvdev->flags &= ~EVDEV_RELATIVE_MODE;
