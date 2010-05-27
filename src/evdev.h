@@ -214,7 +214,6 @@ void EvdevMBEmuBlockHandler(pointer, struct timeval**, pointer);
 void EvdevMBEmuPreInit(InputInfoPtr);
 void EvdevMBEmuOn(InputInfoPtr);
 void EvdevMBEmuFinalize(InputInfoPtr);
-void EvdevMBEmuEnable(InputInfoPtr, BOOL);
 
 /* Mouse Wheel emulation */
 void EvdevWheelEmuPreInit(InputInfoPtr pInfo);

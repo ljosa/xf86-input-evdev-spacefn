@@ -43,12 +43,6 @@
 
 #include <evdev-properties.h>
 
-enum {
-    MBEMU_DISABLED = 0,
-    MBEMU_ENABLED,
-    MBEMU_AUTO
-};
-
 #ifdef HAVE_PROPERTIES
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
@@ -232,11 +226,6 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
     if (!pEvdev->emulateMB.enabled)
         return ret;
 
-    if (button == 2) {
-        EvdevMBEmuEnable(pInfo, FALSE);
-        return ret;
-    }
-
     /* don't care about other buttons */
     if (button != 1 && button != 3)
         return ret;
@@ -311,20 +300,9 @@ EvdevMBEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
 
-    if (pEvdev->flags & EVDEV_TOUCHSCREEN)
-        pEvdev->emulateMB.enabled = MBEMU_DISABLED;
-    else
-        pEvdev->emulateMB.enabled = MBEMU_AUTO;
-
-    if (xf86FindOption(pInfo->options, "Emulate3Buttons"))
-    {
-        pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
-                                                      "Emulate3Buttons",
-                                                      MBEMU_ENABLED);
-        xf86Msg(X_INFO, "%s: Forcing middle mouse button emulation %s.\n",
-                pInfo->name, (pEvdev->emulateMB.enabled) ? "on" : "off");
-    }
-
+    pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
+                                                  "Emulate3Buttons",
+                                                  FALSE);
     pEvdev->emulateMB.timeout = xf86SetIntOption(pInfo->options,
                                                  "Emulate3Timeout", 50);
 }
@@ -351,16 +329,6 @@ EvdevMBEmuFinalize(InputInfoPtr pInfo)
                                   (pointer)pInfo);
 
 }
-
-/* Enable/disable middle mouse button emulation. */
-void
-EvdevMBEmuEnable(InputInfoPtr pInfo, BOOL enable)
-{
-    EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    if (pEvdev->emulateMB.enabled == MBEMU_AUTO)
-        pEvdev->emulateMB.enabled = enable;
-}
-
 
 #ifdef HAVE_PROPERTIES
 static int
