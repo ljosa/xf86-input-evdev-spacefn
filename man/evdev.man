@@ -227,7 +227,7 @@ value.
 1 16-bit positive value.
 
 .SH AUTHORS
-Kristian Høgsberg.
+Kristian Høgsberg, Peter Hutterer
 .SH "SEE ALSO"
 __xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__),
 README.mouse.
