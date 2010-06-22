@@ -19,15 +19,24 @@ evdev \- Generic Linux input driver
 .B evdev 
 is an __xservername__ input driver for Linux\'s generic event devices.  It
 therefore supports all input devices that the kernel knows about, including
-most mice and keyboards.
+most mice, keyboards, tablets and touchscreens.
+.B evdev
+is the default driver on the major Linux distributions.
 .PP
 The 
 .B evdev
-driver can serve as both a pointer and a keyboard input device, and may be
-used as both the core keyboard and the core pointer.  Multiple input devices
-are supported by multiple instances of this driver, with one Load
-directive for evdev in the Module section of your __xconfigfile__ for each
-input device that will use this driver.
+driver can serve as both a pointer and a keyboard input device. Multiple
+input devices are supported by multiple instances of this driver, with one
+InputDevice section of your __xconfigfile__ for each input device that will
+use this driver.
+.PP
+It is recommended that
+.B evdev
+devices are configured through the
+.B InputClass
+directive (refer to __xconfigfile__(__filemansuffix__)) instead of manual
+per-device configuration. Devices configured in the
+__xconfigfile__(__filemansuffix__) are not hot-plug capable.
 .PP
 .SH SUPPORTED HARDWARE
 In general, any input device that the kernel has a driver for can be accessed
