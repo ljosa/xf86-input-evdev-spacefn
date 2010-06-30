@@ -1149,12 +1149,18 @@ EvdevAddAbsClass(DeviceIntPtr device)
     num_axes = CountBits(pEvdev->abs_bitmask, NLONGS(ABS_MAX));
     if (num_axes < 1)
         return !Success;
+
+    if (num_axes > MAX_VALUATORS) {
+        xf86Msg(X_WARNING, "%s: found %d axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
+        num_axes = MAX_VALUATORS;
+    }
+
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
     memset(pEvdev->old_vals, -1, num_axes * sizeof(int));
     atoms = malloc(pEvdev->num_vals * sizeof(Atom));
 
-    for (axis = ABS_X; axis <= ABS_MAX; axis++) {
+    for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
         pEvdev->axis_map[axis] = -1;
         if (!TestBit(axis, pEvdev->abs_bitmask))
             continue;
@@ -1270,11 +1276,16 @@ EvdevAddRelClass(DeviceIntPtr device)
     if (num_axes <= 0)
         return !Success;
 
+    if (num_axes > MAX_VALUATORS) {
+        xf86Msg(X_WARNING, "%s: found %d axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
+        num_axes = MAX_VALUATORS;
+    }
+
     pEvdev->num_vals = num_axes;
     memset(pEvdev->vals, 0, num_axes * sizeof(int));
     atoms = malloc(pEvdev->num_vals * sizeof(Atom));
 
-    for (axis = REL_X; axis <= REL_MAX; axis++)
+    for (axis = REL_X; i < MAX_VALUATORS && axis <= REL_MAX; axis++)
     {
         pEvdev->axis_map[axis] = -1;
         /* We don't post wheel events, so ignore them here too */
