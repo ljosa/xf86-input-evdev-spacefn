@@ -2083,7 +2083,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
        Note that this needs a server that sets the console to RAW mode. */
-    pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
+    pEvdev->grabDevice = xf86CheckBoolOption(pInfo->options, "GrabDevice", 0);
 
     /* If grabDevice is set, ungrab immediately since we only want to grab
      * between DEVICE_ON and DEVICE_OFF. If we never get DEVICE_ON, don't
