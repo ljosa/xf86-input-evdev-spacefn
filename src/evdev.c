@@ -2063,13 +2063,13 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->conf_idev = dev;
     pInfo->private = NULL;
 
+    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
+    xf86ProcessCommonOptions(pInfo, pInfo->options);
+
     if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
         goto error;
 
     pInfo->private = pEvdev;
-
-    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options);
 
     if (!EvdevOpenDevice(pInfo))
         goto error;
