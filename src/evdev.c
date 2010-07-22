@@ -61,6 +61,12 @@
 
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) > 12
+/* removed from server, purge when dropping support for server 1.10 */
+#define XI86_CONFIGURED         0x02
+#define XI86_SEND_DRAG_EVENTS   0x08
+#endif
+
 #ifndef MAXDEVICES
 #include <inputstr.h> /* for MAX_DEVICES */
 #define MAXDEVICES MAX_DEVICES
