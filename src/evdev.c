@@ -2079,6 +2079,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 #endif
 {
     EvdevPtr pEvdev;
+    int rc = BadAlloc;
 
     if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
         goto error;
@@ -2110,6 +2111,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     {
         xf86Msg(X_WARNING, "%s: Device may already be configured.\n",
                 pInfo->name);
+        rc = BadMatch;
         goto error;
     }
 
@@ -2117,6 +2119,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 
     if (EvdevCacheCompare(pInfo, FALSE) ||
         EvdevProbe(pInfo)) {
+        rc = BadMatch;
         goto error;
     }
 
@@ -2134,7 +2137,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 error:
     if (pInfo->fd >= 0)
         close(pInfo->fd);
-    return BadAlloc;
+    return rc;
 }
 
 _X_EXPORT InputDriverRec EVDEV = {
