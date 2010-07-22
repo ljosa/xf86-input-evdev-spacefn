@@ -1127,8 +1127,6 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
 #endif
 
-    pInfo->flags |= XI86_KEYBOARD_CAPABLE;
-
     return Success;
 }
 
@@ -1208,22 +1206,6 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
-
-    if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_RX, pEvdev->abs_bitmask) &&
-         TestBit(ABS_RY, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT0X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT0Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT1X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT1Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT2X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT2Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT3X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT3Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_TILT_X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_TILT_Y, pEvdev->abs_bitmask)))
-        pInfo->flags |= XI86_POINTER_CAPABLE;
 
     if (pEvdev->flags & EVDEV_TOUCHPAD)
         pEvdev->flags |= EVDEV_RELATIVE_MODE;
@@ -1327,8 +1309,6 @@ EvdevAddRelClass(DeviceIntPtr device)
     }
 
     free(atoms);
-
-    pInfo->flags |= XI86_POINTER_CAPABLE;
 
     return Success;
 }
@@ -1947,8 +1927,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_rel_axes || has_abs_axes || num_buttons) {
-        pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
-                        XI86_CONFIGURED;
+        pInfo->flags |= XI86_SEND_DRAG_EVENTS | XI86_CONFIGURED;
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
 	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
 	    pInfo->type_name = XI_TOUCHPAD;
@@ -1966,15 +1945,14 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (has_keys) {
         xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
-        pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
+        pInfo->flags |= XI86_CONFIGURED;
         pInfo->type_name = XI_KEYBOARD;
     }
 
     if (has_scroll && (pInfo->flags & XI86_CONFIGURED) &&
-        (pInfo->flags & XI86_POINTER_CAPABLE) == 0)
+        (has_rel_axes || has_abs_axes))
     {
         xf86Msg(X_INFO, "%s: Adding scrollwheel support\n", pInfo->name);
-        pInfo->flags  |= XI86_POINTER_CAPABLE;
         pEvdev->flags |= EVDEV_BUTTON_EVENTS;
         pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
     }
