@@ -61,7 +61,7 @@
 
 #endif
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) > 12
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 /* removed from server, purge when dropping support for server 1.10 */
 #define XI86_CONFIGURED         0x02
 #define XI86_SEND_DRAG_EVENTS   0x08
@@ -88,7 +88,7 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
-static const char *evdevDefaults[] = {
+static char *evdevDefaults[] = {
     "XkbRules",     "evdev",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
@@ -2035,11 +2035,13 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     return TRUE;
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+static int NewEvdevPreInit(InputDriverPtr, InputInfoPtr, int);
+
 static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
 	return NULL;
@@ -2048,13 +2050,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->fd = -1;
     pInfo->name = dev->identifier;
     pInfo->flags = 0;
-    pInfo->type_name = "UNKNOWN";
-    pInfo->device_control = EvdevProc;
-    pInfo->read_input = EvdevReadInput;
     pInfo->history_size = 0;
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
-    pInfo->switch_mode = EvdevSwitchMode;
     pInfo->conversion_proc = NULL;
     pInfo->reverse_conversion_proc = NULL;
     pInfo->dev = NULL;
@@ -2063,13 +2061,33 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->conf_idev = dev;
     pInfo->private = NULL;
 
-    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
+    xf86CollectInputOptions(pInfo, (const char**)evdevDefaults, NULL);
     xf86ProcessCommonOptions(pInfo, pInfo->options);
+
+    if (NewEvdevPreInit(drv, pInfo, flags) == Success)
+        return pInfo;
+
+    xf86DeleteInput(pInfo, 0);
+    return NULL;
+}
+
+static int
+NewEvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+#else
+static int
+EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+#endif
+{
+    EvdevPtr pEvdev;
 
     if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
         goto error;
 
     pInfo->private = pEvdev;
+    pInfo->type_name = "UNKNOWN";
+    pInfo->device_control = EvdevProc;
+    pInfo->read_input = EvdevReadInput;
+    pInfo->switch_mode = EvdevSwitchMode;
 
     if (!EvdevOpenDevice(pInfo))
         goto error;
@@ -2111,13 +2129,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         EvdevDragLockPreInit(pInfo);
     }
 
-    return pInfo;
+    return Success;
 
 error:
     if (pInfo->fd >= 0)
         close(pInfo->fd);
-    xf86DeleteInput(pInfo, 0);
-    return NULL;
+    return BadAlloc;
 }
 
 _X_EXPORT InputDriverRec EVDEV = {
@@ -2127,7 +2144,10 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     NULL,
     NULL,
-    0
+    0,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+    evdevDefaults
+#endif
 };
 
 static void
