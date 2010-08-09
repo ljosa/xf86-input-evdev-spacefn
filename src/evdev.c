@@ -577,7 +577,6 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
             break;
 
         case BTN_TOUCH:
-            pEvdev->tool = value ? ev->code : 0;
             if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
                 break;
             /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
