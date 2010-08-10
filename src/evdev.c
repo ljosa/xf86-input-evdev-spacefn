@@ -661,7 +661,7 @@ static void
 EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
     int num_v = 0, first_v = 0;
-    int v[MAX_VALUATORS];
+    int v[MAX_VALUATORS] = {};
     EvdevPtr pEvdev = pInfo->private;
 
     EvdevProcessValuators(pInfo, v, &num_v, &first_v);
