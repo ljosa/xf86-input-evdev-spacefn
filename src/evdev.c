@@ -386,7 +386,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
         for (i = 0; i < REL_CNT; i++)
         {
             int map = pEvdev->axis_map[i];
-            if (map != -1)
+            if (pEvdev->delta[i] && map != -1)
             {
                 v[map] = pEvdev->delta[i];
                 if (map < first)
