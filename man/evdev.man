@@ -238,5 +238,4 @@ value.
 .SH AUTHORS
 Kristian Høgsberg, Peter Hutterer
 .SH "SEE ALSO"
-__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__),
-README.mouse.
+__xservername__(__appmansuffix__), __xconfigfile__(__filemansuffix__), Xserver(__appmansuffix__), X(__miscmansuffix__)
