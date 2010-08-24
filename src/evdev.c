@@ -400,11 +400,11 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
         *first_v = first;
     }
     /*
-     * Some devices only generate valid abs coords when BTN_DIGI is
+     * Some devices only generate valid abs coords when BTN_TOOL_PEN is
      * pressed.  On wacom tablets, this means that the pen is in
-     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->digi here, lets us ignore that event.  pEvdev is
+     * pEvdev->tool here, lets us ignore that event.  pEvdev is
      * initialized to 1 so devices that doesn't use this scheme still
      * just works.
      */
@@ -614,9 +614,9 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
     EvdevPtr pEvdev = pInfo->private;
 
     /*
-     * Some devices only generate valid abs coords when BTN_DIGI is
+     * Some devices only generate valid abs coords when BTN_TOOL_PEN is
      * pressed.  On wacom tablets, this means that the pen is in
-     * proximity of the tablet.  After the pen is removed, BTN_DIGI is
+     * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
      * pEvdev->tool here, lets us ignore that event.  pEvdev->tool is
      * initialized to 1 so devices that don't use this scheme still
