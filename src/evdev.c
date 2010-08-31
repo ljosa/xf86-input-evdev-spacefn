@@ -1888,7 +1888,9 @@ EvdevProbe(InputInfoPtr pInfo)
         if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
              TestBit(ABS_Y, pEvdev->abs_bitmask))) {
             xf86Msg(X_PROBED, "%s: Found x and y absolute axes\n", pInfo->name);
-            if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask))
+            if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask) ||
+                TestBit(BTN_STYLUS, pEvdev->key_bitmask) ||
+                TestBit(BTN_STYLUS2, pEvdev->key_bitmask))
             {
                 xf86Msg(X_PROBED, "%s: Found absolute tablet.\n", pInfo->name);
                 pEvdev->flags |= EVDEV_TABLET;
