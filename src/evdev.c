@@ -61,6 +61,12 @@
 
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+/* removed from server, purge when dropping support for server 1.10 */
+#define XI86_CONFIGURED         0x02
+#define XI86_SEND_DRAG_EVENTS   0x08
+#endif
+
 #ifndef MAXDEVICES
 #include <inputstr.h> /* for MAX_DEVICES */
 #define MAXDEVICES MAX_DEVICES
@@ -82,7 +88,7 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
-static const char *evdevDefaults[] = {
+static char *evdevDefaults[] = {
     "XkbRules",     "evdev",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
@@ -1126,8 +1132,6 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
 #endif
 
-    pInfo->flags |= XI86_KEYBOARD_CAPABLE;
-
     return Success;
 }
 
@@ -1207,22 +1211,6 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
-
-    if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_RX, pEvdev->abs_bitmask) &&
-         TestBit(ABS_RY, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT0X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT0Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT1X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT1Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT2X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT2Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_HAT3X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_HAT3Y, pEvdev->abs_bitmask)) ||
-        (TestBit(ABS_TILT_X, pEvdev->abs_bitmask) &&
-         TestBit(ABS_TILT_Y, pEvdev->abs_bitmask)))
-        pInfo->flags |= XI86_POINTER_CAPABLE;
 
     if (pEvdev->flags & EVDEV_TOUCHPAD)
         pEvdev->flags |= EVDEV_RELATIVE_MODE;
@@ -1326,8 +1314,6 @@ EvdevAddRelClass(DeviceIntPtr device)
     }
 
     free(atoms);
-
-    pInfo->flags |= XI86_POINTER_CAPABLE;
 
     return Success;
 }
@@ -1948,8 +1934,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_rel_axes || has_abs_axes || num_buttons) {
-        pInfo->flags |= XI86_POINTER_CAPABLE | XI86_SEND_DRAG_EVENTS |
-                        XI86_CONFIGURED;
+        pInfo->flags |= XI86_SEND_DRAG_EVENTS | XI86_CONFIGURED;
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
 	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
 	    pInfo->type_name = XI_TOUCHPAD;
@@ -1967,15 +1952,14 @@ EvdevProbe(InputInfoPtr pInfo)
 
     if (has_keys) {
         xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
-        pInfo->flags |= XI86_KEYBOARD_CAPABLE | XI86_CONFIGURED;
+        pInfo->flags |= XI86_CONFIGURED;
         pInfo->type_name = XI_KEYBOARD;
     }
 
     if (has_scroll && (pInfo->flags & XI86_CONFIGURED) &&
-        (pInfo->flags & XI86_POINTER_CAPABLE) == 0)
+        (has_rel_axes || has_abs_axes))
     {
         xf86Msg(X_INFO, "%s: Adding scrollwheel support\n", pInfo->name);
-        pInfo->flags  |= XI86_POINTER_CAPABLE;
         pEvdev->flags |= EVDEV_BUTTON_EVENTS;
         pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
     }
@@ -2052,11 +2036,13 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     return TRUE;
 }
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
+static int NewEvdevPreInit(InputDriverPtr, InputInfoPtr, int);
+
 static InputInfoPtr
 EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 {
     InputInfoPtr pInfo;
-    EvdevPtr pEvdev;
 
     if (!(pInfo = xf86AllocateInput(drv, 0)))
 	return NULL;
@@ -2065,13 +2051,9 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->fd = -1;
     pInfo->name = dev->identifier;
     pInfo->flags = 0;
-    pInfo->type_name = "UNKNOWN";
-    pInfo->device_control = EvdevProc;
-    pInfo->read_input = EvdevReadInput;
     pInfo->history_size = 0;
     pInfo->control_proc = NULL;
     pInfo->close_proc = NULL;
-    pInfo->switch_mode = EvdevSwitchMode;
     pInfo->conversion_proc = NULL;
     pInfo->reverse_conversion_proc = NULL;
     pInfo->dev = NULL;
@@ -2080,13 +2062,34 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     pInfo->conf_idev = dev;
     pInfo->private = NULL;
 
+    xf86CollectInputOptions(pInfo, (const char**)evdevDefaults, NULL);
+    xf86ProcessCommonOptions(pInfo, pInfo->options);
+
+    if (NewEvdevPreInit(drv, pInfo, flags) == Success)
+        return pInfo;
+
+    xf86DeleteInput(pInfo, 0);
+    return NULL;
+}
+
+static int
+NewEvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+#else
+static int
+EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+#endif
+{
+    EvdevPtr pEvdev;
+    int rc = BadAlloc;
+
     if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
         goto error;
 
     pInfo->private = pEvdev;
-
-    xf86CollectInputOptions(pInfo, evdevDefaults, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options);
+    pInfo->type_name = "UNKNOWN";
+    pInfo->device_control = EvdevProc;
+    pInfo->read_input = EvdevReadInput;
+    pInfo->switch_mode = EvdevSwitchMode;
 
     if (!EvdevOpenDevice(pInfo))
         goto error;
@@ -2100,7 +2103,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
        Note that this needs a server that sets the console to RAW mode. */
-    pEvdev->grabDevice = xf86CheckBoolOption(dev->commonOptions, "GrabDevice", 0);
+    pEvdev->grabDevice = xf86CheckBoolOption(pInfo->options, "GrabDevice", 0);
 
     /* If grabDevice is set, ungrab immediately since we only want to grab
      * between DEVICE_ON and DEVICE_OFF. If we never get DEVICE_ON, don't
@@ -2109,6 +2112,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     {
         xf86Msg(X_WARNING, "%s: Device may already be configured.\n",
                 pInfo->name);
+        rc = BadMatch;
         goto error;
     }
 
@@ -2116,6 +2120,7 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
 
     if (EvdevCacheCompare(pInfo, FALSE) ||
         EvdevProbe(pInfo)) {
+        rc = BadMatch;
         goto error;
     }
 
@@ -2128,13 +2133,12 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
         EvdevDragLockPreInit(pInfo);
     }
 
-    return pInfo;
+    return Success;
 
 error:
     if (pInfo->fd >= 0)
         close(pInfo->fd);
-    xf86DeleteInput(pInfo, 0);
-    return NULL;
+    return rc;
 }
 
 _X_EXPORT InputDriverRec EVDEV = {
@@ -2144,7 +2148,10 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     NULL,
     NULL,
-    0
+    0,
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+    evdevDefaults
+#endif
 };
 
 static void
