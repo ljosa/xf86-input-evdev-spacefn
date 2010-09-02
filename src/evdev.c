@@ -2205,80 +2205,33 @@ _X_EXPORT XF86ModuleData evdevModuleData =
 unsigned int
 EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 {
-    unsigned int button = 0;
+    switch (code)
+    {
+        /* Mouse buttons */
+        case BTN_LEFT:
+            return 1;
+        case BTN_MIDDLE:
+            return 2;
+        case BTN_RIGHT:
+            return 3;
+        case BTN_SIDE ... BTN_TASK:
+            return 8 + code - BTN_SIDE;
 
-    switch(code) {
-    case BTN_LEFT:
-	button = 1;
-	break;
+        /* Generic buttons */
+        case BTN_0 ... BTN_2:
+            return 1 + code - BTN_0;
+        case BTN_3 ... BTN_9:
+            return 8 + code - BTN_3;
 
-    case BTN_RIGHT:
-	button = 3;
-	break;
+        /* Tablet stylus buttons */
+        case BTN_TOUCH ... BTN_STYLUS2:
+            return 1 + code - BTN_TOUCH;
 
-    case BTN_MIDDLE:
-	button = 2;
-	break;
-
-        /* Treat BTN_[0-2] as LMR buttons on devices that do not advertise
-           BTN_LEFT, BTN_MIDDLE, BTN_RIGHT.
-           Otherwise, treat BTN_[0+n] as button 5+n.
-           XXX: This causes duplicate mappings for BTN_0 + n and BTN_SIDE + n
-         */
-    case BTN_0:
-        button = (TestBit(BTN_LEFT, pEvdev->key_bitmask)) ?  8 : 1;
-        break;
-    case BTN_1:
-        button = (TestBit(BTN_MIDDLE, pEvdev->key_bitmask)) ?  9 : 2;
-        break;
-    case BTN_2:
-        button = (TestBit(BTN_RIGHT, pEvdev->key_bitmask)) ?  10 : 3;
-        break;
-
-        /* FIXME: BTN_3.. and BTN_SIDE.. have the same button mapping */
-    case BTN_3:
-    case BTN_4:
-    case BTN_5:
-    case BTN_6:
-    case BTN_7:
-    case BTN_8:
-    case BTN_9:
-	button = (code - BTN_0 + 5);
-        break;
-
-    case BTN_SIDE:
-    case BTN_EXTRA:
-    case BTN_FORWARD:
-    case BTN_BACK:
-    case BTN_TASK:
-	button = (code - BTN_LEFT + 5);
-	break;
-
-    case BTN_TOUCH:
-        button = 1;
-        break;
-    case BTN_STYLUS:
-        button = 2;
-        break;
-    case BTN_STYLUS2:
-        button = 3;
-        break;
-
-    default:
-	if ((code > BTN_TASK) && (code < KEY_OK)) {
-	    if (code < BTN_JOYSTICK) {
-                if (code < BTN_MOUSE)
-                    button = (code - BTN_0 + 5);
-                else
-                    button = (code - BTN_LEFT + 5);
-            }
-	}
+        /* The rest */
+        default:
+            /* Ignore */
+            return 0;
     }
-
-    if (button > EVDEV_MAXBUTTONS)
-	return 0;
-
-    return button;
 }
 
 #ifdef HAVE_PROPERTIES
