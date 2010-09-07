@@ -419,8 +419,16 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
 
         if (pEvdev->swap_axes) {
             int tmp = v[0];
-            v[0] = v[1];
-            v[1] = tmp;
+            v[0] = xf86ScaleAxis(v[1],
+                    pEvdev->absinfo[ABS_X].maximum,
+                    pEvdev->absinfo[ABS_X].minimum,
+                    pEvdev->absinfo[ABS_Y].maximum,
+                    pEvdev->absinfo[ABS_Y].minimum);
+            v[1] = xf86ScaleAxis(tmp,
+                    pEvdev->absinfo[ABS_Y].maximum,
+                    pEvdev->absinfo[ABS_Y].minimum,
+                    pEvdev->absinfo[ABS_X].maximum,
+                    pEvdev->absinfo[ABS_X].minimum);
         }
 
         if (pEvdev->flags & EVDEV_CALIBRATED)
