@@ -2254,6 +2254,16 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 	button = (code - BTN_LEFT + 5);
 	break;
 
+    case BTN_TOUCH:
+        button = 1;
+        break;
+    case BTN_STYLUS:
+        button = 2;
+        break;
+    case BTN_STYLUS2:
+        button = 3;
+        break;
+
     default:
 	if ((code > BTN_TASK) && (code < KEY_OK)) {
 	    if (code < BTN_JOYSTICK) {
