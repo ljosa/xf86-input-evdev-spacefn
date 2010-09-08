@@ -268,12 +268,26 @@ static int wheel_down_button = 5;
 static int wheel_left_button = 6;
 static int wheel_right_button = 7;
 
+static EventQueuePtr
+EvdevNextInQueue(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
+    {
+        xf86Msg(X_NONE, "%s: dropping event due to full queue!\n", pInfo->name);
+        return NULL;
+    }
+
+    pEvdev->num_queue++;
+    return &pEvdev->queue[pEvdev->num_queue - 1];
+}
+
 void
 EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 {
     int code = ev->code + MIN_KEYCODE;
     EventQueuePtr pQueue;
-    EvdevPtr pEvdev = pInfo->private;
 
     /* Filter all repeated events from device.
        We'll do softrepeat in the server, but only since 1.6 */
@@ -289,36 +303,26 @@ EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
             )
 	return;
 
-    if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
+    if ((pQueue = EvdevNextInQueue(pInfo)))
     {
-        xf86Msg(X_NONE, "%s: dropping event due to full queue!\n", pInfo->name);
-        return;
+        pQueue->type = EV_QUEUE_KEY;
+        pQueue->key = code;
+        pQueue->val = value;
     }
-
-    pQueue = &pEvdev->queue[pEvdev->num_queue];
-    pQueue->type = EV_QUEUE_KEY;
-    pQueue->key = code;
-    pQueue->val = value;
-    pEvdev->num_queue++;
 }
 
 void
 EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value)
 {
     EventQueuePtr pQueue;
-    EvdevPtr pEvdev = pInfo->private;
 
-    if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
+    if ((pQueue = EvdevNextInQueue(pInfo)))
     {
-        xf86Msg(X_NONE, "%s: dropping event due to full queue!\n", pInfo->name);
-        return;
+        pQueue->type = EV_QUEUE_BTN;
+        pQueue->key = button;
+        pQueue->val = value;
     }
 
-    pQueue = &pEvdev->queue[pEvdev->num_queue];
-    pQueue->type = EV_QUEUE_BTN;
-    pQueue->key = button;
-    pQueue->val = value;
-    pEvdev->num_queue++;
 }
 
 /**
