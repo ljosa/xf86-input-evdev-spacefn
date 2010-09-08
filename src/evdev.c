@@ -612,13 +612,13 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
  * Post the relative motion events.
  */
 void
-EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
                               int v[MAX_VALUATORS])
 {
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->rel) {
-        xf86PostMotionEventP(pInfo->dev, FALSE, *first_v, *num_v, v + *first_v);
+        xf86PostMotionEventP(pInfo->dev, FALSE, first_v, num_v, v + first_v);
     }
 }
 
@@ -626,7 +626,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
  * Post the absolute motion events.
  */
 void
-EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
                               int v[MAX_VALUATORS])
 {
     EvdevPtr pEvdev = pInfo->private;
@@ -641,14 +641,14 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
      * just work.
      */
     if (pEvdev->abs && pEvdev->tool) {
-        xf86PostMotionEventP(pInfo->dev, TRUE, *first_v, *num_v, v);
+        xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v);
     }
 }
 
 /**
  * Post the queued key/button events.
  */
-static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int *num_v, int *first_v,
+static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                                   int v[MAX_VALUATORS])
 {
     int i;
@@ -684,9 +684,9 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     EvdevProcessValuators(pInfo, v, &num_v, &first_v);
 
-    EvdevPostRelativeMotionEvents(pInfo, &num_v, &first_v, v);
-    EvdevPostAbsoluteMotionEvents(pInfo, &num_v, &first_v, v);
-    EvdevPostQueuedEvents(pInfo, &num_v, &first_v, v);
+    EvdevPostRelativeMotionEvents(pInfo, num_v, first_v, v);
+    EvdevPostAbsoluteMotionEvents(pInfo, num_v, first_v, v);
+    EvdevPostQueuedEvents(pInfo, num_v, first_v, v);
 
     memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
     memset(pEvdev->queue, 0, sizeof(pEvdev->queue));
