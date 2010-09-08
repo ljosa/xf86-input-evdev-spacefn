@@ -641,7 +641,7 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
      * just work.
      */
     if (pEvdev->abs && pEvdev->tool) {
-        xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v);
+        xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v + first_v);
     }
 }
 
