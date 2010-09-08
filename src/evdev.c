@@ -661,11 +661,16 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                                   pEvdev->queue[i].val);
             break;
         case EV_QUEUE_BTN:
-            /* FIXME: Add xf86PostButtonEventP to the X server so that we may
-             * pass the valuators on ButtonPress/Release events, too.  Currently
-             * only MotionNotify events contain the pointer position. */
-            xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
-                                pEvdev->queue[i].val, 0, 0);
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 11
+            if (pEvdev->abs && pEvdev->tool) {
+                xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
+                                     pEvdev->queue[i].val, first_v, num_v,
+                                     v + first_v);
+
+            } else
+#endif
+                xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
+                                    pEvdev->queue[i].val, 0, 0);
             break;
         }
     }
