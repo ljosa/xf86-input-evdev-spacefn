@@ -124,7 +124,7 @@ typedef struct {
     int old_vals[MAX_VALUATORS]; /* Translate absolute inputs to relative */
 
     int flags;
-    int tool;
+    int proximity;
     int num_buttons;            /* number of buttons */
     BOOL swap_axes;
     BOOL invert_x;

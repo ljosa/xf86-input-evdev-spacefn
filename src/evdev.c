@@ -363,7 +363,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
 
     /* convert to relative motion for touchpads */
     if (pEvdev->abs && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
-        if (pEvdev->tool) { /* meaning, touch is active */
+        if (pEvdev->proximity) {
             if (pEvdev->old_vals[0] != -1)
                 pEvdev->delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
             if (pEvdev->old_vals[1] != -1)
@@ -414,11 +414,11 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
      * pressed.  On wacom tablets, this means that the pen is in
      * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->tool here, lets us ignore that event.  pEvdev is
+     * pEvdev->proximity here lets us ignore that event.  pEvdev is
      * initialized to 1 so devices that doesn't use this scheme still
      * just works.
      */
-    else if (pEvdev->abs && pEvdev->tool) {
+    else if (pEvdev->abs && pEvdev->proximity) {
         memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
 
         if (pEvdev->swap_axes) {
@@ -591,7 +591,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
         case BTN_TOOL_FINGER:
         case BTN_TOOL_MOUSE:
         case BTN_TOOL_LENS:
-            pEvdev->tool = value ? ev->code : 0;
+            pEvdev->proximity = value ? ev->code : 0;
             break;
 
         case BTN_TOUCH:
@@ -636,11 +636,11 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
      * pressed.  On wacom tablets, this means that the pen is in
      * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->tool here, lets us ignore that event.  pEvdev->tool is
+     * pEvdev->proximity here lets us ignore that event. pEvdev->proximity is
      * initialized to 1 so devices that don't use this scheme still
      * just work.
      */
-    if (pEvdev->abs && pEvdev->tool) {
+    if (pEvdev->abs && pEvdev->proximity) {
         xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v + first_v);
     }
 }
@@ -662,7 +662,7 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
             break;
         case EV_QUEUE_BTN:
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 11
-            if (pEvdev->abs && pEvdev->tool) {
+            if (pEvdev->abs && pEvdev->proximity) {
                 xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
@@ -2112,10 +2112,10 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
         goto error;
 
     /*
-     * We initialize pEvdev->tool to 1 so that device that doesn't use
+     * We initialize pEvdev->proximity to 1 so that device that doesn't use
      * proximity will still report events.
      */
-    pEvdev->tool = 1;
+    pEvdev->proximity = 1;
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
