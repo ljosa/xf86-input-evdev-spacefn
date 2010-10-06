@@ -2156,7 +2156,6 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     NULL,
     NULL,
-    0,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
     evdevDefaults
 #endif
