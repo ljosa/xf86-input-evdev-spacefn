@@ -109,6 +109,7 @@ typedef struct {
     enum {
         EV_QUEUE_KEY,	/* xf86PostKeyboardEvent() */
         EV_QUEUE_BTN,	/* xf86PostButtonEvent() */
+        EV_QUEUE_PROXIMITY, /* xf86PostProximityEvent() */
     } type;
     int key;		/* May be either a key code or button number. */
     int val;		/* State of the key/button; pressed or released. */
@@ -131,7 +132,8 @@ typedef struct {
     BOOL invert_y;
 
     int delta[REL_CNT];
-    unsigned int abs, rel;
+    unsigned int abs, rel, prox;
+    unsigned int abs_prox;  /* valuators posted while out of prox? */
 
     /* XKB stuff has to be per-device rather than per-driver */
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
@@ -198,6 +200,7 @@ typedef struct {
 /* Event posting functions */
 void EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
 void EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value);
+void EvdevQueueProximityEvent(InputInfoPtr pInfo, int value);
 void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,

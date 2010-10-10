@@ -322,7 +322,18 @@ EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value)
         pQueue->key = button;
         pQueue->val = value;
     }
+}
 
+void
+EvdevQueueProximityEvent(InputInfoPtr pInfo, int value)
+{
+    EventQueuePtr pQueue;
+    if ((pQueue = EvdevNextInQueue(pInfo)))
+    {
+        pQueue->type = EV_QUEUE_PROXIMITY;
+        pQueue->key = 0;
+        pQueue->val = value;
+    }
 }
 
 /**
@@ -459,6 +470,70 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
     }
 }
 
+static void
+EvdevProcessProximityEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    pEvdev->prox = 1;
+
+    EvdevQueueProximityEvent(pInfo, ev->value);
+}
+
+/**
+ * Proximity handling is rather weird because of tablet-specific issues.
+ * Some tablets, notably Wacoms, send a 0/0 coordinate in the same EV_SYN as
+ * the out-of-proximity notify. We need to ignore those, hence we only
+ * actually post valuator events when we're in proximity.
+ *
+ * Other tablets send the x/y coordinates, then EV_SYN, then the proximity
+ * event. For those, we need to remember x/y to post it when the proximity
+ * comes.
+ *
+ * If we're not in proximity and we get valuator events, remember that, they
+ * won't be posted though. If we move into proximity without valuators, use
+ * the last ones we got and let the rest of the code post them.
+ */
+static int
+EvdevProcessProximityState(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    int prox_state = 0;
+    int i;
+
+    /* no proximity change in the queue */
+    if (!pEvdev->prox)
+    {
+        if (pEvdev->abs && !pEvdev->proximity)
+            pEvdev->abs_prox = pEvdev->abs;
+        return 0;
+    }
+
+    for (i = 0; i < pEvdev->num_queue; i++)
+    {
+        if (pEvdev->queue[i].type == EV_QUEUE_PROXIMITY)
+        {
+            prox_state = pEvdev->queue[i].val;
+            break;
+        }
+    }
+
+    if ((prox_state && !pEvdev->proximity) ||
+        (!prox_state && pEvdev->proximity))
+    {
+        /* We're about to go into/out of proximity but have no abs events
+         * within the EV_SYN. Use the last coordinates we have. */
+        if (!pEvdev->abs && pEvdev->abs_prox)
+        {
+            pEvdev->abs = pEvdev->abs_prox;
+            pEvdev->abs_prox = 0;
+        }
+    }
+
+    pEvdev->proximity = prox_state;
+    return 1;
+}
+
 /**
  * Take a button input event and process it accordingly.
  */
@@ -583,6 +658,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
             return;
 
     switch (ev->code) {
+        /* keep this list in sync with InitProximityClassDeviceStruct */
         case BTN_TOOL_PEN:
         case BTN_TOOL_RUBBER:
         case BTN_TOOL_BRUSH:
@@ -591,7 +667,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
         case BTN_TOOL_FINGER:
         case BTN_TOOL_MOUSE:
         case BTN_TOOL_LENS:
-            pEvdev->proximity = value ? ev->code : 0;
+            EvdevProcessProximityEvent(pInfo, ev);
             break;
 
         case BTN_TOUCH:
@@ -645,6 +721,27 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
     }
 }
 
+static void
+EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
+                                  int v[MAX_VALUATORS])
+{
+    int i;
+    EvdevPtr pEvdev = pInfo->private;
+
+    for (i = 0; pEvdev->prox && i < pEvdev->num_queue; i++) {
+        switch (pEvdev->queue[i].type) {
+            case EV_QUEUE_KEY:
+            case EV_QUEUE_BTN:
+                break;
+            case EV_QUEUE_PROXIMITY:
+                if (pEvdev->queue[i].val == which)
+                    xf86PostProximityEventP(pInfo->dev, which, first_v, num_v,
+                            v + first_v);
+                break;
+        }
+    }
+}
+
 /**
  * Post the queued key/button events.
  */
@@ -672,6 +769,8 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                 xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
                                     pEvdev->queue[i].val, 0, 0);
             break;
+        case EV_QUEUE_PROXIMITY:
+            break;
         }
     }
 }
@@ -687,17 +786,23 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     int v[MAX_VALUATORS] = {};
     EvdevPtr pEvdev = pInfo->private;
 
+    EvdevProcessProximityState(pInfo);
+
     EvdevProcessValuators(pInfo, v, &num_v, &first_v);
 
+    EvdevPostProximityEvents(pInfo, TRUE, num_v, first_v, v);
     EvdevPostRelativeMotionEvents(pInfo, num_v, first_v, v);
     EvdevPostAbsoluteMotionEvents(pInfo, num_v, first_v, v);
     EvdevPostQueuedEvents(pInfo, num_v, first_v, v);
+    EvdevPostProximityEvents(pInfo, FALSE, num_v, first_v, v);
 
     memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
     memset(pEvdev->queue, 0, sizeof(pEvdev->queue));
     pEvdev->num_queue = 0;
     pEvdev->abs = 0;
     pEvdev->rel = 0;
+    pEvdev->prox = 0;
+
 }
 
 /**
@@ -1225,6 +1330,17 @@ EvdevAddAbsClass(DeviceIntPtr device)
     }
 
     free(atoms);
+
+    /* keep this list in sync with EvdevProcessKeyEvent */
+    if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_RUBBER, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_BRUSH, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_PENCIL, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_AIRBRUSH, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_MOUSE, pEvdev->key_bitmask) ||
+        TestBit(BTN_TOOL_LENS, pEvdev->key_bitmask))
+        InitProximityClassDeviceStruct(device);
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
