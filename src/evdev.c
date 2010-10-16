@@ -2397,6 +2397,35 @@ static char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
     AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
     AXIS_LABEL_PROP_ABS_VOLUME          /* 0x20 */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+    AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 10
+    AXIS_LABEL_PROP_ABS_MT_TOUCH_MAJOR, /* 0x30 */
+    AXIS_LABEL_PROP_ABS_MT_TOUCH_MINOR, /* 0x31 */
+    AXIS_LABEL_PROP_ABS_MT_WIDTH_MAJOR, /* 0x32 */
+    AXIS_LABEL_PROP_ABS_MT_WIDTH_MINOR, /* 0x33 */
+    AXIS_LABEL_PROP_ABS_MT_ORIENTATION, /* 0x34 */
+    AXIS_LABEL_PROP_ABS_MT_POSITION_X,  /* 0x35 */
+    AXIS_LABEL_PROP_ABS_MT_POSITION_Y,  /* 0x36 */
+    AXIS_LABEL_PROP_ABS_MT_TOOL_TYPE,   /* 0x37 */
+    AXIS_LABEL_PROP_ABS_MT_BLOB_ID,     /* 0x38 */
+    AXIS_LABEL_PROP_ABS_MT_TRACKING_ID, /* 0x39 */
+    AXIS_LABEL_PROP_ABS_MT_PRESSURE,    /* 0x3a */
+#endif
 };
 
 static char* rel_labels[] = {
