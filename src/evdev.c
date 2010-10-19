@@ -165,7 +165,7 @@ static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode)
     return Success;
 }
 
-static size_t CountBits(unsigned long *array, size_t nlongs)
+static size_t EvdevCountBits(unsigned long *array, size_t nlongs)
 {
     unsigned int i;
     size_t count = 0;
@@ -1280,7 +1280,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     if (!TestBit(EV_ABS, pEvdev->bitmask))
             return !Success;
 
-    num_axes = CountBits(pEvdev->abs_bitmask, NLONGS(ABS_MAX));
+    num_axes = EvdevCountBits(pEvdev->abs_bitmask, NLONGS(ABS_MAX));
     if (num_axes < 1)
         return !Success;
 
@@ -1387,7 +1387,7 @@ EvdevAddRelClass(DeviceIntPtr device)
     if (!TestBit(EV_REL, pEvdev->bitmask))
         return !Success;
 
-    num_axes = CountBits(pEvdev->rel_bitmask, NLONGS(REL_MAX));
+    num_axes = EvdevCountBits(pEvdev->rel_bitmask, NLONGS(REL_MAX));
     if (num_axes < 1)
         return !Success;
 
