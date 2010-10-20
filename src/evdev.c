@@ -95,6 +95,18 @@ static char *evdevDefaults[] = {
     NULL
 };
 
+/* Any of those triggers a proximity event */
+static int proximity_bits[] = {
+        BTN_TOOL_PEN,
+        BTN_TOOL_RUBBER,
+        BTN_TOOL_BRUSH,
+        BTN_TOOL_PENCIL,
+        BTN_TOOL_AIRBRUSH,
+        BTN_TOOL_FINGER,
+        BTN_TOOL_MOUSE,
+        BTN_TOOL_LENS,
+};
+
 static int EvdevOn(DeviceIntPtr);
 static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
@@ -646,7 +658,7 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 static void
 EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
-    int value;
+    int value, i;
     EvdevPtr pEvdev = pInfo->private;
 
     /* Get the signed value, earlier kernels had this as unsigned */
@@ -657,19 +669,16 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
         if (value == 2)
             return;
 
-    switch (ev->code) {
-        /* keep this list in sync with InitProximityClassDeviceStruct */
-        case BTN_TOOL_PEN:
-        case BTN_TOOL_RUBBER:
-        case BTN_TOOL_BRUSH:
-        case BTN_TOOL_PENCIL:
-        case BTN_TOOL_AIRBRUSH:
-        case BTN_TOOL_FINGER:
-        case BTN_TOOL_MOUSE:
-        case BTN_TOOL_LENS:
+    for (i = 0; i < ArrayLength(proximity_bits); i++)
+    {
+        if (ev->code == proximity_bits[i])
+        {
             EvdevProcessProximityEvent(pInfo, ev);
-            break;
+            return;
+        }
+    }
 
+    switch (ev->code) {
         case BTN_TOUCH:
             if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
                 break;
@@ -1331,16 +1340,14 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     free(atoms);
 
-    /* keep this list in sync with EvdevProcessKeyEvent */
-    if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_RUBBER, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_BRUSH, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_PENCIL, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_AIRBRUSH, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_MOUSE, pEvdev->key_bitmask) ||
-        TestBit(BTN_TOOL_LENS, pEvdev->key_bitmask))
-        InitProximityClassDeviceStruct(device);
+    for (i = 0; i < ArrayLength(proximity_bits); i++)
+    {
+        if (TestBit(proximity_bits[i], pEvdev->key_bitmask))
+        {
+            InitProximityClassDeviceStruct(device);
+            break;
+        }
+    }
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
         return !Success;
