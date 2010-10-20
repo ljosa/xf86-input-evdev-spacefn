@@ -132,7 +132,7 @@ typedef struct {
     BOOL invert_y;
 
     int delta[REL_CNT];
-    unsigned int abs, rel, prox;
+    unsigned int abs_queued, rel_queued, prox_queued;
     unsigned int abs_prox;  /* valuators posted while out of prox? */
 
     /* XKB stuff has to be per-device rather than per-driver */

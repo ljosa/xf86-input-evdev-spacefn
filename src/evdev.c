@@ -373,24 +373,24 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
     *num_v = *first_v = 0;
 
     /* convert to relative motion for touchpads */
-    if (pEvdev->abs && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
+    if (pEvdev->abs_queued && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
         if (pEvdev->proximity) {
             if (pEvdev->old_vals[0] != -1)
                 pEvdev->delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
             if (pEvdev->old_vals[1] != -1)
                 pEvdev->delta[REL_Y] = pEvdev->vals[1] - pEvdev->old_vals[1];
-            if (pEvdev->abs & ABS_X_VALUE)
+            if (pEvdev->abs_queued & ABS_X_VALUE)
                 pEvdev->old_vals[0] = pEvdev->vals[0];
-            if (pEvdev->abs & ABS_Y_VALUE)
+            if (pEvdev->abs_queued & ABS_Y_VALUE)
                 pEvdev->old_vals[1] = pEvdev->vals[1];
         } else {
             pEvdev->old_vals[0] = pEvdev->old_vals[1] = -1;
         }
-        pEvdev->abs = 0;
-        pEvdev->rel = 1;
+        pEvdev->abs_queued = 0;
+        pEvdev->rel_queued = 1;
     }
 
-    if (pEvdev->rel) {
+    if (pEvdev->rel_queued) {
         int first = REL_CNT, last = 0;
         int i;
 
@@ -429,7 +429,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
      * initialized to 1 so devices that doesn't use this scheme still
      * just works.
      */
-    else if (pEvdev->abs && pEvdev->proximity) {
+    else if (pEvdev->abs_queued && pEvdev->proximity) {
         memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
 
         if (pEvdev->swap_axes) {
@@ -475,7 +475,7 @@ EvdevProcessProximityEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
     EvdevPtr pEvdev = pInfo->private;
 
-    pEvdev->prox = 1;
+    pEvdev->prox_queued = 1;
 
     EvdevQueueProximityEvent(pInfo, ev->value);
 }
@@ -502,10 +502,10 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     int i;
 
     /* no proximity change in the queue */
-    if (!pEvdev->prox)
+    if (!pEvdev->prox_queued)
     {
-        if (pEvdev->abs && !pEvdev->proximity)
-            pEvdev->abs_prox = pEvdev->abs;
+        if (pEvdev->abs_queued && !pEvdev->proximity)
+            pEvdev->abs_prox = pEvdev->abs_queued;
         return 0;
     }
 
@@ -523,9 +523,9 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     {
         /* We're about to go into/out of proximity but have no abs events
          * within the EV_SYN. Use the last coordinates we have. */
-        if (!pEvdev->abs && pEvdev->abs_prox)
+        if (!pEvdev->abs_queued && pEvdev->abs_prox)
         {
-            pEvdev->abs = pEvdev->abs_prox;
+            pEvdev->abs_queued = pEvdev->abs_prox;
             pEvdev->abs_prox = 0;
         }
     }
@@ -603,7 +603,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
             if (EvdevWheelEmuFilterMotion(pInfo, ev))
                 return;
 
-            pEvdev->rel = 1;
+            pEvdev->rel_queued = 1;
             pEvdev->delta[ev->code] += value;
             break;
     }
@@ -633,11 +633,11 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     pEvdev->vals[pEvdev->axis_map[ev->code]] = value;
     if (ev->code == ABS_X)
-        pEvdev->abs |= ABS_X_VALUE;
+        pEvdev->abs_queued |= ABS_X_VALUE;
     else if (ev->code == ABS_Y)
-        pEvdev->abs |= ABS_Y_VALUE;
+        pEvdev->abs_queued |= ABS_Y_VALUE;
     else
-        pEvdev->abs |= ABS_VALUE;
+        pEvdev->abs_queued |= ABS_VALUE;
 }
 
 /**
@@ -693,7 +693,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
 {
     EvdevPtr pEvdev = pInfo->private;
 
-    if (pEvdev->rel) {
+    if (pEvdev->rel_queued) {
         xf86PostMotionEventP(pInfo->dev, FALSE, first_v, num_v, v + first_v);
     }
 }
@@ -716,7 +716,7 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
      * initialized to 1 so devices that don't use this scheme still
      * just work.
      */
-    if (pEvdev->abs && pEvdev->proximity) {
+    if (pEvdev->abs_queued && pEvdev->proximity) {
         xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v + first_v);
     }
 }
@@ -728,7 +728,7 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
     int i;
     EvdevPtr pEvdev = pInfo->private;
 
-    for (i = 0; pEvdev->prox && i < pEvdev->num_queue; i++) {
+    for (i = 0; pEvdev->prox_queued && i < pEvdev->num_queue; i++) {
         switch (pEvdev->queue[i].type) {
             case EV_QUEUE_KEY:
             case EV_QUEUE_BTN:
@@ -759,7 +759,7 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
             break;
         case EV_QUEUE_BTN:
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 11
-            if (pEvdev->abs && pEvdev->proximity) {
+            if (pEvdev->abs_queued && pEvdev->proximity) {
                 xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
@@ -799,9 +799,9 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
     memset(pEvdev->queue, 0, sizeof(pEvdev->queue));
     pEvdev->num_queue = 0;
-    pEvdev->abs = 0;
-    pEvdev->rel = 0;
-    pEvdev->prox = 0;
+    pEvdev->abs_queued = 0;
+    pEvdev->rel_queued = 0;
+    pEvdev->prox_queued = 0;
 
 }
 
