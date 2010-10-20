@@ -2345,13 +2345,13 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
             return 2;
         case BTN_RIGHT:
             return 3;
-        case BTN_SIDE ... BTN_TASK:
+        case BTN_SIDE ... BTN_JOYSTICK - 1:
             return 8 + code - BTN_SIDE;
 
         /* Generic buttons */
         case BTN_0 ... BTN_2:
             return 1 + code - BTN_0;
-        case BTN_3 ... BTN_9:
+        case BTN_3 ... BTN_MOUSE - 1:
             return 8 + code - BTN_3;
 
         /* Tablet stylus buttons */
