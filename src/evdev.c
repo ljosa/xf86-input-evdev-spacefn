@@ -63,7 +63,6 @@
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 /* removed from server, purge when dropping support for server 1.10 */
-#define XI86_CONFIGURED         0x02
 #define XI86_SEND_DRAG_EVENTS   0x08
 #endif
 
@@ -1916,6 +1915,7 @@ EvdevProbe(InputInfoPtr pInfo)
     int has_lmr; /* left middle right */
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
+    int rc = 1;
 
     /* Trinary state for ignoring axes:
        - unset: do the normal thing.
@@ -2082,7 +2082,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     if (has_rel_axes || has_abs_axes || num_buttons) {
-        pInfo->flags |= XI86_SEND_DRAG_EVENTS | XI86_CONFIGURED;
+        pInfo->flags |= XI86_SEND_DRAG_EVENTS;
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
 	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
 	    pInfo->type_name = XI_TOUCHPAD;
@@ -2096,29 +2096,29 @@ EvdevProbe(InputInfoPtr pInfo)
 	    xf86Msg(X_INFO, "%s: Configuring as mouse\n", pInfo->name);
 	    pInfo->type_name = XI_MOUSE;
 	}
+
+        rc = 0;
     }
 
     if (has_keys) {
         xf86Msg(X_INFO, "%s: Configuring as keyboard\n", pInfo->name);
-        pInfo->flags |= XI86_CONFIGURED;
         pInfo->type_name = XI_KEYBOARD;
+        rc = 0;
     }
 
-    if (has_scroll && (pInfo->flags & XI86_CONFIGURED) &&
-        (has_rel_axes || has_abs_axes))
+    if (has_scroll &&
+        (has_rel_axes || has_abs_axes || num_buttons || has_keys))
     {
         xf86Msg(X_INFO, "%s: Adding scrollwheel support\n", pInfo->name);
         pEvdev->flags |= EVDEV_BUTTON_EVENTS;
         pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
     }
 
-    if ((pInfo->flags & XI86_CONFIGURED) == 0) {
+    if (rc)
         xf86Msg(X_WARNING, "%s: Don't know how to use device\n",
 		pInfo->name);
-        return 1;
-    }
 
-    return 0;
+    return rc;
 }
 
 static void
@@ -2214,7 +2214,11 @@ EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
     xf86ProcessCommonOptions(pInfo, pInfo->options);
 
     if (NewEvdevPreInit(drv, pInfo, flags) == Success)
+    {
+        pInfo->flags |= XI86_CONFIGURED;
         return pInfo;
+    }
+
 
     xf86DeleteInput(pInfo, 0);
     return NULL;
