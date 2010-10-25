@@ -1333,7 +1333,11 @@ EvdevAddAbsClass(DeviceIntPtr device)
 #endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
-                                   resolution, 0, resolution);
+                                   resolution, 0, resolution
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+                                   , Absolute
+#endif
+                                   );
         xf86InitValuatorDefaults(device, axnum);
         pEvdev->old_vals[axnum] = -1;
     }
@@ -1449,7 +1453,11 @@ EvdevAddRelClass(DeviceIntPtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
                 atoms[axnum],
 #endif
-                -1, -1, 1, 0, 1);
+                -1, -1, 1, 0, 1
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+                                   , Relative
+#endif
+                );
         xf86InitValuatorDefaults(device, axnum);
     }
 
