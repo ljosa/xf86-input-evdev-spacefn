@@ -85,6 +85,14 @@
 #define MODEFLAG	8
 #define COMPOSEFLAG	16
 
+#ifndef ABS_MT_SLOT
+#define ABS_MT_SLOT 0x2f
+#endif
+
+#ifndef ABS_MT_TRACKING_ID
+#define ABS_MT_TRACKING_ID 0x39
+#endif
+
 static char *evdevDefaults[] = {
     "XkbRules",     "evdev",
     "XkbModel",     "evdev",
@@ -352,7 +360,7 @@ EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
     if ((pQueue = EvdevNextInQueue(pInfo)))
     {
         pQueue->type = EV_QUEUE_KEY;
-        pQueue->key = code;
+        pQueue->detail.key = code;
         pQueue->val = value;
     }
 }
@@ -365,7 +373,7 @@ EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value)
     if ((pQueue = EvdevNextInQueue(pInfo)))
     {
         pQueue->type = EV_QUEUE_BTN;
-        pQueue->key = button;
+        pQueue->detail.key = button;
         pQueue->val = value;
     }
 }
@@ -377,10 +385,26 @@ EvdevQueueProximityEvent(InputInfoPtr pInfo, int value)
     if ((pQueue = EvdevNextInQueue(pInfo)))
     {
         pQueue->type = EV_QUEUE_PROXIMITY;
-        pQueue->key = 0;
+        pQueue->detail.key = 0;
         pQueue->val = value;
     }
 }
+
+#ifdef MULTITOUCH
+void
+EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch, ValuatorMask *mask,
+                     uint16_t evtype)
+{
+    EventQueuePtr pQueue;
+    if ((pQueue = EvdevNextInQueue(pInfo)))
+    {
+        pQueue->type = EV_QUEUE_TOUCH;
+        pQueue->detail.touch = touch;
+        valuator_mask_copy(pQueue->touchMask, mask);
+        pQueue->val = evtype;
+    }
+}
+#endif
 
 /**
  * Post button event right here, right now.
@@ -675,6 +699,53 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     }
 }
 
+#ifdef MULTITOUCH
+static void
+EvdevProcessTouch(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    if (pEvdev->cur_slot < 0 || !pEvdev->mt_mask)
+        return;
+
+    if (pEvdev->close_slot) {
+        EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask,
+                             XI_TouchEnd);
+        pEvdev->close_slot = 0;
+    } else {
+        EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask,
+                             pEvdev->open_slot ? XI_TouchBegin :
+                                                 XI_TouchUpdate);
+        pEvdev->open_slot = 0;
+    }
+
+    valuator_mask_zero(pEvdev->mt_mask);
+}
+
+static void
+EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    int map;
+
+    if (ev->code == ABS_MT_SLOT) {
+        EvdevProcessTouch(pInfo);
+        pEvdev->cur_slot = ev->value;
+    } else if (ev->code == ABS_MT_TRACKING_ID) {
+        if (ev->value >= 0)
+            pEvdev->open_slot = 1;
+        else
+            pEvdev->close_slot = 1;
+    } else {
+        map = pEvdev->axis_map[ev->code] - pEvdev->num_vals;
+        valuator_mask_set(pEvdev->mt_mask, map, ev->value);
+    }
+}
+#else
+#define EvdevProcessTouch(pInfo)
+#define EvdevProcessTouchEvent(pInfo, ev)
+#endif /* MULTITOUCH */
+
 /**
  * Take the absolute motion input event and process it accordingly.
  */
@@ -698,9 +769,13 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     if (EvdevWheelEmuFilterMotion(pInfo, ev))
         return;
 
-    map = pEvdev->axis_map[ev->code];
-    valuator_mask_set(pEvdev->vals, map, value);
-    pEvdev->abs_queued = 1;
+    if (ev->code >= ABS_MT_SLOT)
+        EvdevProcessTouchEvent(pInfo, ev);
+    else {
+        map = pEvdev->axis_map[ev->code];
+        valuator_mask_set(pEvdev->vals, map, value);
+        pEvdev->abs_queued = 1;
+    }
 }
 
 /**
@@ -796,6 +871,9 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
         switch (pEvdev->queue[i].type) {
             case EV_QUEUE_KEY:
             case EV_QUEUE_BTN:
+#ifdef MULTITOUCH
+            case EV_QUEUE_TOUCH:
+#endif
                 break;
             case EV_QUEUE_PROXIMITY:
                 if (pEvdev->queue[i].val == which)
@@ -818,26 +896,33 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
     for (i = 0; i < pEvdev->num_queue; i++) {
         switch (pEvdev->queue[i].type) {
         case EV_QUEUE_KEY:
-            xf86PostKeyboardEvent(pInfo->dev, pEvdev->queue[i].key,
+            xf86PostKeyboardEvent(pInfo->dev, pEvdev->queue[i].detail.key,
                                   pEvdev->queue[i].val);
             break;
         case EV_QUEUE_BTN:
             if (Evdev3BEmuFilterEvent(pInfo,
-                                      pEvdev->queue[i].key,
+                                      pEvdev->queue[i].detail.key,
                                       pEvdev->queue[i].val))
                 break;
 
             if (pEvdev->abs_queued && pEvdev->in_proximity) {
-                xf86PostButtonEventP(pInfo->dev, Absolute, pEvdev->queue[i].key,
+                xf86PostButtonEventP(pInfo->dev, Absolute, pEvdev->queue[i].detail.key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
 
             } else
-                xf86PostButtonEvent(pInfo->dev, Relative, pEvdev->queue[i].key,
+                xf86PostButtonEvent(pInfo->dev, Relative, pEvdev->queue[i].detail.key,
                                     pEvdev->queue[i].val, 0, 0);
             break;
         case EV_QUEUE_PROXIMITY:
             break;
+#ifdef MULTITOUCH
+        case EV_QUEUE_TOUCH:
+            xf86PostTouchEvent(pInfo->dev, pEvdev->queue[i].detail.touch,
+                               pEvdev->queue[i].val, 0,
+                               pEvdev->queue[i].touchMask);
+            break;
+#endif
         }
     }
 }
@@ -856,6 +941,7 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     EvdevProcessProximityState(pInfo);
 
     EvdevProcessValuators(pInfo);
+    EvdevProcessTouch(pInfo);
 
     EvdevPostProximityEvents(pInfo, TRUE, num_v, first_v, v);
     EvdevPostRelativeMotionEvents(pInfo, num_v, first_v, v);
@@ -1014,6 +1100,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
+    int num_mt_axes = 0;
     Atom *atoms;
 
     pInfo = device->public.devicePrivate;
@@ -1026,9 +1113,34 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     if (num_axes < 1)
         goto out;
 
+#ifdef MULTITOUCH
+    for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
+    {
+        if (EvdevBitIsSet(pEvdev->abs_bitmask, axis))
+        {
+            if(axis != ABS_MT_SLOT && axis != ABS_MT_TRACKING_ID)
+                num_mt_axes++;
+            num_axes--;
+        }
+    }
+#endif
+
     if (num_axes > MAX_VALUATORS) {
         xf86IDrvMsg(pInfo, X_WARNING, "found %d axes, limiting to %d.\n", num_axes, MAX_VALUATORS);
         num_axes = MAX_VALUATORS;
+    }
+
+#ifdef MULTITOUCH
+    if (num_mt_axes > MAX_VALUATORS) {
+        xf86Msg(X_WARNING, "%s: found %d MT axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
+        num_mt_axes = MAX_VALUATORS;
+    }
+#endif
+
+    if (num_axes < 1 && num_mt_axes < 1) {
+        xf86Msg(X_WARNING, "%s: no absolute or touch axes found.\n",
+                device->name);
+        return !Success;
     }
 
     pEvdev->num_vals = num_axes;
@@ -1040,17 +1152,39 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             goto out;
         }
     }
-    atoms = malloc(pEvdev->num_vals * sizeof(Atom));
+#ifdef MULTITOUCH
+    if (num_mt_axes > 0) {
+        pEvdev->mt_mask = valuator_mask_new(num_mt_axes);
+        if (!pEvdev->mt_mask) {
+            xf86Msg(X_ERROR, "%s: failed to allocate MT valuator mask.\n",
+                    device->name);
+            goto out;
+        }
 
+        for (i = 0; i < EVDEV_MAXQUEUE; i++) {
+            pEvdev->queue[i].touchMask =
+                valuator_mask_new(num_mt_axes);
+            if (!pEvdev->queue[i].touchMask) {
+                xf86Msg(X_ERROR, "%s: failed to allocate MT valuator masks for "
+                        "evdev event queue.\n", device->name);
+                goto out;
+            }
+        }
+    }
+#endif
+    atoms = malloc((pEvdev->num_vals + num_mt_axes) * sizeof(Atom));
+
+    i = 0;
     for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
         pEvdev->axis_map[axis] = -1;
-        if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis))
+        if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis) ||
+            axis == ABS_MT_SLOT || axis == ABS_MT_TRACKING_ID)
             continue;
         pEvdev->axis_map[axis] = i;
         i++;
     }
 
-    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
+    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals + num_mt_axes, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes, atoms,
                                        GetMotionHistorySize(), Absolute)) {
@@ -1058,7 +1192,26 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         goto out;
     }
 
-    for (axis = ABS_X; axis <= ABS_MAX; axis++) {
+#ifdef MULTITOUCH
+    if (num_mt_axes > 0)
+    {
+        int num_touches = 10;
+        int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
+            XIDependentTouch : XIDirectTouch;
+
+        if (pEvdev->absinfo[ABS_MT_SLOT].maximum > 0)
+            num_touches = pEvdev->absinfo[ABS_MT_SLOT].maximum;
+
+        if (!InitTouchClassDeviceStruct(device, num_touches, mode,
+                                        num_mt_axes)) {
+            xf86Msg(X_ERROR, "%s: failed to initialize touch class device.\n",
+                    device->name);
+            goto out;
+        }
+    }
+#endif
+
+    for (axis = ABS_X; axis < ABS_MT_SLOT; axis++) {
         int axnum = pEvdev->axis_map[axis];
         int resolution = 10000;
 
@@ -1078,6 +1231,25 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
                                    resolution, 0, resolution, Absolute);
         xf86InitValuatorDefaults(device, axnum);
     }
+
+#ifdef MULTITOUCH
+    for (axis = ABS_MT_TOUCH_MAJOR; axis <= ABS_MAX; axis++) {
+        int axnum = pEvdev->axis_map[axis] - pEvdev->num_vals;
+        int resolution = 10000;
+
+        if (axnum < 0)
+            continue;
+
+        if (pEvdev->absinfo[axis].resolution)
+            resolution = pEvdev->absinfo[axis].resolution * 1000;
+
+        xf86InitTouchValuatorAxisStruct(device, axnum,
+                                        atoms[axnum + pEvdev->num_vals],
+                                        pEvdev->absinfo[axis].minimum,
+                                        pEvdev->absinfo[axis].maximum,
+                                        pEvdev->absinfo[axis].resolution);
+    }
+#endif
 
     free(atoms);
 
@@ -1129,6 +1301,11 @@ out:
     valuator_mask_free(&pEvdev->vals);
     valuator_mask_free(&pEvdev->old_vals);
     valuator_mask_free(&pEvdev->prox);
+#ifdef MULTITOUCH
+    valuator_mask_free(&pEvdev->mt_mask);
+    for (i = 0; i < EVDEV_MAXQUEUE; i++)
+        valuator_mask_free(&pEvdev->queue[i].touchMask);
+#endif
     return !Success;
 }
 
@@ -1462,6 +1639,9 @@ EvdevProc(DeviceIntPtr device, int what)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
+#ifdef MULTITOUCH
+    int i;
+#endif
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1501,6 +1681,11 @@ EvdevProc(DeviceIntPtr device, int what)
         valuator_mask_free(&pEvdev->vals);
         valuator_mask_free(&pEvdev->old_vals);
         valuator_mask_free(&pEvdev->prox);
+#ifdef MULTITOUCH
+        valuator_mask_free(&pEvdev->mt_mask);
+        for (i = 0; i < EVDEV_MAXQUEUE; i++)
+            valuator_mask_free(&pEvdev->queue[i].touchMask);
+#endif
         EvdevRemoveDevice(pInfo);
         pEvdev->min_maj = 0;
 	break;
@@ -1958,6 +2143,10 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     rc = EvdevOpenDevice(pInfo);
     if (rc != Success)
         goto error;
+
+#ifdef MULTITOUCH
+    pEvdev->cur_slot = -1;
+#endif
 
     /*
      * We initialize pEvdev->in_proximity to 1 so that device that doesn't use

@@ -48,6 +48,17 @@ XORG_DEFAULT_OPTIONS
 PKG_CHECK_MODULES(XORG, [xorg-server >= 1.10] xproto inputproto)
 PKG_CHECK_MODULES(UDEV, udev)
 
+# Whether to include support for experimental XI 2.2 multitouch
+AC_ARG_ENABLE(multitouch,
+              AC_HELP_STRING([--enable-multitouch],
+                             [Enable experimental XI 2.2 multitouch support [[default: disabled]]]),
+              [MULTITOUCH=$enableval],
+              [MULTITOUCH=no])
+
+if test "x$MULTITOUCH" = xyes; then
+        AC_DEFINE(MULTITOUCH, 1, [Enable experimental multitouch code])
+fi
+
 # Define a configure option for an alternate input module directory
 AC_ARG_WITH(xorg-module-dir,
             AC_HELP_STRING([--with-xorg-module-dir=DIR],

@@ -109,9 +109,20 @@ typedef struct {
         EV_QUEUE_KEY,	/* xf86PostKeyboardEvent() */
         EV_QUEUE_BTN,	/* xf86PostButtonEvent() */
         EV_QUEUE_PROXIMITY, /* xf86PostProximityEvent() */
+#ifdef MULTITOUCH
+        EV_QUEUE_TOUCH,	/*xf86PostTouchEvent() */
+#endif
     } type;
-    int key;		/* May be either a key code or button number. */
-    int val;		/* State of the key/button; pressed or released. */
+    union {
+        int key;	/* May be either a key code or button number. */
+#ifdef MULTITOUCH
+        unsigned int touch; /* Touch ID */
+#endif
+    } detail;
+    int val;	/* State of the key/button/touch; pressed or released. */
+#ifdef MULTITOUCH
+    ValuatorMask *touchMask;
+#endif
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
@@ -126,6 +137,12 @@ typedef struct {
     ValuatorMask *vals;     /* new values coming in */
     ValuatorMask *old_vals; /* old values for calculating relative motion */
     ValuatorMask *prox;     /* last values set while not in proximity */
+#ifdef MULTITOUCH
+    ValuatorMask *mt_mask;
+    int cur_slot;
+    BOOL close_slot;
+    BOOL open_slot;
+#endif
 
     int flags;
     int in_proximity;           /* device in proximity */
@@ -216,6 +233,10 @@ typedef struct {
 void EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
 void EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value);
 void EvdevQueueProximityEvent(InputInfoPtr pInfo, int value);
+#ifdef MULTITOUCH
+void EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch,
+                          ValuatorMask *mask, uint16_t type);
+#endif
 void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
