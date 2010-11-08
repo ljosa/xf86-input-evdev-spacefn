@@ -57,6 +57,9 @@ AC_ARG_ENABLE(multitouch,
 
 if test "x$MULTITOUCH" = xyes; then
         AC_DEFINE(MULTITOUCH, 1, [Enable experimental multitouch code])
+
+        # Obtain compiler/linker options for mtdev
+        PKG_CHECK_MODULES(MTDEV, mtdev)
 fi
 
 # Define a configure option for an alternate input module directory

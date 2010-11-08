@@ -998,7 +998,17 @@ EvdevReadInput(InputInfoPtr pInfo)
 
     while (len == sizeof(ev))
     {
-        len = read(pInfo->fd, &ev, sizeof(ev));
+#ifdef MULTITOUCH
+        EvdevPtr pEvdev = pInfo->private;
+
+        if (pEvdev->mtdev)
+            len = mtdev_get(pEvdev->mtdev, pInfo->fd, ev, NUM_EVENTS) *
+                sizeof(struct input_event);
+        else
+            len = read(pInfo->fd, &ev, sizeof(ev));
+#else
+            len = read(pInfo->fd, &ev, sizeof(ev));
+#endif
         if (len <= 0)
         {
             if (errno == ENODEV) /* May happen after resume */
@@ -1199,8 +1209,8 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
             XIDependentTouch : XIDirectTouch;
 
-        if (pEvdev->absinfo[ABS_MT_SLOT].maximum > 0)
-            num_touches = pEvdev->absinfo[ABS_MT_SLOT].maximum;
+        if (pEvdev->mtdev->caps.slot.maximum > 0)
+            num_touches = pEvdev->mtdev->caps.slot.maximum;
 
         if (!InitTouchClassDeviceStruct(device, num_touches, mode,
                                         num_mt_axes)) {
@@ -1685,6 +1695,8 @@ EvdevProc(DeviceIntPtr device, int what)
         valuator_mask_free(&pEvdev->mt_mask);
         for (i = 0; i < EVDEV_MAXQUEUE; i++)
             valuator_mask_free(&pEvdev->queue[i].touchMask);
+        if (pEvdev->mtdev)
+            mtdev_close(pEvdev->mtdev);
 #endif
         EvdevRemoveDevice(pInfo);
         pEvdev->min_maj = 0;
@@ -2084,6 +2096,16 @@ EvdevOpenDevice(InputInfoPtr pInfo)
 
         pEvdev->device = device;
         xf86IDrvMsg(pInfo, X_CONFIG, "Device: \"%s\"\n", device);
+
+#ifdef MULTITOUCH
+        pEvdev->mtdev = malloc(sizeof(struct mtdev));
+        if (!pEvdev->mtdev)
+        {
+            xf86Msg(X_ERROR, "%s: Couldn't allocate mtdev structure\n",
+                    pInfo->name);
+            return BadAlloc;
+        }
+#endif
     }
 
     if (pInfo->fd < 0)
@@ -2097,6 +2119,17 @@ EvdevOpenDevice(InputInfoPtr pInfo)
             return BadValue;
         }
     }
+
+#ifdef MULTITOUCH
+    if (mtdev_open(pEvdev->mtdev, pInfo->fd) == 0)
+        pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
+    else {
+        free(pEvdev->mtdev);
+        pEvdev->mtdev = NULL;
+        xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
+        return FALSE;
+    }
+#endif
 
     /* Check major/minor of device node to avoid adding duplicate devices. */
     pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
