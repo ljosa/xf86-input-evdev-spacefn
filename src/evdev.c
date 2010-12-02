@@ -774,8 +774,9 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     else {
         map = pEvdev->axis_map[ev->code];
         valuator_mask_set(pEvdev->vals, map, value);
-        pEvdev->abs_queued = 1;
     }
+
+    pEvdev->abs_queued = 1;
 }
 
 /**
