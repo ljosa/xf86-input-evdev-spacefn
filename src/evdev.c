@@ -112,7 +112,7 @@ static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
-static BOOL EvdevOpenDevice(InputInfoPtr pInfo);
+static int EvdevOpenDevice(InputInfoPtr pInfo);
 
 #ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -1675,12 +1675,14 @@ EvdevOn(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
+    int rc = Success;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
     /* after PreInit fd is still open */
-    if (!EvdevOpenDevice(pInfo))
-        return !Success;
+    rc = EvdevOpenDevice(pInfo);
+    if (rc != Success)
+        return rc;
 
     EvdevGrabDevice(pInfo, 1, 0);
 
@@ -2141,7 +2143,7 @@ EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4])
     }
 }
 
-static BOOL
+static int
 EvdevOpenDevice(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
@@ -2152,7 +2154,7 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         device = xf86CheckStrOption(pInfo->options, "Device", NULL);
         if (!device) {
             xf86Msg(X_ERROR, "%s: No device specified.\n", pInfo->name);
-            return FALSE;
+            return BadValue;
         }
 
         pEvdev->device = device;
@@ -2167,7 +2169,7 @@ EvdevOpenDevice(InputInfoPtr pInfo)
 
         if (pInfo->fd < 0) {
             xf86Msg(X_ERROR, "Unable to open evdev device \"%s\".\n", device);
-            return FALSE;
+            return BadValue;
         }
     }
 
@@ -2178,10 +2180,10 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         xf86Msg(X_WARNING, "%s: device file is duplicate. Ignoring.\n",
                 pInfo->name);
         close(pInfo->fd);
-        return FALSE;
+        return BadMatch;
     }
 
-    return TRUE;
+    return Success;
 }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
@@ -2243,7 +2245,8 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     pInfo->read_input = EvdevReadInput;
     pInfo->switch_mode = EvdevSwitchMode;
 
-    if (!EvdevOpenDevice(pInfo))
+    rc = EvdevOpenDevice(pInfo);
+    if (rc != Success)
         goto error;
 
     /*
