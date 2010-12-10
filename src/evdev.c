@@ -107,7 +107,7 @@ static int proximity_bits[] = {
 };
 
 static int EvdevOn(DeviceIntPtr);
-static int EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare);
+static int EvdevCache(InputInfoPtr pInfo);
 static void EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl);
 static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
@@ -1744,14 +1744,11 @@ EvdevProc(DeviceIntPtr device, int what)
 
 /**
  * Get as much information as we can from the fd and cache it.
- * If compare is True, then the information retrieved will be compared to the
- * one already cached. If the information does not match, then this function
- * returns an error.
  *
  * @return Success if the information was cached, or !Success otherwise.
  */
 static int
-EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
+EvdevCache(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
     int i, len;
@@ -1768,13 +1765,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (!compare) {
-        strcpy(pEvdev->name, name);
-    } else if (strcmp(pEvdev->name, name)) {
-        xf86Msg(X_ERROR, "%s: device name changed: %s != %s\n",
-                pInfo->name, pEvdev->name, name);
-        goto error;
-    }
+    strcpy(pEvdev->name, name);
 
     len = ioctl(pInfo->fd, EVIOCGBIT(0, sizeof(bitmask)), bitmask);
     if (len < 0) {
@@ -1783,12 +1774,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (!compare) {
-        memcpy(pEvdev->bitmask, bitmask, len);
-    } else if (memcmp(pEvdev->bitmask, bitmask, len)) {
-        xf86Msg(X_ERROR, "%s: device bitmask has changed\n", pInfo->name);
-        goto error;
-    }
+    memcpy(pEvdev->bitmask, bitmask, len);
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask);
     if (len < 0) {
@@ -1797,12 +1783,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (!compare) {
-        memcpy(pEvdev->rel_bitmask, rel_bitmask, len);
-    } else if (memcmp(pEvdev->rel_bitmask, rel_bitmask, len)) {
-        xf86Msg(X_ERROR, "%s: device rel_bitmask has changed\n", pInfo->name);
-        goto error;
-    }
+    memcpy(pEvdev->rel_bitmask, rel_bitmask, len);
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask);
     if (len < 0) {
@@ -1811,12 +1792,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (!compare) {
-        memcpy(pEvdev->abs_bitmask, abs_bitmask, len);
-    } else if (memcmp(pEvdev->abs_bitmask, abs_bitmask, len)) {
-        xf86Msg(X_ERROR, "%s: device abs_bitmask has changed\n", pInfo->name);
-        goto error;
-    }
+    memcpy(pEvdev->abs_bitmask, abs_bitmask, len);
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_LED, sizeof(led_bitmask)), led_bitmask);
     if (len < 0) {
@@ -1825,12 +1801,7 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         goto error;
     }
 
-    if (!compare) {
-        memcpy(pEvdev->led_bitmask, led_bitmask, len);
-    } else if (memcmp(pEvdev->led_bitmask, led_bitmask, len)) {
-        xf86Msg(X_ERROR, "%s: device led_bitmask has changed\n", pInfo->name);
-        goto error;
-    }
+    memcpy(pEvdev->led_bitmask, led_bitmask, len);
 
     /*
      * Do not try to validate absinfo data since it is not expected
@@ -1852,27 +1823,6 @@ EvdevCacheCompare(InputInfoPtr pInfo, BOOL compare)
         xf86Msg(X_ERROR, "%s: ioctl EVIOCGBIT failed: %s\n",
                 pInfo->name, strerror(errno));
         goto error;
-    }
-
-    if (compare) {
-        /*
-         * Keys are special as user can adjust keymap at any time (on
-         * devices that support EVIOCSKEYCODE. However we do not expect
-         * buttons reserved for mice/tablets/digitizers and so on to
-         * appear/disappear so we will check only those in
-         * [BTN_MISC, KEY_OK) range.
-         */
-        size_t start_word = BTN_MISC / LONG_BITS;
-        size_t start_byte = start_word * sizeof(unsigned long);
-        size_t end_word = KEY_OK / LONG_BITS;
-        size_t end_byte = end_word * sizeof(unsigned long);
-
-        if (len >= start_byte &&
-            memcmp(&pEvdev->key_bitmask[start_word], &key_bitmask[start_word],
-                   min(len, end_byte) - start_byte + 1)) {
-            xf86Msg(X_ERROR, "%s: device key_bitmask has changed\n", pInfo->name);
-            goto error;
-        }
     }
 
     /* Copy the data so we have reasonably up-to-date info */
@@ -2273,8 +2223,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 
     EvdevInitButtonMapping(pInfo);
 
-    if (EvdevCacheCompare(pInfo, FALSE) ||
-        EvdevProbe(pInfo)) {
+    if (EvdevCache(pInfo) || EvdevProbe(pInfo)) {
         rc = BadMatch;
         goto error;
     }
