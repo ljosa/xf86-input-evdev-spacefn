@@ -437,7 +437,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
      * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
      * pEvdev->proximity here lets us ignore that event.  pEvdev is
-     * initialized to 1 so devices that doesn't use this scheme still
+     * initialized to 1 so devices that don't use this scheme still
      * just works.
      */
     else if (pEvdev->abs_queued && pEvdev->proximity) {
