@@ -126,6 +126,7 @@ typedef struct {
 
     int flags;
     int in_proximity;           /* device in proximity */
+    int use_proximity;          /* using the proximity bit? */
     int num_buttons;            /* number of buttons */
     BOOL swap_axes;
     BOOL invert_x;

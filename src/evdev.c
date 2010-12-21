@@ -486,6 +486,9 @@ EvdevProcessProximityEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
     EvdevPtr pEvdev = pInfo->private;
 
+    if (!pEvdev->use_proximity)
+        return;
+
     pEvdev->prox_queued = 1;
 
     EvdevQueueProximityEvent(pInfo, ev->value);
@@ -679,7 +682,10 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     switch (ev->code) {
         case BTN_TOUCH:
-            pEvdev->in_proximity = value ? ev->code : 0;
+            /* For devices that have but don't use proximity, use
+             * BTN_TOUCH as the proximity notifier */
+            if (!pEvdev->use_proximity)
+                pEvdev->in_proximity = value ? ev->code : 0;
             if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
                 break;
             /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
@@ -1346,6 +1352,9 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     for (i = 0; i < ArrayLength(proximity_bits); i++)
     {
+        if (!pEvdev->use_proximity)
+            break;
+
         if (TestBit(proximity_bits[i], pEvdev->key_bitmask))
         {
             InitProximityClassDeviceStruct(device);
@@ -2039,6 +2048,7 @@ EvdevProbe(InputInfoPtr pInfo)
 	if (pEvdev->flags & EVDEV_TOUCHPAD) {
 	    xf86Msg(X_INFO, "%s: Configuring as touchpad\n", pInfo->name);
 	    pInfo->type_name = XI_TOUCHPAD;
+	    pEvdev->use_proximity = 0;
 	} else if (pEvdev->flags & EVDEV_TABLET) {
 	    xf86Msg(X_INFO, "%s: Configuring as tablet\n", pInfo->name);
 	    pInfo->type_name = XI_TABLET;
@@ -2205,6 +2215,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
      * proximity will still report events.
      */
     pEvdev->in_proximity = 1;
+    pEvdev->use_proximity = 1;
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
