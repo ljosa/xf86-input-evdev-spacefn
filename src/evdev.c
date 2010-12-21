@@ -679,6 +679,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     switch (ev->code) {
         case BTN_TOUCH:
+            pEvdev->in_proximity = value ? ev->code : 0;
             if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
                 break;
             /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
