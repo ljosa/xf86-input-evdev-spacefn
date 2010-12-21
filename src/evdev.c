@@ -385,7 +385,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
 
     /* convert to relative motion for touchpads */
     if (pEvdev->abs_queued && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
-        if (pEvdev->proximity) {
+        if (pEvdev->in_proximity) {
             if (pEvdev->old_vals[0] != -1)
                 pEvdev->delta[REL_X] = pEvdev->vals[0] - pEvdev->old_vals[0];
             if (pEvdev->old_vals[1] != -1)
@@ -436,11 +436,11 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
      * pressed.  On wacom tablets, this means that the pen is in
      * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->proximity here lets us ignore that event.  pEvdev is
+     * pEvdev->in_proximity here lets us ignore that event.  pEvdev is
      * initialized to 1 so devices that don't use this scheme still
      * just works.
      */
-    else if (pEvdev->abs_queued && pEvdev->proximity) {
+    else if (pEvdev->abs_queued && pEvdev->in_proximity) {
         memcpy(v, pEvdev->vals, sizeof(int) * pEvdev->num_vals);
 
         if (pEvdev->swap_axes) {
@@ -515,7 +515,7 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     /* no proximity change in the queue */
     if (!pEvdev->prox_queued)
     {
-        if (pEvdev->abs_queued && !pEvdev->proximity)
+        if (pEvdev->abs_queued && !pEvdev->in_proximity)
             pEvdev->abs_prox = pEvdev->abs_queued;
         return 0;
     }
@@ -529,8 +529,8 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
         }
     }
 
-    if ((prox_state && !pEvdev->proximity) ||
-        (!prox_state && pEvdev->proximity))
+    if ((prox_state && !pEvdev->in_proximity) ||
+        (!prox_state && pEvdev->in_proximity))
     {
         /* We're about to go into/out of proximity but have no abs events
          * within the EV_SYN. Use the last coordinates we have. */
@@ -541,7 +541,7 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
         }
     }
 
-    pEvdev->proximity = prox_state;
+    pEvdev->in_proximity = prox_state;
     return 1;
 }
 
@@ -720,11 +720,11 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
      * pressed.  On wacom tablets, this means that the pen is in
      * proximity of the tablet.  After the pen is removed, BTN_TOOL_PEN is
      * released, and a (0, 0) absolute event is generated.  Checking
-     * pEvdev->proximity here lets us ignore that event. pEvdev->proximity is
-     * initialized to 1 so devices that don't use this scheme still
-     * just work.
+     * pEvdev->in_proximity here lets us ignore that event.
+     * pEvdev->in_proximity is initialized to 1 so devices that don't use
+     * this scheme still just work.
      */
-    if (pEvdev->abs_queued && pEvdev->proximity) {
+    if (pEvdev->abs_queued && pEvdev->in_proximity) {
         xf86PostMotionEventP(pInfo->dev, TRUE, first_v, num_v, v + first_v);
     }
 }
@@ -767,7 +767,7 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
             break;
         case EV_QUEUE_BTN:
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 11
-            if (pEvdev->abs_queued && pEvdev->proximity) {
+            if (pEvdev->abs_queued && pEvdev->in_proximity) {
                 xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
@@ -2200,10 +2200,10 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
         goto error;
 
     /*
-     * We initialize pEvdev->proximity to 1 so that device that doesn't use
+     * We initialize pEvdev->in_proximity to 1 so that device that doesn't use
      * proximity will still report events.
      */
-    pEvdev->proximity = 1;
+    pEvdev->in_proximity = 1;
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
