@@ -402,7 +402,7 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
     }
 
     if (pEvdev->rel_queued) {
-        int first = REL_CNT, last = 0;
+        int first = REL_CNT, last = -1;
         int i;
 
         if (pEvdev->swap_axes) {
@@ -428,8 +428,11 @@ EvdevProcessValuators(InputInfoPtr pInfo, int v[MAX_VALUATORS], int *num_v,
             }
         }
 
-        *num_v = (last - first + 1);
-        *first_v = first;
+        if (last >= 0)
+        {
+            *num_v = (last - first + 1);
+            *first_v = first;
+        }
     }
     /*
      * Some devices only generate valid abs coords when BTN_TOOL_PEN is
