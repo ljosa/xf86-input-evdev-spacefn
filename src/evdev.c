@@ -1320,8 +1320,11 @@ EvdevAddAbsClass(DeviceIntPtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
-                                       GetMotionHistorySize(), Absolute))
+                                       GetMotionHistorySize(), Absolute)) {
+        xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
+                device->name);
         return !Success;
+    }
 
     for (axis = ABS_X; axis <= ABS_MAX; axis++) {
         int axnum = pEvdev->axis_map[axis];
@@ -1365,8 +1368,11 @@ EvdevAddAbsClass(DeviceIntPtr device)
         }
     }
 
-    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc)) {
+        xf86Msg(X_ERROR, "%s: failed to initialize pointer feedback class "
+                "device.\n", device->name);
         return !Success;
+    }
 
     if (pEvdev->flags & EVDEV_TOUCHPAD)
         pEvdev->flags |= EVDEV_RELATIVE_MODE;
@@ -1449,11 +1455,17 @@ EvdevAddRelClass(DeviceIntPtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
                                        GetMotionHistory,
 #endif
-                                       GetMotionHistorySize(), Relative))
+                                       GetMotionHistorySize(), Relative)) {
+        xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
+                device->name);
         return !Success;
+    }
 
-    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc))
+    if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc)) {
+        xf86Msg(X_ERROR, "%s: failed to initialize pointer feedback class "
+                "device.\n", device->name);
         return !Success;
+    }
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
