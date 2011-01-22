@@ -946,11 +946,11 @@ EvdevAddAbsClass(DeviceIntPtr device)
     pEvdev = pInfo->private;
 
     if (!TestBit(EV_ABS, pEvdev->bitmask))
-            return !Success;
+        goto out;
 
     num_axes = EvdevCountBits(pEvdev->abs_bitmask, NLONGS(ABS_MAX));
     if (num_axes < 1)
-        return !Success;
+        goto out;
 
     if (num_axes > MAX_VALUATORS) {
         xf86Msg(X_WARNING, "%s: found %d axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
@@ -976,7 +976,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
                                        GetMotionHistorySize(), Absolute)) {
         xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
                 device->name);
-        return !Success;
+        goto out;
     }
 
     for (axis = ABS_X; axis <= ABS_MAX; axis++) {
@@ -1018,7 +1018,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc)) {
         xf86Msg(X_ERROR, "%s: failed to initialize pointer feedback class "
                 "device.\n", device->name);
-        return !Success;
+        goto out;
     }
 
     if (pEvdev->flags & EVDEV_TOUCHPAD)
@@ -1040,6 +1040,9 @@ EvdevAddAbsClass(DeviceIntPtr device)
     }
 
     return Success;
+
+out:
+    return !Success;
 }
 
 static int
@@ -1054,11 +1057,11 @@ EvdevAddRelClass(DeviceIntPtr device)
     pEvdev = pInfo->private;
 
     if (!TestBit(EV_REL, pEvdev->bitmask))
-        return !Success;
+        goto out;
 
     num_axes = EvdevCountBits(pEvdev->rel_bitmask, NLONGS(REL_MAX));
     if (num_axes < 1)
-        return !Success;
+        goto out;
 
     /* Wheels are special, we post them as button events. So let's ignore them
      * in the axes list too */
@@ -1070,7 +1073,7 @@ EvdevAddRelClass(DeviceIntPtr device)
         num_axes--;
 
     if (num_axes <= 0)
-        return !Success;
+        goto out;
 
     if (num_axes > MAX_VALUATORS) {
         xf86Msg(X_WARNING, "%s: found %d axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
@@ -1099,13 +1102,13 @@ EvdevAddRelClass(DeviceIntPtr device)
                                        GetMotionHistorySize(), Relative)) {
         xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
                 device->name);
-        return !Success;
+        goto out;
     }
 
     if (!InitPtrFeedbackClassDeviceStruct(device, EvdevPtrCtrlProc)) {
         xf86Msg(X_ERROR, "%s: failed to initialize pointer feedback class "
                 "device.\n", device->name);
-        return !Success;
+        goto out;
     }
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
@@ -1122,6 +1125,9 @@ EvdevAddRelClass(DeviceIntPtr device)
     free(atoms);
 
     return Success;
+
+out:
+    return !Success;
 }
 
 static int
