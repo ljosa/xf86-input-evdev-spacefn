@@ -48,23 +48,12 @@
 #include <xorgVersion.h>
 #include <xkbsrv.h>
 
-#ifdef HAVE_PROPERTIES
 #include <X11/Xatom.h>
 #include <evdev-properties.h>
 #include <xserver-properties.h>
-/* 1.6 has properties, but no labels */
-#ifdef AXIS_LABEL_PROP
-#define HAVE_LABELS
-#else
-#undef HAVE_LABELS
-#endif
 
-#endif
-
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 /* removed from server, purge when dropping support for server 1.10 */
 #define XI86_SEND_DRAG_EVENTS   0x08
-#endif
 
 #ifndef MAXDEVICES
 #include <inputstr.h> /* for MAX_DEVICES */
@@ -114,7 +103,6 @@ static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
 static int EvdevOpenDevice(InputInfoPtr pInfo);
 
-#ifdef HAVE_PROPERTIES
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
@@ -125,7 +113,6 @@ static Atom prop_calibration = 0;
 static Atom prop_swap = 0;
 static Atom prop_axis_label = 0;
 static Atom prop_btn_label = 0;
-#endif
 
 /* All devices the evdev driver has allocated and knows about.
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
@@ -302,17 +289,8 @@ EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value)
 
     /* Filter all repeated events from device.
        We'll do softrepeat in the server, but only since 1.6 */
-    if (value == 2
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) <= 2
-        && (ev->code == KEY_LEFTCTRL || ev->code == KEY_RIGHTCTRL ||
-            ev->code == KEY_LEFTSHIFT || ev->code == KEY_RIGHTSHIFT ||
-            ev->code == KEY_LEFTALT || ev->code == KEY_RIGHTALT ||
-            ev->code == KEY_LEFTMETA || ev->code == KEY_RIGHTMETA ||
-            ev->code == KEY_CAPSLOCK || ev->code == KEY_NUMLOCK ||
-            ev->code == KEY_SCROLLLOCK) /* XXX windows keys? */
-#endif
-            )
-	return;
+    if (value == 2)
+        return;
 
     if ((pQueue = EvdevNextInQueue(pInfo)))
     {
@@ -776,14 +754,12 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                                   pEvdev->queue[i].val);
             break;
         case EV_QUEUE_BTN:
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 11
             if (pEvdev->abs_queued && pEvdev->in_proximity) {
                 xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
 
             } else
-#endif
                 xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
                                     pEvdev->queue[i].val, 0, 0);
             break;
@@ -900,317 +876,6 @@ EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
     /* Nothing to do, dix handles all settings */
 }
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
-static KeySym map[] = {
-    /* 0x00 */  NoSymbol,       NoSymbol,
-    /* 0x01 */  XK_Escape,      NoSymbol,
-    /* 0x02 */  XK_1,           XK_exclam,
-    /* 0x03 */  XK_2,           XK_at,
-    /* 0x04 */  XK_3,           XK_numbersign,
-    /* 0x05 */  XK_4,           XK_dollar,
-    /* 0x06 */  XK_5,           XK_percent,
-    /* 0x07 */  XK_6,           XK_asciicircum,
-    /* 0x08 */  XK_7,           XK_ampersand,
-    /* 0x09 */  XK_8,           XK_asterisk,
-    /* 0x0a */  XK_9,           XK_parenleft,
-    /* 0x0b */  XK_0,           XK_parenright,
-    /* 0x0c */  XK_minus,       XK_underscore,
-    /* 0x0d */  XK_equal,       XK_plus,
-    /* 0x0e */  XK_BackSpace,   NoSymbol,
-    /* 0x0f */  XK_Tab,         XK_ISO_Left_Tab,
-    /* 0x10 */  XK_Q,           NoSymbol,
-    /* 0x11 */  XK_W,           NoSymbol,
-    /* 0x12 */  XK_E,           NoSymbol,
-    /* 0x13 */  XK_R,           NoSymbol,
-    /* 0x14 */  XK_T,           NoSymbol,
-    /* 0x15 */  XK_Y,           NoSymbol,
-    /* 0x16 */  XK_U,           NoSymbol,
-    /* 0x17 */  XK_I,           NoSymbol,
-    /* 0x18 */  XK_O,           NoSymbol,
-    /* 0x19 */  XK_P,           NoSymbol,
-    /* 0x1a */  XK_bracketleft, XK_braceleft,
-    /* 0x1b */  XK_bracketright,XK_braceright,
-    /* 0x1c */  XK_Return,      NoSymbol,
-    /* 0x1d */  XK_Control_L,   NoSymbol,
-    /* 0x1e */  XK_A,           NoSymbol,
-    /* 0x1f */  XK_S,           NoSymbol,
-    /* 0x20 */  XK_D,           NoSymbol,
-    /* 0x21 */  XK_F,           NoSymbol,
-    /* 0x22 */  XK_G,           NoSymbol,
-    /* 0x23 */  XK_H,           NoSymbol,
-    /* 0x24 */  XK_J,           NoSymbol,
-    /* 0x25 */  XK_K,           NoSymbol,
-    /* 0x26 */  XK_L,           NoSymbol,
-    /* 0x27 */  XK_semicolon,   XK_colon,
-    /* 0x28 */  XK_quoteright,  XK_quotedbl,
-    /* 0x29 */  XK_quoteleft,	XK_asciitilde,
-    /* 0x2a */  XK_Shift_L,     NoSymbol,
-    /* 0x2b */  XK_backslash,   XK_bar,
-    /* 0x2c */  XK_Z,           NoSymbol,
-    /* 0x2d */  XK_X,           NoSymbol,
-    /* 0x2e */  XK_C,           NoSymbol,
-    /* 0x2f */  XK_V,           NoSymbol,
-    /* 0x30 */  XK_B,           NoSymbol,
-    /* 0x31 */  XK_N,           NoSymbol,
-    /* 0x32 */  XK_M,           NoSymbol,
-    /* 0x33 */  XK_comma,       XK_less,
-    /* 0x34 */  XK_period,      XK_greater,
-    /* 0x35 */  XK_slash,       XK_question,
-    /* 0x36 */  XK_Shift_R,     NoSymbol,
-    /* 0x37 */  XK_KP_Multiply, NoSymbol,
-    /* 0x38 */  XK_Alt_L,	XK_Meta_L,
-    /* 0x39 */  XK_space,       NoSymbol,
-    /* 0x3a */  XK_Caps_Lock,   NoSymbol,
-    /* 0x3b */  XK_F1,          NoSymbol,
-    /* 0x3c */  XK_F2,          NoSymbol,
-    /* 0x3d */  XK_F3,          NoSymbol,
-    /* 0x3e */  XK_F4,          NoSymbol,
-    /* 0x3f */  XK_F5,          NoSymbol,
-    /* 0x40 */  XK_F6,          NoSymbol,
-    /* 0x41 */  XK_F7,          NoSymbol,
-    /* 0x42 */  XK_F8,          NoSymbol,
-    /* 0x43 */  XK_F9,          NoSymbol,
-    /* 0x44 */  XK_F10,         NoSymbol,
-    /* 0x45 */  XK_Num_Lock,    NoSymbol,
-    /* 0x46 */  XK_Scroll_Lock,	NoSymbol,
-    /* These KP keys should have the KP_7 keysyms in the numlock
-     * modifer... ? */
-    /* 0x47 */  XK_KP_Home,	XK_KP_7,
-    /* 0x48 */  XK_KP_Up,	XK_KP_8,
-    /* 0x49 */  XK_KP_Prior,	XK_KP_9,
-    /* 0x4a */  XK_KP_Subtract, NoSymbol,
-    /* 0x4b */  XK_KP_Left,	XK_KP_4,
-    /* 0x4c */  XK_KP_Begin,	XK_KP_5,
-    /* 0x4d */  XK_KP_Right,	XK_KP_6,
-    /* 0x4e */  XK_KP_Add,      NoSymbol,
-    /* 0x4f */  XK_KP_End,	XK_KP_1,
-    /* 0x50 */  XK_KP_Down,	XK_KP_2,
-    /* 0x51 */  XK_KP_Next,	XK_KP_3,
-    /* 0x52 */  XK_KP_Insert,	XK_KP_0,
-    /* 0x53 */  XK_KP_Delete,	XK_KP_Decimal,
-    /* 0x54 */  NoSymbol,	NoSymbol,
-    /* 0x55 */  XK_F13,		NoSymbol,
-    /* 0x56 */  XK_less,	XK_greater,
-    /* 0x57 */  XK_F11,		NoSymbol,
-    /* 0x58 */  XK_F12,		NoSymbol,
-    /* 0x59 */  XK_F14,		NoSymbol,
-    /* 0x5a */  XK_F15,		NoSymbol,
-    /* 0x5b */  XK_F16,		NoSymbol,
-    /* 0x5c */  XK_F17,		NoSymbol,
-    /* 0x5d */  XK_F18,		NoSymbol,
-    /* 0x5e */  XK_F19,		NoSymbol,
-    /* 0x5f */  XK_F20,		NoSymbol,
-    /* 0x60 */  XK_KP_Enter,	NoSymbol,
-    /* 0x61 */  XK_Control_R,	NoSymbol,
-    /* 0x62 */  XK_KP_Divide,	NoSymbol,
-    /* 0x63 */  XK_Print,	XK_Sys_Req,
-    /* 0x64 */  XK_Alt_R,	XK_Meta_R,
-    /* 0x65 */  NoSymbol,	NoSymbol, /* KEY_LINEFEED */
-    /* 0x66 */  XK_Home,	NoSymbol,
-    /* 0x67 */  XK_Up,		NoSymbol,
-    /* 0x68 */  XK_Prior,	NoSymbol,
-    /* 0x69 */  XK_Left,	NoSymbol,
-    /* 0x6a */  XK_Right,	NoSymbol,
-    /* 0x6b */  XK_End,		NoSymbol,
-    /* 0x6c */  XK_Down,	NoSymbol,
-    /* 0x6d */  XK_Next,	NoSymbol,
-    /* 0x6e */  XK_Insert,	NoSymbol,
-    /* 0x6f */  XK_Delete,	NoSymbol,
-    /* 0x70 */  NoSymbol,	NoSymbol, /* KEY_MACRO */
-    /* 0x71 */  NoSymbol,	NoSymbol,
-    /* 0x72 */  NoSymbol,	NoSymbol,
-    /* 0x73 */  NoSymbol,	NoSymbol,
-    /* 0x74 */  NoSymbol,	NoSymbol,
-    /* 0x75 */  XK_KP_Equal,	NoSymbol,
-    /* 0x76 */  NoSymbol,	NoSymbol,
-    /* 0x77 */  NoSymbol,	NoSymbol,
-    /* 0x78 */  XK_F21,		NoSymbol,
-    /* 0x79 */  XK_F22,		NoSymbol,
-    /* 0x7a */  XK_F23,		NoSymbol,
-    /* 0x7b */  XK_F24,		NoSymbol,
-    /* 0x7c */  XK_KP_Separator, NoSymbol,
-    /* 0x7d */  XK_Meta_L,	NoSymbol,
-    /* 0x7e */  XK_Meta_R,	NoSymbol,
-    /* 0x7f */  XK_Multi_key,	NoSymbol,
-    /* 0x80 */  NoSymbol,	NoSymbol,
-    /* 0x81 */  NoSymbol,	NoSymbol,
-    /* 0x82 */  NoSymbol,	NoSymbol,
-    /* 0x83 */  NoSymbol,	NoSymbol,
-    /* 0x84 */  NoSymbol,	NoSymbol,
-    /* 0x85 */  NoSymbol,	NoSymbol,
-    /* 0x86 */  NoSymbol,	NoSymbol,
-    /* 0x87 */  NoSymbol,	NoSymbol,
-    /* 0x88 */  NoSymbol,	NoSymbol,
-    /* 0x89 */  NoSymbol,	NoSymbol,
-    /* 0x8a */  NoSymbol,	NoSymbol,
-    /* 0x8b */  NoSymbol,	NoSymbol,
-    /* 0x8c */  NoSymbol,	NoSymbol,
-    /* 0x8d */  NoSymbol,	NoSymbol,
-    /* 0x8e */  NoSymbol,	NoSymbol,
-    /* 0x8f */  NoSymbol,	NoSymbol,
-    /* 0x90 */  NoSymbol,	NoSymbol,
-    /* 0x91 */  NoSymbol,	NoSymbol,
-    /* 0x92 */  NoSymbol,	NoSymbol,
-    /* 0x93 */  NoSymbol,	NoSymbol,
-    /* 0x94 */  NoSymbol,	NoSymbol,
-    /* 0x95 */  NoSymbol,	NoSymbol,
-    /* 0x96 */  NoSymbol,	NoSymbol,
-    /* 0x97 */  NoSymbol,	NoSymbol,
-    /* 0x98 */  NoSymbol,	NoSymbol,
-    /* 0x99 */  NoSymbol,	NoSymbol,
-    /* 0x9a */  NoSymbol,	NoSymbol,
-    /* 0x9b */  NoSymbol,	NoSymbol,
-    /* 0x9c */  NoSymbol,	NoSymbol,
-    /* 0x9d */  NoSymbol,	NoSymbol,
-    /* 0x9e */  NoSymbol,	NoSymbol,
-    /* 0x9f */  NoSymbol,	NoSymbol,
-    /* 0xa0 */  NoSymbol,	NoSymbol,
-    /* 0xa1 */  NoSymbol,	NoSymbol,
-    /* 0xa2 */  NoSymbol,	NoSymbol,
-    /* 0xa3 */  NoSymbol,	NoSymbol,
-    /* 0xa4 */  NoSymbol,	NoSymbol,
-    /* 0xa5 */  NoSymbol,	NoSymbol,
-    /* 0xa6 */  NoSymbol,	NoSymbol,
-    /* 0xa7 */  NoSymbol,	NoSymbol,
-    /* 0xa8 */  NoSymbol,	NoSymbol,
-    /* 0xa9 */  NoSymbol,	NoSymbol,
-    /* 0xaa */  NoSymbol,	NoSymbol,
-    /* 0xab */  NoSymbol,	NoSymbol,
-    /* 0xac */  NoSymbol,	NoSymbol,
-    /* 0xad */  NoSymbol,	NoSymbol,
-    /* 0xae */  NoSymbol,	NoSymbol,
-    /* 0xaf */  NoSymbol,	NoSymbol,
-    /* 0xb0 */  NoSymbol,	NoSymbol,
-    /* 0xb1 */  NoSymbol,	NoSymbol,
-    /* 0xb2 */  NoSymbol,	NoSymbol,
-    /* 0xb3 */  NoSymbol,	NoSymbol,
-    /* 0xb4 */  NoSymbol,	NoSymbol,
-    /* 0xb5 */  NoSymbol,	NoSymbol,
-    /* 0xb6 */  NoSymbol,	NoSymbol,
-    /* 0xb7 */  NoSymbol,	NoSymbol,
-    /* 0xb8 */  NoSymbol,	NoSymbol,
-    /* 0xb9 */  NoSymbol,	NoSymbol,
-    /* 0xba */  NoSymbol,	NoSymbol,
-    /* 0xbb */  NoSymbol,	NoSymbol,
-    /* 0xbc */  NoSymbol,	NoSymbol,
-    /* 0xbd */  NoSymbol,	NoSymbol,
-    /* 0xbe */  NoSymbol,	NoSymbol,
-    /* 0xbf */  NoSymbol,	NoSymbol,
-    /* 0xc0 */  NoSymbol,	NoSymbol,
-    /* 0xc1 */  NoSymbol,	NoSymbol,
-    /* 0xc2 */  NoSymbol,	NoSymbol,
-    /* 0xc3 */  NoSymbol,	NoSymbol,
-    /* 0xc4 */  NoSymbol,	NoSymbol,
-    /* 0xc5 */  NoSymbol,	NoSymbol,
-    /* 0xc6 */  NoSymbol,	NoSymbol,
-    /* 0xc7 */  NoSymbol,	NoSymbol,
-    /* 0xc8 */  NoSymbol,	NoSymbol,
-    /* 0xc9 */  NoSymbol,	NoSymbol,
-    /* 0xca */  NoSymbol,	NoSymbol,
-    /* 0xcb */  NoSymbol,	NoSymbol,
-    /* 0xcc */  NoSymbol,	NoSymbol,
-    /* 0xcd */  NoSymbol,	NoSymbol,
-    /* 0xce */  NoSymbol,	NoSymbol,
-    /* 0xcf */  NoSymbol,	NoSymbol,
-    /* 0xd0 */  NoSymbol,	NoSymbol,
-    /* 0xd1 */  NoSymbol,	NoSymbol,
-    /* 0xd2 */  NoSymbol,	NoSymbol,
-    /* 0xd3 */  NoSymbol,	NoSymbol,
-    /* 0xd4 */  NoSymbol,	NoSymbol,
-    /* 0xd5 */  NoSymbol,	NoSymbol,
-    /* 0xd6 */  NoSymbol,	NoSymbol,
-    /* 0xd7 */  NoSymbol,	NoSymbol,
-    /* 0xd8 */  NoSymbol,	NoSymbol,
-    /* 0xd9 */  NoSymbol,	NoSymbol,
-    /* 0xda */  NoSymbol,	NoSymbol,
-    /* 0xdb */  NoSymbol,	NoSymbol,
-    /* 0xdc */  NoSymbol,	NoSymbol,
-    /* 0xdd */  NoSymbol,	NoSymbol,
-    /* 0xde */  NoSymbol,	NoSymbol,
-    /* 0xdf */  NoSymbol,	NoSymbol,
-    /* 0xe0 */  NoSymbol,	NoSymbol,
-    /* 0xe1 */  NoSymbol,	NoSymbol,
-    /* 0xe2 */  NoSymbol,	NoSymbol,
-    /* 0xe3 */  NoSymbol,	NoSymbol,
-    /* 0xe4 */  NoSymbol,	NoSymbol,
-    /* 0xe5 */  NoSymbol,	NoSymbol,
-    /* 0xe6 */  NoSymbol,	NoSymbol,
-    /* 0xe7 */  NoSymbol,	NoSymbol,
-    /* 0xe8 */  NoSymbol,	NoSymbol,
-    /* 0xe9 */  NoSymbol,	NoSymbol,
-    /* 0xea */  NoSymbol,	NoSymbol,
-    /* 0xeb */  NoSymbol,	NoSymbol,
-    /* 0xec */  NoSymbol,	NoSymbol,
-    /* 0xed */  NoSymbol,	NoSymbol,
-    /* 0xee */  NoSymbol,	NoSymbol,
-    /* 0xef */  NoSymbol,	NoSymbol,
-    /* 0xf0 */  NoSymbol,	NoSymbol,
-    /* 0xf1 */  NoSymbol,	NoSymbol,
-    /* 0xf2 */  NoSymbol,	NoSymbol,
-    /* 0xf3 */  NoSymbol,	NoSymbol,
-    /* 0xf4 */  NoSymbol,	NoSymbol,
-    /* 0xf5 */  NoSymbol,	NoSymbol,
-    /* 0xf6 */  NoSymbol,	NoSymbol,
-    /* 0xf7 */  NoSymbol,	NoSymbol,
-};
-
-static struct { KeySym keysym; CARD8 mask; } modifiers[] = {
-    { XK_Shift_L,		ShiftMask },
-    { XK_Shift_R,		ShiftMask },
-    { XK_Control_L,		ControlMask },
-    { XK_Control_R,		ControlMask },
-    { XK_Caps_Lock,		LockMask },
-    { XK_Alt_L,		AltMask },
-    { XK_Alt_R,		AltMask },
-    { XK_Meta_L,		Mod4Mask },
-    { XK_Meta_R,		Mod4Mask },
-    { XK_Num_Lock,		NumLockMask },
-    { XK_Scroll_Lock,	ScrollLockMask },
-    { XK_Mode_switch,	AltLangMask }
-};
-
-/* Server 1.6 and earlier */
-static int
-EvdevInitKeysyms(DeviceIntPtr device)
-{
-    InputInfoPtr pInfo;
-    EvdevPtr pEvdev;
-    KeySymsRec keySyms;
-    CARD8 modMap[MAP_LENGTH];
-    KeySym sym;
-    int i, j;
-
-    pInfo = device->public.devicePrivate;
-    pEvdev = pInfo->private;
-
-     /* Compute the modifier map */
-    memset(modMap, 0, sizeof modMap);
-
-    for (i = 0; i < ArrayLength(map) / GLYPHS_PER_KEY; i++) {
-        sym = map[i * GLYPHS_PER_KEY];
-        for (j = 0; j < ArrayLength(modifiers); j++) {
-            if (modifiers[j].keysym == sym)
-                modMap[i + MIN_KEYCODE] = modifiers[j].mask;
-        }
-    }
-
-    keySyms.map        = map;
-    keySyms.mapWidth   = GLYPHS_PER_KEY;
-    keySyms.minKeyCode = MIN_KEYCODE;
-    keySyms.maxKeyCode = MIN_KEYCODE + ArrayLength(map) / GLYPHS_PER_KEY - 1;
-
-    XkbSetRulesDflts(pEvdev->rmlvo.rules, pEvdev->rmlvo.model,
-            pEvdev->rmlvo.layout, pEvdev->rmlvo.variant,
-            pEvdev->rmlvo.options);
-    if (!XkbInitKeyboardDeviceStruct(device, &pEvdev->xkbnames,
-                &keySyms, modMap, NULL,
-                EvdevKbdCtrl))
-        return 0;
-
-    return 1;
-}
-#endif
-
 static void
 EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
 {
@@ -1263,14 +928,8 @@ EvdevAddKeyClass(DeviceIntPtr device)
     if (!pEvdev->rmlvo.options)
         SetXkbOption(pInfo, "XkbOptions", &pEvdev->rmlvo.options);
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 5
     if (!InitKeyboardDeviceStruct(device, &pEvdev->rmlvo, NULL, EvdevKbdCtrl))
         return !Success;
-#else
-    if (!EvdevInitKeysyms(device))
-        return !Success;
-
-#endif
 
     return Success;
 }
@@ -1313,13 +972,7 @@ EvdevAddAbsClass(DeviceIntPtr device)
 
     EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
 
-    if (!InitValuatorClassDeviceStruct(device, num_axes,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                                       atoms,
-#endif
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
-                                       GetMotionHistory,
-#endif
+    if (!InitValuatorClassDeviceStruct(device, num_axes, atoms,
                                        GetMotionHistorySize(), Absolute)) {
         xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
                 device->name);
@@ -1340,16 +993,10 @@ EvdevAddAbsClass(DeviceIntPtr device)
 #endif
 
         xf86InitValuatorAxisStruct(device, axnum,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
                                    atoms[axnum],
-#endif
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
-                                   resolution, 0, resolution
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-                                   , Absolute
-#endif
-                                   );
+                                   resolution, 0, resolution, Absolute);
         xf86InitValuatorDefaults(device, axnum);
         pEvdev->old_vals[axnum] = -1;
     }
@@ -1448,13 +1095,7 @@ EvdevAddRelClass(DeviceIntPtr device)
 
     EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
 
-    if (!InitValuatorClassDeviceStruct(device, num_axes,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                                       atoms,
-#endif
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
-                                       GetMotionHistory,
-#endif
+    if (!InitValuatorClassDeviceStruct(device, num_axes, atoms,
                                        GetMotionHistorySize(), Relative)) {
         xf86Msg(X_ERROR, "%s: failed to initialize valuator class device.\n",
                 device->name);
@@ -1473,15 +1114,8 @@ EvdevAddRelClass(DeviceIntPtr device)
 
         if (axnum == -1)
             continue;
-        xf86InitValuatorAxisStruct(device, axnum,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                atoms[axnum],
-#endif
-                -1, -1, 1, 0, 1
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-                                   , Relative
-#endif
-                );
+        xf86InitValuatorAxisStruct(device, axnum, atoms[axnum], -1, -1, 1, 0, 1,
+                                   Relative);
         xf86InitValuatorDefaults(device, axnum);
     }
 
@@ -1503,10 +1137,7 @@ EvdevAddButtonClass(DeviceIntPtr device)
     labels = malloc(pEvdev->num_buttons * sizeof(Atom));
     EvdevInitButtonLabels(pEvdev, pEvdev->num_buttons, labels);
 
-    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-                                     labels,
-#endif
+    if (!InitButtonClassDeviceStruct(device, pEvdev->num_buttons, labels,
                                      pEvdev->btnmap))
         return !Success;
 
@@ -1678,7 +1309,6 @@ EvdevInit(DeviceIntPtr device)
     else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
         EvdevInitAbsClass(device, pEvdev);
 
-#ifdef HAVE_PROPERTIES
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
      * unregister anyway */
@@ -1687,7 +1317,6 @@ EvdevInit(DeviceIntPtr device)
     EvdevMBEmuInitProperty(device);
     EvdevWheelEmuInitProperty(device);
     EvdevDragLockInitProperty(device);
-#endif
 
     return Success;
 }
@@ -2162,52 +1791,8 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     return Success;
 }
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-static int NewEvdevPreInit(InputDriverPtr, InputInfoPtr, int);
-
-static InputInfoPtr
-EvdevPreInit(InputDriverPtr drv, IDevPtr dev, int flags)
-{
-    InputInfoPtr pInfo;
-
-    if (!(pInfo = xf86AllocateInput(drv, 0)))
-	return NULL;
-
-    /* Initialise the InputInfoRec. */
-    pInfo->fd = -1;
-    pInfo->name = dev->identifier;
-    pInfo->flags = 0;
-    pInfo->history_size = 0;
-    pInfo->control_proc = NULL;
-    pInfo->close_proc = NULL;
-    pInfo->conversion_proc = NULL;
-    pInfo->reverse_conversion_proc = NULL;
-    pInfo->dev = NULL;
-    pInfo->private_flags = 0;
-    pInfo->always_core_feedback = NULL;
-    pInfo->conf_idev = dev;
-    pInfo->private = NULL;
-
-    xf86CollectInputOptions(pInfo, (const char**)evdevDefaults, NULL);
-    xf86ProcessCommonOptions(pInfo, pInfo->options);
-
-    if (NewEvdevPreInit(drv, pInfo, flags) == Success)
-    {
-        pInfo->flags |= XI86_CONFIGURED;
-        return pInfo;
-    }
-
-
-    xf86DeleteInput(pInfo, 0);
-    return NULL;
-}
-
-static int
-NewEvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
-#else
 static int
 EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
-#endif
 {
     EvdevPtr pEvdev;
     int rc = BadAlloc;
@@ -2279,9 +1864,7 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     NULL,
     NULL,
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
     evdevDefaults
-#endif
 };
 
 static void
@@ -2356,8 +1939,6 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
     }
 }
 
-#ifdef HAVE_PROPERTIES
-#ifdef HAVE_LABELS
 /* Aligned with linux/input.h.
    Note that there are holes in the ABS_ range, these are simply replaced with
    MISC here */
@@ -2411,7 +1992,6 @@ static char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
     AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
     AXIS_LABEL_PROP_ABS_MISC,           /* undefined */
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 10
     AXIS_LABEL_PROP_ABS_MT_TOUCH_MAJOR, /* 0x30 */
     AXIS_LABEL_PROP_ABS_MT_TOUCH_MINOR, /* 0x31 */
     AXIS_LABEL_PROP_ABS_MT_WIDTH_MAJOR, /* 0x32 */
@@ -2423,7 +2003,6 @@ static char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_MT_BLOB_ID,     /* 0x38 */
     AXIS_LABEL_PROP_ABS_MT_TRACKING_ID, /* 0x39 */
     AXIS_LABEL_PROP_ABS_MT_PRESSURE,    /* 0x3a */
-#endif
 };
 
 static char* rel_labels[] = {
@@ -2520,11 +2099,8 @@ static char* btn_labels[][16] = {
     }
 };
 
-#endif /* HAVE_LABELS */
-
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
 {
-#ifdef HAVE_LABELS
     Atom atom;
     int axis;
     char **labels;
@@ -2557,12 +2133,10 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
 
         atoms[pEvdev->axis_map[axis]] = atom;
     }
-#endif
 }
 
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
 {
-#ifdef HAVE_LABELS
     Atom atom;
     int button, bmap;
 
@@ -2600,7 +2174,6 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
         atoms[5] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_LEFT);
     if (natoms > 6)
         atoms[6] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_HWHEEL_RIGHT);
-#endif
 }
 
 static void
@@ -2659,7 +2232,6 @@ EvdevInitProperty(DeviceIntPtr dev)
 
         XISetDevicePropertyDeletable(dev, prop_swap, FALSE);
 
-#ifdef HAVE_LABELS
         /* Axis labelling */
         if ((pEvdev->num_vals > 0) && (prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
@@ -2678,7 +2250,6 @@ EvdevInitProperty(DeviceIntPtr dev)
                                    PropModeReplace, pEvdev->num_buttons, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
         }
-#endif /* HAVE_LABELS */
     }
 
 }
@@ -2723,4 +2294,3 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
     return Success;
 }
-#endif

@@ -39,6 +39,10 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) * 100 + GET_ABI_MINOR(ABI_XINPUT_VERSION) < 1202
+#error "Need X server input ABI version 12.2 or greater"
+#endif
+
 #ifndef EV_CNT /* linux 2.6.23 kernels and earlier lack _CNT defines */
 #define EV_CNT (EV_MAX+1)
 #endif
@@ -72,25 +76,9 @@
 #define EVDEV_UNIGNORE_RELATIVE (1 << 10) /* explicitly unignore rel axes */
 #define EVDEV_RELATIVE_MODE	(1 << 11) /* Force relative events for devices with absolute axes */
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 3
-#define HAVE_PROPERTIES 1
-#endif
-
 #ifndef MAX_VALUATORS
 #define MAX_VALUATORS 36
 #endif
-
-
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
-typedef struct {
-    char *rules;
-    char *model;
-    char *layout;
-    char *variant;
-    char *options;
-} XkbRMLVOSet;
-#endif
-
 
 #define LONG_BITS (sizeof(long) * 8)
 
@@ -137,9 +125,6 @@ typedef struct {
     unsigned int abs_prox;  /* valuators posted while out of prox? */
 
     /* XKB stuff has to be per-device rather than per-driver */
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 5
-    XkbComponentNamesRec    xkbnames;
-#endif
     XkbRMLVOSet rmlvo;
 
     /* Middle mouse button emulation */
@@ -228,9 +213,7 @@ BOOL EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv);
 void EvdevDragLockPreInit(InputInfoPtr pInfo);
 BOOL EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value);
 
-#ifdef HAVE_PROPERTIES
 void EvdevMBEmuInitProperty(DeviceIntPtr);
 void EvdevWheelEmuInitProperty(DeviceIntPtr);
 void EvdevDragLockInitProperty(DeviceIntPtr);
-#endif
 #endif

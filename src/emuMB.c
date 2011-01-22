@@ -43,10 +43,8 @@
 
 #include <evdev-properties.h>
 
-#ifdef HAVE_PROPERTIES
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
-#endif
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
  *
@@ -330,7 +328,6 @@ EvdevMBEmuFinalize(InputInfoPtr pInfo)
 
 }
 
-#ifdef HAVE_PROPERTIES
 static int
 EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                       BOOL checkonly)
@@ -391,4 +388,3 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
 
     XIRegisterPropertyHandler(dev, EvdevMBEmuSetProperty, NULL, NULL);
 }
-#endif

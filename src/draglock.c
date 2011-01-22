@@ -44,9 +44,7 @@
 
 #include <evdev-properties.h>
 
-#ifdef HAVE_PROPERTIES
 static Atom prop_dlock     = 0; /* Drag lock buttons. */
-#endif
 
 void EvdevDragLockLockButton(InputInfoPtr pInfo, unsigned int button);
 
@@ -211,7 +209,6 @@ EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value)
     return FALSE;
 }
 
-#ifdef HAVE_PROPERTIES
 /**
  * Set the drag lock property.
  * If only one value is supplied, then this is used as the meta button.
@@ -319,5 +316,3 @@ EvdevDragLockInitProperty(DeviceIntPtr dev)
 
     XIRegisterPropertyHandler(dev, EvdevDragLockSetProperty, NULL, NULL);
 }
-
-#endif

@@ -44,13 +44,11 @@
 
 #define WHEEL_NOT_CONFIGURED 0
 
-#ifdef HAVE_PROPERTIES
 static Atom prop_wheel_emu      = 0;
 static Atom prop_wheel_axismap  = 0;
 static Atom prop_wheel_inertia  = 0;
 static Atom prop_wheel_timeout  = 0;
 static Atom prop_wheel_button   = 0;
-#endif
 
 /* Local Funciton Prototypes */
 static BOOL EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char *axis_name);
@@ -335,7 +333,6 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
             pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
 }
 
-#ifdef HAVE_PROPERTIES
 static int
 EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
                          BOOL checkonly)
@@ -485,4 +482,3 @@ EvdevWheelEmuInitProperty(DeviceIntPtr dev)
 
     XIRegisterPropertyHandler(dev, EvdevWheelEmuSetProperty, NULL, NULL);
 }
-#endif
