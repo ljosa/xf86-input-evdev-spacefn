@@ -118,8 +118,9 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 
 	/* We don't want to intercept real mouse wheel events */
 	if(pEv->type == EV_ABS) {
-	    oldValue = pEvdev->vals[pEvdev->axis_map[pEv->code]];
-	    pEvdev->vals[pEvdev->axis_map[pEv->code]] = value;
+	    int axis = pEvdev->axis_map[pEv->code];
+	    oldValue = valuator_mask_get(pEvdev->vals, axis);
+	    valuator_mask_set(pEvdev->vals, axis, value);
 	    value -= oldValue; /* make value into a differential measurement */
 	}
 

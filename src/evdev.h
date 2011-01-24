@@ -109,8 +109,9 @@ typedef struct {
 
     int num_vals;           /* number of valuators */
     int axis_map[max(ABS_CNT, REL_CNT)]; /* Map evdev <axis> to index */
-    int vals[MAX_VALUATORS];
-    int old_vals[MAX_VALUATORS]; /* Translate absolute inputs to relative */
+    ValuatorMask *vals;     /* new values coming in */
+    ValuatorMask *old_vals; /* old values for calculating relative motion */
+    ValuatorMask *prox;     /* last values set while not in proximity */
 
     int flags;
     int in_proximity;           /* device in proximity */
@@ -122,7 +123,6 @@ typedef struct {
 
     int delta[REL_CNT];
     unsigned int abs_queued, rel_queued, prox_queued;
-    unsigned int abs_prox;  /* valuators posted while out of prox? */
 
     /* XKB stuff has to be per-device rather than per-driver */
     XkbRMLVOSet rmlvo;
