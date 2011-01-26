@@ -133,6 +133,31 @@ must be pressed before wheel emulation is started. If the
 is released before this timeout, the original button press/release event
 is sent.  Default: 200. Property: "Evdev Wheel Emulation Timeout".
 .TP 7
+.BI "Option \*qEmulateThirdButton\*q \*q" boolean \*q
+Enable third button emulation. Third button emulation emits a right button
+event (by default) by pressing and holding the first button. The first
+button must be held down for the configured timeout and must not move more
+than the configured threshold for the emulation to activate. Otherwise, the
+first button event is posted as normal. Default: off.  Property: "Evdev
+Third Button Emulation".
+.TP 7
+.BI "Option \*qEmulateThirdButtonTimeout\*q \*q" integer \*q
+Specifies the timeout in milliseconds between the initial button press and
+the generation of the emulated button event.
+Default: 1000. Property: "Evdev Third Button Emulation Timeout".
+.TP 7
+.BI "Option \*qEmulateThirdButtonButton\*q \*q" integer \*q
+Specifies the physical button number to be emitted if third button emulation
+is triggered.
+Default: 3.  Property: "Evdev Third Button Button".
+.TP 7
+.BI "Option \*qEmulateThirdButtonMoveThreshold\*q \*q" integer \*q
+Specifies the maximum move fuzz in device coordinates for third button
+emulation. If the device moves by more than this threshold before the third
+button emulation is triggered, the emulation is cancelled and a first button
+event is generated as normal.
+Default: 20. Property: "Evdev Third Button Emulation Threshold".
+.TP 7
 .BI "Option \*qGrabDevice\*q \*q" boolean \*q
 Force a grab on the event device. Doing so will ensure that no other driver
 can initialise the same device and it will also stop the device from sending

@@ -396,6 +396,11 @@ EvdevProcessValuators(InputInfoPtr pInfo)
         if (pEvdev->invert_y)
             pEvdev->delta[REL_Y] *= -1;
 
+
+        Evdev3BEmuProcessRelMotion(pInfo,
+                                   pEvdev->delta[REL_X],
+                                   pEvdev->delta[REL_Y]);
+
         for (i = 0; i < REL_CNT; i++)
         {
             int map = pEvdev->axis_map[i];
@@ -453,6 +458,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
 
             valuator_mask_set(pEvdev->vals, i, val);
         }
+        Evdev3BEmuProcessAbsMotion(pInfo, pEvdev->vals);
     }
 }
 
@@ -753,6 +759,11 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                                   pEvdev->queue[i].val);
             break;
         case EV_QUEUE_BTN:
+            if (Evdev3BEmuFilterEvent(pInfo,
+                                      pEvdev->queue[i].key,
+                                      pEvdev->queue[i].val))
+                break;
+
             if (pEvdev->abs_queued && pEvdev->in_proximity) {
                 xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
@@ -844,6 +855,7 @@ EvdevReadInput(InputInfoPtr pInfo)
             if (errno == ENODEV) /* May happen after resume */
             {
                 EvdevMBEmuFinalize(pInfo);
+                Evdev3BEmuFinalize(pInfo);
                 xf86RemoveEnabledDevice(pInfo);
                 close(pInfo->fd);
                 pInfo->fd = -1;
@@ -1334,6 +1346,7 @@ EvdevInit(DeviceIntPtr device)
     EvdevInitProperty(device);
     XIRegisterPropertyHandler(device, EvdevSetProperty, NULL, NULL);
     EvdevMBEmuInitProperty(device);
+    Evdev3BEmuInitProperty(device);
     EvdevWheelEmuInitProperty(device);
     EvdevDragLockInitProperty(device);
 
@@ -1362,6 +1375,7 @@ EvdevOn(DeviceIntPtr device)
     xf86FlushInput(pInfo->fd);
     xf86AddEnabledDevice(pInfo);
     EvdevMBEmuOn(pInfo);
+    Evdev3BEmuOn(pInfo);
     pEvdev->flags |= EVDEV_INITIALIZED;
     device->public.on = TRUE;
 
@@ -1388,7 +1402,10 @@ EvdevProc(DeviceIntPtr device, int what)
 
     case DEVICE_OFF:
         if (pEvdev->flags & EVDEV_INITIALIZED)
+        {
             EvdevMBEmuFinalize(pInfo);
+            Evdev3BEmuFinalize(pInfo);
+        }
         if (pInfo->fd != -1)
         {
             EvdevGrabDevice(pInfo, 0, 1);
@@ -1862,6 +1879,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     if (pEvdev->flags & EVDEV_BUTTON_EVENTS)
     {
         EvdevMBEmuPreInit(pInfo);
+        Evdev3BEmuPreInit(pInfo);
         EvdevWheelEmuPreInit(pInfo);
         EvdevDragLockPreInit(pInfo);
     }

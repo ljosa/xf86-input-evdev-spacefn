@@ -66,4 +66,13 @@
 /* BOOL */
 #define EVDEV_PROP_SWAP_AXES "Evdev Axes Swap"
 
+/* BOOL */
+#define EVDEV_PROP_THIRDBUTTON "Evdev Third Button Emulation"
+/* CARD32 */
+#define EVDEV_PROP_THIRDBUTTON_TIMEOUT "Evdev Third Button Emulation Timeout"
+/* CARD8 */
+#define EVDEV_PROP_THIRDBUTTON_BUTTON "Evdev Third Button Emulation Button"
+/* CARD32 */
+#define EVDEV_PROP_THIRDBUTTON_THRESHOLD "Evdev Third Button Emulation Threshold"
+
 #endif

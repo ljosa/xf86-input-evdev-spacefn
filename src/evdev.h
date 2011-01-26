@@ -136,6 +136,19 @@ typedef struct {
         Time                expires;     /* time of expiry */
         Time                timeout;
     } emulateMB;
+    /* Third mouse button emulation */
+    struct emulate3B {
+        BOOL                enabled;
+        BOOL                state;       /* current state */
+        Time                timeout;     /* timeout until third button press */
+        int                 buttonstate; /* phys. button state */
+        int                 button;      /* phys button to emit */
+        int                 threshold;   /* move threshold in dev coords */
+        OsTimerPtr          timer;
+        int                 delta[2];    /* delta x/y, accumulating */
+        int                 startpos[2]; /* starting pos for abs devices */
+        int                 flags;       /* remember if we had rel or abs movement */
+    } emulate3B;
     struct {
 	int                 meta;           /* meta key to lock any button */
 	BOOL                meta_state;     /* meta_button state */
@@ -204,6 +217,16 @@ void EvdevMBEmuPreInit(InputInfoPtr);
 void EvdevMBEmuOn(InputInfoPtr);
 void EvdevMBEmuFinalize(InputInfoPtr);
 
+/* Third button emulation */
+CARD32 Evdev3BEmuTimer(OsTimerPtr timer, CARD32 time, pointer arg);
+BOOL Evdev3BEmuFilterEvent(InputInfoPtr, int, BOOL);
+void Evdev3BEmuPreInit(InputInfoPtr pInfo);
+void Evdev3BEmuPreInit(InputInfoPtr);
+void Evdev3BEmuOn(InputInfoPtr);
+void Evdev3BEmuFinalize(InputInfoPtr);
+void Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, int dx, int dy);
+void Evdev3BEmuProcessAbsMotion(InputInfoPtr pInfo, ValuatorMask *vals);
+
 /* Mouse Wheel emulation */
 void EvdevWheelEmuPreInit(InputInfoPtr pInfo);
 BOOL EvdevWheelEmuFilterButton(InputInfoPtr pInfo, unsigned int button, int value);
@@ -214,6 +237,7 @@ void EvdevDragLockPreInit(InputInfoPtr pInfo);
 BOOL EvdevDragLockFilterEvent(InputInfoPtr pInfo, unsigned int button, int value);
 
 void EvdevMBEmuInitProperty(DeviceIntPtr);
+void Evdev3BEmuInitProperty(DeviceIntPtr);
 void EvdevWheelEmuInitProperty(DeviceIntPtr);
 void EvdevDragLockInitProperty(DeviceIntPtr);
 #endif
