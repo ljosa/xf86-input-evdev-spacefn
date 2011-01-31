@@ -118,6 +118,7 @@ static Atom prop_calibration;
 static Atom prop_swap;
 static Atom prop_axis_label;
 static Atom prop_btn_label;
+static Atom prop_device;
 
 /* All devices the evdev driver has allocated and knows about.
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
@@ -2263,6 +2264,8 @@ EvdevInitProperty(DeviceIntPtr dev)
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
     int          rc;
+    char         *device_node;
+
     CARD32       product[2];
 
     prop_product_id = MakeAtom(XI_PROP_PRODUCT_ID, strlen(XI_PROP_PRODUCT_ID), TRUE);
@@ -2274,6 +2277,21 @@ EvdevInitProperty(DeviceIntPtr dev)
         return;
 
     XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+
+    /* Device node property */
+    device_node = strdup(pEvdev->device);
+    prop_device = MakeAtom(XI_PROP_DEVICE_NODE,
+                           strlen(XI_PROP_DEVICE_NODE), TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_device, XA_STRING, 8,
+                                PropModeReplace,
+                                strlen(device_node), device_node,
+                                FALSE);
+    free(device_node);
+
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_device, FALSE);
 
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
     {
@@ -2382,7 +2400,7 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
     } else if (atom == prop_axis_label || atom == prop_btn_label ||
-               atom == prop_product_id)
+               atom == prop_product_id || atom == prop_device)
         return BadAccess; /* Read-only properties */
 
     return Success;

@@ -80,6 +80,10 @@
 #define MAX_VALUATORS 36
 #endif
 
+#ifndef XI_PROP_DEVICE_NODE
+#define XI_PROP_DEVICE_NODE "Device Node"
+#endif
+
 #define LONG_BITS (sizeof(long) * 8)
 
 /* Number of longs needed to hold the given number of bits */

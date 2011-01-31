@@ -66,7 +66,8 @@ is used. Buttons not specified in the user's mapping use the default mapping.
 .BI "Option \*qDevice\*q \*q" string \*q
 Specifies the device through which the device can be accessed.  This will 
 generally be of the form \*q/dev/input/eventX\*q, where X is some integer.
-The mapping from device node to hardware is system-dependent.
+The mapping from device node to hardware is system-dependent. Property:
+"Device Node" (read-only).
 .TP 7
 .BI "Option \*qDragLockButtons\*q \*q" "L1 B2 L3 B4" \*q
 Sets \*qdrag lock buttons\*q that simulate holding a button down, so
