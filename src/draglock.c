@@ -103,13 +103,12 @@ EvdevDragLockPreInit(InputInfoPtr pInfo)
                     /* We only have a meta button */
                     pEvdev->dragLock.meta = meta_button;
 
-                    xf86Msg(X_CONFIG, "%s: DragLockButtons : "
-                            "%i as meta\n",
-                            pInfo->name, meta_button);
+                    xf86IDrvMsg(pInfo, X_CONFIG, "DragLockButtons : "
+                                "%i as meta\n", meta_button);
                 } else {
-                    xf86Msg(X_ERROR, "%s: DragLockButtons : "
-                            "Incomplete pair specifying button pairs %s\n",
-                            pInfo->name, option_string);
+                    xf86IDrvMsg(pInfo, X_ERROR, "DragLockButtons : "
+                                "Incomplete pair specifying button pairs %s\n",
+                                option_string);
                 }
             } else {
 
@@ -117,23 +116,24 @@ EvdevDragLockPreInit(InputInfoPtr pInfo)
                 if ((meta_button <= EVDEV_MAXBUTTONS) && (meta_button >= 0 ) &&
                     (lock_button <= EVDEV_MAXBUTTONS) && (lock_button >= 0)) {
 
-                    xf86Msg(X_CONFIG, "%s: DragLockButtons : %i -> %i\n",
-                            pInfo->name, meta_button, lock_button);
+                    xf86IDrvMsg(pInfo, X_CONFIG,
+                                "DragLockButtons : %i -> %i\n",
+                                meta_button, lock_button);
 
                     pEvdev->dragLock.lock_pair[meta_button - 1] = lock_button;
                     pairs=TRUE;
                 } else {
                     /* Let the user know something was wrong
                        with this pair of buttons */
-                    xf86Msg(X_CONFIG, "%s: DragLockButtons : "
-                            "Invalid button pair %i -> %i\n",
-                            pInfo->name, meta_button, lock_button);
+                    xf86IDrvMsg(pInfo, X_CONFIG,"DragLockButtons : "
+                                "Invalid button pair %i -> %i\n",
+                                meta_button, lock_button);
                 }
             }
         } else {
-            xf86Msg(X_ERROR, "%s: Found DragLockButtons "
-                    "with  invalid lock button string : '%s'\n",
-                    pInfo->name, option_string);
+            xf86IDrvMsg(pInfo, X_ERROR, "Found DragLockButtons "
+                        "with invalid lock button string : '%s'\n",
+                        option_string);
 
             /* This should be the case anyhow, just make sure */
             next_num = NULL;

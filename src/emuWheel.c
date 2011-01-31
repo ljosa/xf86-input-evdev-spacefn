@@ -229,14 +229,14 @@ EvdevWheelEmuHandleButtonMap(InputInfoPtr pInfo, WheelAxisPtr pAxis, char* axis_
 	    if (down_button > pEvdev->num_buttons) pEvdev->num_buttons = down_button;
 
 	} else {
-	    xf86Msg(X_WARNING, "%s: Invalid %s value:\"%s\"\n",
-		    pInfo->name, axis_name, option_string);
+	    xf86IDrvMsg(pInfo, X_WARNING, "Invalid %s value:\"%s\"\n",
+		        axis_name, option_string);
 	}
 	free(option_string);
 
 	/* Clean up and log what happened */
 	if (msg) {
-	    xf86Msg(X_CONFIG, "%s: %s: %s\n",pInfo->name, axis_name, msg);
+	    xf86IDrvMsg(pInfo, X_CONFIG, "%s: %s\n", axis_name, msg);
 	    free(msg);
 	    return TRUE;
 	}
@@ -265,9 +265,9 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     wheelButton = xf86SetIntOption(pInfo->options, "EmulateWheelButton", 4);
 
     if ((wheelButton < 0) || (wheelButton > EVDEV_MAXBUTTONS)) {
-        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelButton value: %d\n",
-                pInfo->name, wheelButton);
-        xf86Msg(X_WARNING, "%s: Wheel emulation disabled.\n", pInfo->name);
+        xf86IDrvMsg(pInfo, X_WARNING, "Invalid EmulateWheelButton value: %d\n",
+                    wheelButton);
+        xf86IDrvMsg(pInfo, X_WARNING, "Wheel emulation disabled.\n");
 
         pEvdev->emulateWheel.enabled = FALSE;
     }
@@ -277,10 +277,9 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     inertia = xf86SetIntOption(pInfo->options, "EmulateWheelInertia", 10);
 
     if (inertia <= 0) {
-        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelInertia value: %d\n",
-                pInfo->name, inertia);
-        xf86Msg(X_WARNING, "%s: Using built-in inertia value.\n",
-                pInfo->name);
+        xf86IDrvMsg(pInfo, X_WARNING, "Invalid EmulateWheelInertia value: %d\n",
+                    inertia);
+        xf86IDrvMsg(pInfo, X_WARNING, "Using built-in inertia value.\n");
 
         inertia = 10;
     }
@@ -290,10 +289,9 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     timeout = xf86SetIntOption(pInfo->options, "EmulateWheelTimeout", 200);
 
     if (timeout < 0) {
-        xf86Msg(X_WARNING, "%s: Invalid EmulateWheelTimeout value: %d\n",
-                pInfo->name, timeout);
-        xf86Msg(X_WARNING, "%s: Using built-in timeout value.\n",
-                pInfo->name);
+        xf86IDrvMsg(pInfo, X_WARNING, "Invalid EmulateWheelTimeout value: %d\n",
+                    timeout);
+        xf86IDrvMsg(pInfo, X_WARNING, "Using built-in timeout value.\n");
 
         timeout = 200;
     }
@@ -313,9 +311,9 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
             pEvdev->num_buttons = 5;
 
         /* Display default Configuration */
-        xf86Msg(X_CONFIG, "%s: YAxisMapping: buttons %d and %d\n",
-                pInfo->name, pEvdev->emulateWheel.Y.up_button,
-                pEvdev->emulateWheel.Y.down_button);
+        xf86IDrvMsg(pInfo, X_CONFIG, "YAxisMapping: buttons %d and %d\n",
+                    pEvdev->emulateWheel.Y.up_button,
+                    pEvdev->emulateWheel.Y.down_button);
     }
 
 
@@ -328,10 +326,11 @@ EvdevWheelEmuPreInit(InputInfoPtr pInfo)
     pEvdev->emulateWheel.X.traveled_distance = 0;
     pEvdev->emulateWheel.Y.traveled_distance = 0;
 
-    xf86Msg(X_CONFIG, "%s: EmulateWheelButton: %d, "
-            "EmulateWheelInertia: %d, "
-            "EmulateWheelTimeout: %d\n",
-            pInfo->name, pEvdev->emulateWheel.button, inertia, timeout);
+    xf86IDrvMsg(pInfo, X_CONFIG,
+                "EmulateWheelButton: %d, "
+                "EmulateWheelInertia: %d, "
+                "EmulateWheelTimeout: %d\n",
+                pEvdev->emulateWheel.button, inertia, timeout);
 }
 
 static int
