@@ -108,11 +108,11 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
-static Atom prop_invert = 0;
-static Atom prop_calibration = 0;
-static Atom prop_swap = 0;
-static Atom prop_axis_label = 0;
-static Atom prop_btn_label = 0;
+static Atom prop_invert;
+static Atom prop_calibration;
+static Atom prop_swap;
+static Atom prop_axis_label;
+static Atom prop_btn_label;
 
 /* All devices the evdev driver has allocated and knows about.
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
