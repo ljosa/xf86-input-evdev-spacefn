@@ -62,7 +62,7 @@ Evdev3BEmuPostButtonEvent(InputInfoPtr pInfo, int button, int press)
 {
     EvdevPtr          pEvdev   = pInfo->private;
     struct emulate3B *emu3B    = &pEvdev->emulate3B;
-    int               absolute = 0;
+    int               absolute = Relative;
 
     /* if we cancel, emit the button down event at our start position,
      * not at the current position. Only for absolute devices though. For
@@ -70,7 +70,7 @@ Evdev3BEmuPostButtonEvent(InputInfoPtr pInfo, int button, int press)
      * us back more than we moved and confuse the user.
      */
     if (emu3B->flags & EVDEV_ABSOLUTE_EVENTS)
-        absolute = 1;
+        absolute = Absolute;
 
     xf86PostButtonEventP(pInfo->dev, absolute, button, press, 0,
                          (absolute ? 2 : 0), emu3B->startpos);

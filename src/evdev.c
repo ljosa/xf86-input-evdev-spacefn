@@ -332,7 +332,7 @@ EvdevQueueProximityEvent(InputInfoPtr pInfo, int value)
 void
 EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
 {
-    xf86PostButtonEvent(pInfo->dev, 0, button, value, 0, 0);
+    xf86PostButtonEvent(pInfo->dev, Relative, button, value, 0, 0);
 }
 
 void
@@ -695,7 +695,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->rel_queued) {
-        xf86PostMotionEventM(pInfo->dev, FALSE, pEvdev->vals);
+        xf86PostMotionEventM(pInfo->dev, Relative, pEvdev->vals);
     }
 }
 
@@ -718,7 +718,7 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
      * this scheme still just work.
      */
     if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        xf86PostMotionEventM(pInfo->dev, TRUE, pEvdev->vals);
+        xf86PostMotionEventM(pInfo->dev, Absolute, pEvdev->vals);
     }
 }
 
@@ -765,12 +765,12 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                 break;
 
             if (pEvdev->abs_queued && pEvdev->in_proximity) {
-                xf86PostButtonEventP(pInfo->dev, 1, pEvdev->queue[i].key,
+                xf86PostButtonEventP(pInfo->dev, Absolute, pEvdev->queue[i].key,
                                      pEvdev->queue[i].val, first_v, num_v,
                                      v + first_v);
 
             } else
-                xf86PostButtonEvent(pInfo->dev, 0, pEvdev->queue[i].key,
+                xf86PostButtonEvent(pInfo->dev, Relative, pEvdev->queue[i].key,
                                     pEvdev->queue[i].val, 0, 0);
             break;
         case EV_QUEUE_PROXIMITY:
