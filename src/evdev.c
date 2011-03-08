@@ -1788,7 +1788,7 @@ static int
 EvdevOpenDevice(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
-    char *device = (char*)pEvdev->device;
+    char *device = pEvdev->device;
 
     if (!device)
     {
@@ -1835,7 +1835,7 @@ EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
         /* Release strings allocated in EvdevAddKeyClass. */
         XkbFreeRMLVOSet(&pEvdev->rmlvo, FALSE);
         /* Release string allocated in EvdevOpenDevice. */
-        free((void *)pEvdev->device); /* (const char *) */
+        free(pEvdev->device);
         pEvdev->device = NULL;
     }
     xf86DeleteInput(pInfo, flags);

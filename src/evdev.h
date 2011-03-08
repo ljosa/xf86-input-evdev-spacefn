@@ -104,7 +104,7 @@ typedef struct {
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
-    const char *device;
+    char *device;
     int grabDevice;         /* grab the event device? */
 
     int num_vals;           /* number of valuators */
