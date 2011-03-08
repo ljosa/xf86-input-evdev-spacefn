@@ -1826,6 +1826,18 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     return Success;
 }
 
+static void
+EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
+{
+    EvdevPtr pEvdev = pInfo ? pInfo->private : NULL;
+    if (pEvdev)
+    {
+        /* Release strings allocated in EvdevAddKeyClass. */
+        XkbFreeRMLVOSet(&pEvdev->rmlvo, FALSE);
+    }
+    xf86DeleteInput(pInfo, flags);
+}
+
 static int
 EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 {
@@ -1897,7 +1909,7 @@ _X_EXPORT InputDriverRec EVDEV = {
     "evdev",
     NULL,
     EvdevPreInit,
-    NULL,
+    EvdevUnInit,
     NULL,
     evdevDefaults
 };
