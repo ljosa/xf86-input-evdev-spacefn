@@ -948,7 +948,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
 }
 
 static int
-EvdevAddAbsClass(DeviceIntPtr device)
+EvdevAddAbsValuatorClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
@@ -1072,7 +1072,7 @@ out:
 }
 
 static int
-EvdevAddRelClass(DeviceIntPtr device)
+EvdevAddRelValuatorClass(DeviceIntPtr device)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
@@ -1234,24 +1234,24 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 }
 
 static void
-EvdevInitAnyClass(DeviceIntPtr device, EvdevPtr pEvdev)
+EvdevInitAnyValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
 
     if (pEvdev->flags & EVDEV_RELATIVE_EVENTS &&
-        EvdevAddRelClass(device) == Success)
+        EvdevAddRelValuatorClass(device) == Success)
         xf86IDrvMsg(pInfo, X_INFO, "initialized for relative axes.\n");
     if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS &&
-        EvdevAddAbsClass(device) == Success)
+        EvdevAddAbsValuatorClass(device) == Success)
         xf86IDrvMsg(pInfo, X_INFO, "initialized for absolute axes.\n");
 }
 
 static void
-EvdevInitAbsClass(DeviceIntPtr device, EvdevPtr pEvdev)
+EvdevInitAbsValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
 
-    if (EvdevAddAbsClass(device) == Success) {
+    if (EvdevAddAbsValuatorClass(device) == Success) {
         xf86IDrvMsg(pInfo, X_INFO,"initialized for absolute axes.\n");
     } else {
         xf86IDrvMsg(pInfo, X_ERROR,"failed to initialize for absolute axes.\n");
@@ -1260,12 +1260,12 @@ EvdevInitAbsClass(DeviceIntPtr device, EvdevPtr pEvdev)
 }
 
 static void
-EvdevInitRelClass(DeviceIntPtr device, EvdevPtr pEvdev)
+EvdevInitRelValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
     int has_abs_axes = pEvdev->flags & EVDEV_ABSOLUTE_EVENTS;
 
-    if (EvdevAddRelClass(device) == Success) {
+    if (EvdevAddRelValuatorClass(device) == Success) {
 
         xf86IDrvMsg(pInfo, X_INFO,"initialized for relative axes.\n");
 
@@ -1280,7 +1280,7 @@ EvdevInitRelClass(DeviceIntPtr device, EvdevPtr pEvdev)
         pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
 
         if (has_abs_axes)
-            EvdevInitAbsClass(device, pEvdev);
+            EvdevInitAbsValuators(device, pEvdev);
     }
 }
 
@@ -1295,7 +1295,7 @@ EvdevInitTouchDevice(DeviceIntPtr device, EvdevPtr pEvdev)
         pEvdev->flags &= ~EVDEV_RELATIVE_EVENTS;
     }
 
-    EvdevInitAbsClass(device, pEvdev);
+    EvdevInitAbsValuators(device, pEvdev);
 }
 
 static int
@@ -1332,13 +1332,13 @@ EvdevInit(DeviceIntPtr device)
      */
 
     if (pEvdev->flags & (EVDEV_UNIGNORE_RELATIVE | EVDEV_UNIGNORE_ABSOLUTE))
-        EvdevInitAnyClass(device, pEvdev);
+        EvdevInitAnyValuators(device, pEvdev);
     else if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN | EVDEV_TABLET))
         EvdevInitTouchDevice(device, pEvdev);
     else if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
-        EvdevInitRelClass(device, pEvdev);
+        EvdevInitRelValuators(device, pEvdev);
     else if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
-        EvdevInitAbsClass(device, pEvdev);
+        EvdevInitAbsValuators(device, pEvdev);
 
     /* We drop the return value, the only time we ever want the handlers to
      * unregister is when the device dies. In which case we don't have to
