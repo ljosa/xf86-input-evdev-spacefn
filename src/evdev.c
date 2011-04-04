@@ -504,7 +504,10 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     if (!pEvdev->prox_queued)
     {
         if (pEvdev->abs_queued && !pEvdev->in_proximity)
-            valuator_mask_copy(pEvdev->prox, pEvdev->vals);
+            for (i = 0; i < valuator_mask_size(pEvdev->vals); i++)
+                if (valuator_mask_isset(pEvdev->vals, i))
+                    valuator_mask_set(pEvdev->prox, i,
+                                      valuator_mask_get(pEvdev->vals, i));
         return 0;
     }
 
