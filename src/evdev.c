@@ -527,6 +527,7 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
         {
             valuator_mask_copy(pEvdev->vals, pEvdev->prox);
             valuator_mask_zero(pEvdev->prox);
+            pEvdev->abs_queued = 1;
         }
     }
 
