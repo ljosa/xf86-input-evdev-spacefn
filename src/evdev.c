@@ -525,13 +525,14 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     {
         /* We're about to go into/out of proximity but have no abs events
          * within the EV_SYN. Use the last coordinates we have. */
-        if (!pEvdev->abs_queued &&
-            valuator_mask_num_valuators(pEvdev->prox) > 0)
-        {
-            valuator_mask_copy(pEvdev->vals, pEvdev->prox);
-            valuator_mask_zero(pEvdev->prox);
-            pEvdev->abs_queued = 1;
-        }
+        for (i = 0; i < valuator_mask_size(pEvdev->prox); i++)
+            if (!valuator_mask_isset(pEvdev->vals, i) &&
+                valuator_mask_isset(pEvdev->prox, i))
+                valuator_mask_set(pEvdev->vals, i,
+                                  valuator_mask_get(pEvdev->prox, i));
+        valuator_mask_zero(pEvdev->prox);
+
+        pEvdev->abs_queued = valuator_mask_size(pEvdev->vals);
     }
 
     pEvdev->in_proximity = prox_state;
