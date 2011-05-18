@@ -2237,10 +2237,10 @@ EvdevInitProperty(DeviceIntPtr dev)
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
     int          rc;
-    BOOL         invert[2];
 
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
     {
+        BOOL invert[2];
         invert[0] = pEvdev->invert_x;
         invert[1] = pEvdev->invert_y;
 
