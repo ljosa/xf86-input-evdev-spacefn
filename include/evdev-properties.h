@@ -75,4 +75,16 @@
 /* CARD32 */
 #define EVDEV_PROP_THIRDBUTTON_THRESHOLD "Evdev Third Button Emulation Threshold"
 
+/* CARD8, 1 value,
+   This property is initialized on devices that have multimedia keys on the
+   function keys. The value of the property selects the default behaviour
+   for the function keys. The behaviour of the fn key (if any exists) is
+   hardware specific. On some hardware, fn may toggle the other set of
+   functions available on the keys.
+
+   0 send functions keys by default, fn may toggle to multimedia keys
+   1 send multimedia keys by default, fn may toggle to function keys
+*/
+#define EVDEV_PROP_FUNCTION_KEYS "Evdev Function Keys"
+
 #endif

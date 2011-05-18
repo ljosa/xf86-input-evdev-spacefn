@@ -1359,6 +1359,7 @@ EvdevInit(DeviceIntPtr device)
     Evdev3BEmuInitProperty(device);
     EvdevWheelEmuInitProperty(device);
     EvdevDragLockInitProperty(device);
+    EvdevAppleInitProperty(device);
 
     return Success;
 }

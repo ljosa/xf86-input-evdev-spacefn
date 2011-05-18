@@ -85,6 +85,13 @@
 /* Number of longs needed to hold the given number of bits */
 #define NLONGS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
 
+/* Function key mode */
+enum fkeymode {
+    FKEYMODE_UNKNOWN = 0,
+    FKEYMODE_FKEYS,       /* function keys send function keys */
+    FKEYMODE_MMKEYS,      /* function keys send multimedia keys */
+};
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;
@@ -197,6 +204,8 @@ typedef struct {
     /* Event queue used to defer keyboard/button events until EV_SYN time. */
     int                     num_queue;
     EventQueueRec           queue[EVDEV_MAXQUEUE];
+
+    enum fkeymode           fkeymode;
 } EvdevRec, *EvdevPtr;
 
 /* Event posting functions */
@@ -243,4 +252,5 @@ void EvdevMBEmuInitProperty(DeviceIntPtr);
 void Evdev3BEmuInitProperty(DeviceIntPtr);
 void EvdevWheelEmuInitProperty(DeviceIntPtr);
 void EvdevDragLockInitProperty(DeviceIntPtr);
+void EvdevAppleInitProperty(DeviceIntPtr);
 #endif
