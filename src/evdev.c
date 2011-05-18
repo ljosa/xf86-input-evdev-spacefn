@@ -52,6 +52,10 @@
 #include <evdev-properties.h>
 #include <xserver-properties.h>
 
+#ifndef XI_PROP_PRODUCT_ID
+#define XI_PROP_PRODUCT_ID "Device Product ID"
+#endif
+
 /* removed from server, purge when dropping support for server 1.10 */
 #define XI86_SEND_DRAG_EVENTS   0x08
 
@@ -108,6 +112,7 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
                             XIPropertyValuePtr val, BOOL checkonly);
+static Atom prop_product_id;
 static Atom prop_invert;
 static Atom prop_calibration;
 static Atom prop_swap;
@@ -1450,6 +1455,7 @@ EvdevCache(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
     int i, len;
+    struct input_id id;
 
     char name[1024]                  = {0};
     unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
@@ -1457,6 +1463,16 @@ EvdevCache(InputInfoPtr pInfo)
     unsigned long rel_bitmask[NLONGS(REL_CNT)] = {0};
     unsigned long abs_bitmask[NLONGS(ABS_CNT)] = {0};
     unsigned long led_bitmask[NLONGS(LED_CNT)] = {0};
+
+
+    if (ioctl(pInfo->fd, EVIOCGID, &id) < 0)
+    {
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGID failed: %s\n", strerror(errno));
+        goto error;
+    }
+
+    pEvdev->id_vendor = id.vendor;
+    pEvdev->id_product = id.product;
 
     if (ioctl(pInfo->fd, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
         xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGNAME failed: %s\n", strerror(errno));
@@ -1566,6 +1582,9 @@ EvdevProbe(InputInfoPtr pInfo)
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
     int rc = 1;
+
+    xf86IDrvMsg(pInfo, X_PROBED, "Vendor %#hx Product %#hx\n",
+                pEvdev->id_vendor, pEvdev->id_product);
 
     /* Trinary state for ignoring axes:
        - unset: do the normal thing.
@@ -2237,6 +2256,17 @@ EvdevInitProperty(DeviceIntPtr dev)
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
     int          rc;
+    CARD32       product[2];
+
+    prop_product_id = MakeAtom(XI_PROP_PRODUCT_ID, strlen(XI_PROP_PRODUCT_ID), TRUE);
+    product[0] = pEvdev->id_vendor;
+    product[1] = pEvdev->id_product;
+    rc = XIChangeDeviceProperty(dev, prop_product_id, XA_INTEGER, 32,
+                                PropModeReplace, 2, product, FALSE);
+    if (rc != Success)
+        return;
+
+    XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
 
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
     {
@@ -2344,8 +2374,9 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
-    } else if (atom == prop_axis_label || atom == prop_btn_label)
-        return BadAccess; /* Axis/Button labels can't be changed */
+    } else if (atom == prop_axis_label || atom == prop_btn_label ||
+               atom == prop_product_id)
+        return BadAccess; /* Read-only properties */
 
     return Success;
 }

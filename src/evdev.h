@@ -104,6 +104,9 @@ typedef struct {
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
+    unsigned short id_vendor;
+    unsigned short id_product;
+
     char *device;
     int grabDevice;         /* grab the event device? */
 
