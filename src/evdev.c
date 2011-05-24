@@ -1712,6 +1712,12 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->flags |= EVDEV_TOUCHSCREEN;
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
+            } else if (!(TestBit(REL_X, pEvdev->rel_bitmask) &&
+                         TestBit(REL_Y, pEvdev->rel_bitmask)) && has_lmr) {
+                    /* some touchscreens use BTN_LEFT rather than BTN_TOUCH */
+                    xf86IDrvMsg(pInfo, X_PROBED, "Found absolute touchscreen\n");
+                    pEvdev->flags |= EVDEV_TOUCHSCREEN;
+                    pEvdev->flags |= EVDEV_BUTTON_EVENTS;
             }
         }
     }
