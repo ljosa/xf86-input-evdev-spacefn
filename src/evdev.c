@@ -1531,6 +1531,8 @@ EvdevCache(InputInfoPtr pInfo)
                             i, strerror(errno));
                 goto error;
             }
+            xf86IDrvMsgVerb(pInfo, X_PROBED, 6, "absolute axis %#x [%d..%d]\n",
+                            i, pEvdev->absinfo[i].maximum, pEvdev->absinfo[i].minimum);
         }
     }
 
