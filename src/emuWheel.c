@@ -249,13 +249,9 @@ void
 EvdevWheelEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    char val[4];
     int wheelButton;
     int inertia;
     int timeout;
-
-    val[0] = 0;
-    val[1] = 0;
 
     if (xf86SetBoolOption(pInfo->options, "EmulateWheel", FALSE)) {
 	pEvdev->emulateWheel.enabled = TRUE;

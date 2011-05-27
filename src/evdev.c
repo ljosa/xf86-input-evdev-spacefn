@@ -2189,18 +2189,15 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
     int axis;
     char **labels;
     int labels_len = 0;
-    char *misc_label;
 
     if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
     {
         labels     = abs_labels;
         labels_len = ArrayLength(abs_labels);
-        misc_label = AXIS_LABEL_PROP_ABS_MISC;
     } else if ((pEvdev->flags & EVDEV_RELATIVE_EVENTS))
     {
         labels     = rel_labels;
         labels_len = ArrayLength(rel_labels);
-        misc_label = AXIS_LABEL_PROP_REL_MISC;
     }
 
     memset(atoms, 0, natoms * sizeof(Atom));
