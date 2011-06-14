@@ -2276,7 +2276,7 @@ EvdevInitProperty(DeviceIntPtr dev)
     if (rc != Success)
         return;
 
-    XISetDevicePropertyDeletable(dev, prop_invert, FALSE);
+    XISetDevicePropertyDeletable(dev, prop_product_id, FALSE);
 
     /* Device node property */
     device_node = strdup(pEvdev->device);
