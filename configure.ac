@@ -45,7 +45,7 @@ XORG_MACROS_VERSION(1.8)
 XORG_DEFAULT_OPTIONS
 
 # Obtain compiler/linker options from server and required extensions
-PKG_CHECK_MODULES(XORG, xorg-server xproto inputproto)
+PKG_CHECK_MODULES(XORG, [xorg-server >= 1.10] xproto inputproto)
 
 # Define a configure option for an alternate input module directory
 AC_ARG_WITH(xorg-module-dir,

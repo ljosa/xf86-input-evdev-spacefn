@@ -39,10 +39,6 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) * 100 + GET_ABI_MINOR(ABI_XINPUT_VERSION) < 1202
-#error "Need X server input ABI version 12.2 or greater"
-#endif
-
 #ifndef EV_CNT /* linux 2.6.23 kernels and earlier lack _CNT defines */
 #define EV_CNT (EV_MAX+1)
 #endif
