@@ -1442,6 +1442,9 @@ EvdevProc(DeviceIntPtr device, int what)
         EvdevRemoveDevice(pInfo);
         pEvdev->min_maj = 0;
 	break;
+
+    default:
+        return BadValue;
     }
 
     return Success;
