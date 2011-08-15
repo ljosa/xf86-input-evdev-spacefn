@@ -2201,7 +2201,8 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
     {
         labels     = rel_labels;
         labels_len = ArrayLength(rel_labels);
-    }
+    } else
+        return;
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
