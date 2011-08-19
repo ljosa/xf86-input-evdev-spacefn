@@ -55,6 +55,10 @@
 #define LED_CNT (LED_MAX+1)
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 14
+#define HAVE_SMOOTH_SCROLLING 1
+#endif
+
 #define EVDEV_MAXBUTTONS 32
 #define EVDEV_MAXQUEUE 32
 

@@ -267,10 +267,12 @@ SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
     }
 }
 
+#ifndef HAVE_SMOOTH_SCROLLING
 static int wheel_up_button = 4;
 static int wheel_down_button = 5;
 static int wheel_left_button = 6;
 static int wheel_right_button = 7;
+#endif
 
 static EventQueuePtr
 EvdevNextInQueue(InputInfoPtr pInfo)
@@ -590,6 +592,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     value = ev->value;
 
     switch (ev->code) {
+#ifndef HAVE_SMOOTH_SCROLLING
         case REL_WHEEL:
             if (value > 0)
                 EvdevQueueButtonClicks(pInfo, wheel_up_button, value);
@@ -604,8 +607,8 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
             else if (value < 0)
                 EvdevQueueButtonClicks(pInfo, wheel_left_button, -value);
             break;
-
         /* We don't post wheel events as axis motion. */
+#endif
         default:
             /* Ignore EV_REL events if we never set up for them. */
             if (!(pEvdev->flags & EVDEV_RELATIVE_EVENTS))
@@ -1100,6 +1103,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
     if (num_axes < 1)
         goto out;
 
+#ifndef HAVE_SMOOTH_SCROLLING
     /* Wheels are special, we post them as button events. So let's ignore them
      * in the axes list too */
     if (TestBit(REL_WHEEL, pEvdev->rel_bitmask))
@@ -1111,6 +1115,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
 
     if (num_axes <= 0)
         goto out;
+#endif
 
     if (num_axes > MAX_VALUATORS) {
         xf86IDrvMsg(pInfo, X_WARNING, "found %d axes, limiting to %d.\n", num_axes, MAX_VALUATORS);
@@ -1128,9 +1133,11 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
     for (axis = REL_X; i < MAX_VALUATORS && axis <= REL_MAX; axis++)
     {
         pEvdev->axis_map[axis] = -1;
+#ifndef HAVE_SMOOTH_SCROLLING
         /* We don't post wheel events, so ignore them here too */
         if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
             continue;
+#endif
         if (!TestBit(axis, pEvdev->rel_bitmask))
             continue;
         pEvdev->axis_map[axis] = i;
@@ -1160,6 +1167,14 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
         xf86InitValuatorAxisStruct(device, axnum, atoms[axnum], -1, -1, 1, 0, 1,
                                    Relative);
         xf86InitValuatorDefaults(device, axnum);
+#ifdef HAVE_SMOOTH_SCROLLING
+        if (axis == REL_WHEEL)
+            SetScrollValuator(device, axnum, SCROLL_TYPE_VERTICAL, -1.0, SCROLL_FLAG_PREFERRED);
+        else if (axis == REL_DIAL)
+            SetScrollValuator(device, axnum, SCROLL_TYPE_VERTICAL, -1.0, SCROLL_FLAG_NONE);
+        else if (axis == REL_HWHEEL)
+            SetScrollValuator(device, axnum, SCROLL_TYPE_HORIZONTAL, -1.0, SCROLL_FLAG_NONE);
+#endif
     }
 
     free(atoms);
