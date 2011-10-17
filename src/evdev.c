@@ -174,6 +174,16 @@ static size_t EvdevCountBits(unsigned long *array, size_t nlongs)
     return count;
 }
 
+static inline int EvdevBitIsSet(const unsigned long *array, int bit)
+{
+    return array[bit / LONG_BITS] & (1LL << (bit % LONG_BITS));
+}
+
+static inline void EvdevSetBit(unsigned long *array, int bit)
+{
+    array[bit / LONG_BITS] |= (1LL << (bit % LONG_BITS));
+}
+
 static int
 EvdevGetMajorMinor(InputInfoPtr pInfo)
 {
@@ -892,8 +902,6 @@ EvdevReadInput(InputInfoPtr pInfo)
     }
 }
 
-#define TestBit(bit, array) ((array[(bit) / LONG_BITS]) & (1L << ((bit) % LONG_BITS)))
-
 static void
 EvdevPtrCtrlProc(DeviceIntPtr device, PtrCtrl *ctrl)
 {
@@ -969,7 +977,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    if (!TestBit(EV_ABS, pEvdev->bitmask))
+    if (!EvdevBitIsSet(pEvdev->bitmask, EV_ABS))
         goto out;
 
     num_axes = EvdevCountBits(pEvdev->abs_bitmask, NLONGS(ABS_MAX));
@@ -994,7 +1002,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
     for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
         pEvdev->axis_map[axis] = -1;
-        if (!TestBit(axis, pEvdev->abs_bitmask))
+        if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis))
             continue;
         pEvdev->axis_map[axis] = i;
         i++;
@@ -1036,7 +1044,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         if (!pEvdev->use_proximity)
             break;
 
-        if (TestBit(proximity_bits[i], pEvdev->key_bitmask))
+        if (EvdevBitIsSet(pEvdev->key_bitmask, proximity_bits[i]))
         {
             InitProximityClassDeviceStruct(device);
             pEvdev->prox = valuator_mask_new(num_axes);
@@ -1093,7 +1101,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
 
-    if (!TestBit(EV_REL, pEvdev->bitmask))
+    if (!EvdevBitIsSet(pEvdev->bitmask, EV_REL))
         goto out;
 
     num_axes = EvdevCountBits(pEvdev->rel_bitmask, NLONGS(REL_MAX));
@@ -1102,11 +1110,11 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
 
     /* Wheels are special, we post them as button events. So let's ignore them
      * in the axes list too */
-    if (TestBit(REL_WHEEL, pEvdev->rel_bitmask))
+    if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_WHEEL))
         num_axes--;
-    if (TestBit(REL_HWHEEL, pEvdev->rel_bitmask))
+    if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_HWHEEL))
         num_axes--;
-    if (TestBit(REL_DIAL, pEvdev->rel_bitmask))
+    if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_DIAL))
         num_axes--;
 
     if (num_axes <= 0)
@@ -1131,7 +1139,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
         /* We don't post wheel events, so ignore them here too */
         if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
             continue;
-        if (!TestBit(axis, pEvdev->rel_bitmask))
+        if (!EvdevBitIsSet(pEvdev->rel_bitmask, axis))
             continue;
         pEvdev->axis_map[axis] = i;
         i++;
@@ -1527,7 +1535,7 @@ EvdevCache(InputInfoPtr pInfo)
      * to be static, always refresh it in evdev structure.
      */
     for (i = ABS_X; i <= ABS_MAX; i++) {
-        if (TestBit(i, abs_bitmask)) {
+        if (EvdevBitIsSet(abs_bitmask, i)) {
             len = ioctl(pInfo->fd, EVIOCGABS(i), &pEvdev->absinfo[i]);
             if (len < 0) {
                 xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGABSi(%d) failed: %s\n",
@@ -1625,7 +1633,7 @@ EvdevProbe(InputInfoPtr pInfo)
     for (i = BTN_MISC; i < BTN_JOYSTICK; i++)
     {
         int mapping = 0;
-        if (TestBit(i, pEvdev->key_bitmask))
+        if (EvdevBitIsSet(pEvdev->key_bitmask, i))
         {
             mapping = EvdevUtilButtonEventToButtonNumber(pEvdev, i);
             if (mapping > num_buttons)
@@ -1633,9 +1641,9 @@ EvdevProbe(InputInfoPtr pInfo)
         }
     }
 
-    has_lmr = TestBit(BTN_LEFT, pEvdev->key_bitmask) ||
-                TestBit(BTN_MIDDLE, pEvdev->key_bitmask) ||
-                TestBit(BTN_RIGHT, pEvdev->key_bitmask);
+    has_lmr = EvdevBitIsSet(pEvdev->key_bitmask, BTN_LEFT) ||
+                EvdevBitIsSet(pEvdev->key_bitmask, BTN_MIDDLE) ||
+                EvdevBitIsSet(pEvdev->key_bitmask, BTN_RIGHT);
 
     if (num_buttons)
     {
@@ -1645,16 +1653,16 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     for (i = 0; i < REL_MAX; i++) {
-        if (TestBit(i, pEvdev->rel_bitmask)) {
+        if (EvdevBitIsSet(pEvdev->rel_bitmask, i)) {
             has_rel_axes = TRUE;
             break;
         }
     }
 
     if (has_rel_axes) {
-        if (TestBit(REL_WHEEL, pEvdev->rel_bitmask) ||
-            TestBit(REL_HWHEEL, pEvdev->rel_bitmask) ||
-            TestBit(REL_DIAL, pEvdev->rel_bitmask)) {
+        if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_WHEEL) ||
+            EvdevBitIsSet(pEvdev->rel_bitmask, REL_HWHEEL) ||
+            EvdevBitIsSet(pEvdev->rel_bitmask, REL_DIAL)) {
             xf86IDrvMsg(pInfo, X_PROBED, "Found scroll wheel(s)\n");
             has_scroll = TRUE;
             if (!num_buttons)
@@ -1669,8 +1677,8 @@ EvdevProbe(InputInfoPtr pInfo)
             xf86IDrvMsg(pInfo, X_PROBED, "Found relative axes\n");
             pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
 
-            if (TestBit(REL_X, pEvdev->rel_bitmask) &&
-                TestBit(REL_Y, pEvdev->rel_bitmask)) {
+            if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_X) &&
+                EvdevBitIsSet(pEvdev->rel_bitmask, REL_Y)) {
                 xf86IDrvMsg(pInfo, X_PROBED, "Found x and y relative axes\n");
             }
         } else {
@@ -1680,7 +1688,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     for (i = 0; i < ABS_MAX; i++) {
-        if (TestBit(i, pEvdev->abs_bitmask)) {
+        if (EvdevBitIsSet(pEvdev->abs_bitmask, i)) {
             has_abs_axes = TRUE;
             break;
         }
@@ -1694,12 +1702,12 @@ EvdevProbe(InputInfoPtr pInfo)
         xf86IDrvMsg(pInfo, X_PROBED, "Found absolute axes\n");
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 
-        if ((TestBit(ABS_X, pEvdev->abs_bitmask) &&
-             TestBit(ABS_Y, pEvdev->abs_bitmask))) {
+        if ((EvdevBitIsSet(pEvdev->abs_bitmask, ABS_X) &&
+             EvdevBitIsSet(pEvdev->abs_bitmask, ABS_Y))) {
             xf86IDrvMsg(pInfo, X_PROBED, "Found x and y absolute axes\n");
-            if (TestBit(BTN_TOOL_PEN, pEvdev->key_bitmask) ||
-                TestBit(BTN_STYLUS, pEvdev->key_bitmask) ||
-                TestBit(BTN_STYLUS2, pEvdev->key_bitmask))
+            if (EvdevBitIsSet(pEvdev->key_bitmask, BTN_TOOL_PEN) ||
+                EvdevBitIsSet(pEvdev->key_bitmask, BTN_STYLUS) ||
+                EvdevBitIsSet(pEvdev->key_bitmask, BTN_STYLUS2))
             {
                 xf86IDrvMsg(pInfo, X_PROBED, "Found absolute tablet.\n");
                 pEvdev->flags |= EVDEV_TABLET;
@@ -1708,9 +1716,9 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->num_buttons = 7; /* LMR + scroll wheels */
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
-            } else if (TestBit(ABS_PRESSURE, pEvdev->abs_bitmask) ||
-                TestBit(BTN_TOUCH, pEvdev->key_bitmask)) {
-                if (has_lmr || TestBit(BTN_TOOL_FINGER, pEvdev->key_bitmask)) {
+            } else if (EvdevBitIsSet(pEvdev->abs_bitmask, ABS_PRESSURE) ||
+                EvdevBitIsSet(pEvdev->key_bitmask, BTN_TOUCH)) {
+                if (has_lmr || EvdevBitIsSet(pEvdev->key_bitmask, BTN_TOOL_FINGER)) {
                     xf86IDrvMsg(pInfo, X_PROBED, "Found absolute touchpad.\n");
                     pEvdev->flags |= EVDEV_TOUCHPAD;
                 } else {
@@ -1718,8 +1726,8 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->flags |= EVDEV_TOUCHSCREEN;
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
-            } else if (!(TestBit(REL_X, pEvdev->rel_bitmask) &&
-                         TestBit(REL_Y, pEvdev->rel_bitmask)) && has_lmr) {
+            } else if (!(EvdevBitIsSet(pEvdev->rel_bitmask, REL_X) &&
+                         EvdevBitIsSet(pEvdev->rel_bitmask, REL_Y)) && has_lmr) {
                     /* some touchscreens use BTN_LEFT rather than BTN_TOUCH */
                     xf86IDrvMsg(pInfo, X_PROBED, "Found absolute touchscreen\n");
                     pEvdev->flags |= EVDEV_TOUCHSCREEN;
@@ -1729,7 +1737,7 @@ EvdevProbe(InputInfoPtr pInfo)
     }
 
     for (i = 0; i < BTN_MISC; i++) {
-        if (TestBit(i, pEvdev->key_bitmask)) {
+        if (EvdevBitIsSet(pEvdev->key_bitmask, i)) {
             xf86IDrvMsg(pInfo, X_PROBED, "Found keys\n");
             pEvdev->flags |= EVDEV_KEYBOARD_EVENTS;
             has_keys = TRUE;
@@ -2232,7 +2240,7 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
 
     for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
     {
-        if (TestBit(button, pEvdev->key_bitmask))
+        if (EvdevBitIsSet(pEvdev->key_bitmask, button))
         {
             int group = (button % 0x100)/16;
             int idx = button - ((button/16) * 16);
