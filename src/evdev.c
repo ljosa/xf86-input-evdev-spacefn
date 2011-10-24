@@ -38,6 +38,7 @@
 
 #include <linux/version.h>
 #include <sys/stat.h>
+#include <libudev.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -54,6 +55,10 @@
 
 #ifndef XI_PROP_PRODUCT_ID
 #define XI_PROP_PRODUCT_ID "Device Product ID"
+#endif
+
+#ifndef XI_PROP_VIRTUAL_DEVICE
+#define XI_PROP_VIRTUAL_DEVICE "Virtual Device"
 #endif
 
 /* removed from server, purge when dropping support for server 1.10 */
@@ -119,6 +124,7 @@ static Atom prop_swap;
 static Atom prop_axis_label;
 static Atom prop_btn_label;
 static Atom prop_device;
+static Atom prop_virtual;
 
 /* All devices the evdev driver has allocated and knows about.
  * MAXDEVICES is safe as null-terminated array, as two devices (VCP and VCK)
@@ -275,6 +281,39 @@ SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
             *option = s;
         }
     }
+}
+
+static BOOL
+EvdevDeviceIsVirtual(const char* devicenode)
+{
+    struct udev *udev = NULL;
+    struct udev_device *device = NULL;
+    struct stat st;
+    int rc = FALSE;
+    const char *devpath;
+
+    udev = udev_new();
+    if (!udev)
+        goto out;
+
+    stat(devicenode, &st);
+    device = udev_device_new_from_devnum(udev, 'c', st.st_rdev);
+
+    if (!device)
+        goto out;
+
+
+    devpath = udev_device_get_devpath(device);
+    if (!devpath)
+        goto out;
+
+    if (strstr(devpath, "LNXSYSTM"))
+        rc = TRUE;
+
+out:
+    udev_device_unref(device);
+    udev_unref(udev);
+    return rc;
 }
 
 #ifndef HAVE_SMOOTH_SCROLLING
@@ -2317,6 +2356,17 @@ EvdevInitProperty(DeviceIntPtr dev)
     if (rc != Success)
         return;
 
+    if (EvdevDeviceIsVirtual(pEvdev->device))
+    {
+        BOOL virtual = 1;
+        prop_virtual = MakeAtom(XI_PROP_VIRTUAL_DEVICE,
+                                strlen(XI_PROP_VIRTUAL_DEVICE), TRUE);
+        rc = XIChangeDeviceProperty(dev, prop_virtual, XA_INTEGER, 8,
+                                    PropModeReplace, 1, &virtual, FALSE);
+        XISetDevicePropertyDeletable(dev, prop_virtual, FALSE);
+    }
+
+
     XISetDevicePropertyDeletable(dev, prop_device, FALSE);
 
     if (pEvdev->flags & (EVDEV_RELATIVE_EVENTS | EVDEV_ABSOLUTE_EVENTS))
@@ -2426,7 +2476,8 @@ EvdevSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
         if (!checkonly)
             pEvdev->swap_axes = *((BOOL*)val->data);
     } else if (atom == prop_axis_label || atom == prop_btn_label ||
-               atom == prop_product_id || atom == prop_device)
+               atom == prop_product_id || atom == prop_device ||
+               atom == prop_virtual)
         return BadAccess; /* Read-only properties */
 
     return Success;
