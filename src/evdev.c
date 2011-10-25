@@ -1205,7 +1205,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 #ifdef MULTITOUCH
     if (num_mt_axes > 0)
     {
-        int num_touches = 10;
+        int num_touches = 0;
         int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
             XIDependentTouch : XIDirectTouch;
 
