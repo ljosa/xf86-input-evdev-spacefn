@@ -2096,16 +2096,6 @@ EvdevOpenDevice(InputInfoPtr pInfo)
 
         pEvdev->device = device;
         xf86IDrvMsg(pInfo, X_CONFIG, "Device: \"%s\"\n", device);
-
-#ifdef MULTITOUCH
-        pEvdev->mtdev = malloc(sizeof(struct mtdev));
-        if (!pEvdev->mtdev)
-        {
-            xf86Msg(X_ERROR, "%s: Couldn't allocate mtdev structure\n",
-                    pInfo->name);
-            return BadAlloc;
-        }
-#endif
     }
 
     if (pInfo->fd < 0)
@@ -2121,11 +2111,10 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     }
 
 #ifdef MULTITOUCH
-    if (mtdev_open(pEvdev->mtdev, pInfo->fd) == 0)
+    pEvdev->mtdev = mtdev_new_open(pInfo->fd);
+    if (pEvdev->mtdev)
         pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
     else {
-        free(pEvdev->mtdev);
-        pEvdev->mtdev = NULL;
         xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
         return FALSE;
     }
@@ -2137,6 +2126,10 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     {
         xf86IDrvMsg(pInfo, X_WARNING, "device file is duplicate. Ignoring.\n");
         close(pInfo->fd);
+#ifdef MULTITOUCH
+        mtdev_close_delete(pEvdev->mtdev);
+        pEvdev->mtdev = NULL;
+#endif
         return BadMatch;
     }
 
