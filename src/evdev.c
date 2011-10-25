@@ -176,7 +176,7 @@ static size_t EvdevCountBits(unsigned long *array, size_t nlongs)
 
 static inline int EvdevBitIsSet(const unsigned long *array, int bit)
 {
-    return array[bit / LONG_BITS] & (1LL << (bit % LONG_BITS));
+    return !!(array[bit / LONG_BITS] & (1LL << (bit % LONG_BITS)));
 }
 
 static inline void EvdevSetBit(unsigned long *array, int bit)
