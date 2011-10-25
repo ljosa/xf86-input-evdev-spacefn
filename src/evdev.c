@@ -1196,7 +1196,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
     EvdevInitAxesLabels(pEvdev, pEvdev->num_vals + num_mt_axes, atoms);
 
-    if (!InitValuatorClassDeviceStruct(device, num_axes, atoms,
+    if (!InitValuatorClassDeviceStruct(device, num_axes + num_mt_axes, atoms,
                                        GetMotionHistorySize(), Absolute)) {
         xf86IDrvMsg(pInfo, X_ERROR, "failed to initialize valuator class device.\n");
         goto out;
