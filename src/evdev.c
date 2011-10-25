@@ -1006,10 +1006,9 @@ EvdevReadInput(InputInfoPtr pInfo)
             len = mtdev_get(pEvdev->mtdev, pInfo->fd, ev, NUM_EVENTS) *
                 sizeof(struct input_event);
         else
-            len = read(pInfo->fd, &ev, sizeof(ev));
-#else
-            len = read(pInfo->fd, &ev, sizeof(ev));
 #endif
+            len = read(pInfo->fd, &ev, sizeof(ev));
+
         if (len <= 0)
         {
             if (errno == ENODEV) /* May happen after resume */
