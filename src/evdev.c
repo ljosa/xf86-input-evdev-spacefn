@@ -704,20 +704,23 @@ static void
 EvdevProcessTouch(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
+    int type;
 
     if (pEvdev->cur_slot < 0 || !pEvdev->mt_mask)
         return;
 
-    if (pEvdev->close_slot) {
-        EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask,
-                             XI_TouchEnd);
-        pEvdev->close_slot = 0;
-    } else {
-        EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask,
-                             pEvdev->open_slot ? XI_TouchBegin :
-                                                 XI_TouchUpdate);
-        pEvdev->open_slot = 0;
-    }
+    if (pEvdev->close_slot)
+        type = XI_TouchEnd;
+    else if (pEvdev->open_slot)
+        type = XI_TouchBegin;
+    else
+        type = XI_TouchUpdate;
+
+
+    EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask, type);
+
+    pEvdev->close_slot = 0;
+    pEvdev->open_slot = 0;
 
     valuator_mask_zero(pEvdev->mt_mask);
 }
