@@ -100,6 +100,12 @@ enum fkeymode {
     FKEYMODE_MMKEYS,      /* function keys send multimedia keys */
 };
 
+enum SlotState {
+    SLOTSTATE_OPEN = 8,
+    SLOTSTATE_CLOSE,
+    SLOTSTATE_EMPTY,
+};
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;
@@ -144,8 +150,7 @@ typedef struct {
 #ifdef MULTITOUCH
     ValuatorMask *mt_mask;
     int cur_slot;
-    BOOL close_slot;
-    BOOL open_slot;
+    enum SlotState slot_state;
     struct mtdev *mtdev;
 #endif
 

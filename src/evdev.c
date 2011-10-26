@@ -709,9 +709,9 @@ EvdevProcessTouch(InputInfoPtr pInfo)
     if (pEvdev->cur_slot < 0 || !pEvdev->mt_mask)
         return;
 
-    if (pEvdev->close_slot)
+    if (pEvdev->slot_state == SLOTSTATE_CLOSE)
         type = XI_TouchEnd;
-    else if (pEvdev->open_slot)
+    else if (pEvdev->slot_state == SLOTSTATE_OPEN)
         type = XI_TouchBegin;
     else
         type = XI_TouchUpdate;
@@ -719,8 +719,7 @@ EvdevProcessTouch(InputInfoPtr pInfo)
 
     EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask, type);
 
-    pEvdev->close_slot = 0;
-    pEvdev->open_slot = 0;
+    pEvdev->slot_state = SLOTSTATE_EMPTY;
 
     valuator_mask_zero(pEvdev->mt_mask);
 }
@@ -736,9 +735,9 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
         pEvdev->cur_slot = ev->value;
     } else if (ev->code == ABS_MT_TRACKING_ID) {
         if (ev->value >= 0)
-            pEvdev->open_slot = 1;
+            pEvdev->slot_state = SLOTSTATE_OPEN;
         else
-            pEvdev->close_slot = 1;
+            pEvdev->slot_state = SLOTSTATE_CLOSE;
     } else {
         map = pEvdev->axis_map[ev->code] - pEvdev->num_vals;
         valuator_mask_set(pEvdev->mt_mask, map, ev->value);
