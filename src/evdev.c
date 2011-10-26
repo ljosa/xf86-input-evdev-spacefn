@@ -935,6 +935,7 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
 static void
 EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
+    int i;
     int num_v = 0, first_v = 0;
     int v[MAX_VALUATORS] = {};
     EvdevPtr pEvdev = pInfo->private;
@@ -951,7 +952,15 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     EvdevPostProximityEvents(pInfo, FALSE, num_v, first_v, v);
 
     memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
-    memset(pEvdev->queue, 0, sizeof(pEvdev->queue));
+    for (i = 0; i < ArrayLength(pEvdev->queue); i++)
+    {
+        EventQueuePtr queue = &pEvdev->queue[i];
+        queue->detail.key = 0;
+        queue->type = 0;
+        queue->val = 0;
+        /* don't reset the touchMask */
+    }
+
     if (pEvdev->vals)
         valuator_mask_zero(pEvdev->vals);
     pEvdev->num_queue = 0;
