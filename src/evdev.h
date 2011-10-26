@@ -103,6 +103,7 @@ enum fkeymode {
 enum SlotState {
     SLOTSTATE_OPEN = 8,
     SLOTSTATE_CLOSE,
+    SLOTSTATE_UPDATE,
     SLOTSTATE_EMPTY,
 };
 
