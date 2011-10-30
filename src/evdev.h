@@ -107,6 +107,11 @@ enum SlotState {
     SLOTSTATE_EMPTY,
 };
 
+enum ButtonAction {
+    BUTTON_RELEASE = 0,
+    BUTTON_PRESS = 1
+};
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;
@@ -248,7 +253,7 @@ void EvdevQueueProximityEvent(InputInfoPtr pInfo, int value);
 void EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch,
                           ValuatorMask *mask, uint16_t type);
 #endif
-void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
+void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
 				   int v[MAX_VALUATORS]);

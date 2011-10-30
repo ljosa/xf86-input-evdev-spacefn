@@ -411,9 +411,10 @@ EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch, ValuatorMask *mask,
  * Interface for MB emulation since these need to post immediately.
  */
 void
-EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value)
+EvdevPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act)
 {
-    xf86PostButtonEvent(pInfo->dev, Relative, button, value, 0, 0);
+    xf86PostButtonEvent(pInfo->dev, Relative, button,
+                        (act == BUTTON_PRESS) ? 1 : 0, 0, 0);
 }
 
 void

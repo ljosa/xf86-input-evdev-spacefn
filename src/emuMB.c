@@ -191,7 +191,8 @@ EvdevMBEmuTimer(InputInfoPtr pInfo)
 
     pEvdev->emulateMB.pending = FALSE;
     if ((id = stateTab[pEvdev->emulateMB.state][4][0]) != 0) {
-        EvdevPostButtonEvent(pInfo, abs(id), (id >= 0));
+        EvdevPostButtonEvent(pInfo, abs(id),
+                             (id >= 0) ? BUTTON_PRESS : BUTTON_RELEASE);
         pEvdev->emulateMB.state =
             stateTab[pEvdev->emulateMB.state][4][2];
     } else {

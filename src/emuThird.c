@@ -58,7 +58,7 @@ enum EmulationState {
 };
 
 static void
-Evdev3BEmuPostButtonEvent(InputInfoPtr pInfo, int button, int press)
+Evdev3BEmuPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act)
 {
     EvdevPtr          pEvdev   = pInfo->private;
     struct emulate3B *emu3B    = &pEvdev->emulate3B;
@@ -72,7 +72,8 @@ Evdev3BEmuPostButtonEvent(InputInfoPtr pInfo, int button, int press)
     if (emu3B->flags & EVDEV_ABSOLUTE_EVENTS)
         absolute = Absolute;
 
-    xf86PostButtonEventP(pInfo->dev, absolute, button, press, 0,
+    xf86PostButtonEventP(pInfo->dev, absolute, button,
+                         (act == BUTTON_PRESS) ? 1 : 0, 0,
                          (absolute ? 2 : 0), emu3B->startpos);
 }
 
@@ -92,7 +93,7 @@ Evdev3BEmuTimer(OsTimerPtr timer, CARD32 time, pointer arg)
 
     sigstate = xf86BlockSIGIO ();
     emu3B->state = EM3B_EMULATING;
-    Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, 1);
+    Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, BUTTON_PRESS);
     xf86UnblockSIGIO (sigstate);
     return 0;
 }
@@ -145,14 +146,14 @@ Evdev3BEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
         switch (emu3B->state)
         {
             case EM3B_PENDING:
-                Evdev3BEmuPostButtonEvent(pInfo, 1, 1);
+                Evdev3BEmuPostButtonEvent(pInfo, 1, BUTTON_PRESS);
                 Evdev3BCancel(pInfo);
                 break;
             case EM3B_EMULATING:
                 /* We're emulating and now the user pressed a different
                  * button. Just release the emulating one, tell the user to
                  * not do that and get on with life */
-                Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, 0);
+                Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, BUTTON_RELEASE);
                 Evdev3BCancel(pInfo);
                 break;
             default:
@@ -171,11 +172,11 @@ Evdev3BEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
         switch(emu3B->state)
         {
             case EM3B_PENDING:
-                Evdev3BEmuPostButtonEvent(pInfo, 1, 1);
+                Evdev3BEmuPostButtonEvent(pInfo, 1, BUTTON_PRESS);
                 Evdev3BCancel(pInfo);
                 break;
             case EM3B_EMULATING:
-                Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, 0);
+                Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, BUTTON_RELEASE);
                 Evdev3BCancel(pInfo);
                 ret = TRUE;
                 break;
@@ -237,7 +238,7 @@ Evdev3BEmuProcessAbsMotion(InputInfoPtr pInfo, ValuatorMask *vals)
 
     if (cancel)
     {
-        Evdev3BEmuPostButtonEvent(pInfo, 1, 1);
+        Evdev3BEmuPostButtonEvent(pInfo, 1, BUTTON_PRESS);
         Evdev3BCancel(pInfo);
     }
 }
@@ -262,7 +263,7 @@ Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, int dx, int dy)
     if (abs(emu3B->delta[0]) > emu3B->threshold ||
         abs(emu3B->delta[1]) > emu3B->threshold)
     {
-        Evdev3BEmuPostButtonEvent(pInfo, 1, 1);
+        Evdev3BEmuPostButtonEvent(pInfo, 1, BUTTON_PRESS);
         Evdev3BCancel(pInfo);
     }
 }
