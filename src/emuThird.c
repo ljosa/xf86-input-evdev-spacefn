@@ -279,11 +279,11 @@ Evdev3BEmuPreInit(InputInfoPtr pInfo)
     emu3B->timeout = xf86SetIntOption(pInfo->options,
                                       "EmulateThirdButtonTimeout",
                                       1000);
-    emu3B->button = xf86SetBoolOption(pInfo->options,
+    emu3B->button = xf86SetIntOption(pInfo->options,
                                       "EmulateThirdButtonButton",
                                       3);
     /* FIXME: this should be auto-configured based on axis ranges */
-    emu3B->threshold = xf86SetBoolOption(pInfo->options,
+    emu3B->threshold = xf86SetIntOption(pInfo->options,
                                          "EmulateThirdButtonMoveThreshold",
                                          DEFAULT_MOVE_THRESHOLD);
     /* allocate now so we don't allocate in the signal handler */
