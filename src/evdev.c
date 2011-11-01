@@ -1866,6 +1866,7 @@ EvdevProbe(InputInfoPtr pInfo)
 {
     int i, has_rel_axes, has_abs_axes, has_keys, num_buttons, has_scroll;
     int has_lmr; /* left middle right */
+    int has_mt; /* multitouch */
     int ignore_abs = 0, ignore_rel = 0;
     EvdevPtr pEvdev = pInfo->private;
     int rc = 1;
@@ -1899,6 +1900,7 @@ EvdevProbe(InputInfoPtr pInfo)
     has_keys = FALSE;
     has_scroll = FALSE;
     has_lmr = FALSE;
+    has_mt = FALSE;
     num_buttons = 0;
 
     /* count all buttons */
@@ -1966,6 +1968,15 @@ EvdevProbe(InputInfoPtr pInfo)
         }
     }
 
+#ifdef MULTITOUCH
+    for (i = ABS_MT_SLOT; i < ABS_MAX; i++) {
+        if (EvdevBitIsSet(pEvdev->abs_bitmask, i)) {
+            has_mt = TRUE;
+            break;
+        }
+    }
+#endif
+
     if (ignore_abs && has_abs_axes)
     {
         xf86IDrvMsg(pInfo, X_INFO, "Absolute axes present but ignored.\n");
@@ -1973,6 +1984,9 @@ EvdevProbe(InputInfoPtr pInfo)
     } else if (has_abs_axes) {
         xf86IDrvMsg(pInfo, X_PROBED, "Found absolute axes\n");
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
+
+        if (has_mt)
+            xf86IDrvMsg(pInfo, X_PROBED, "Found absolute multitouch axes\n");
 
         if ((EvdevBitIsSet(pEvdev->abs_bitmask, ABS_X) &&
              EvdevBitIsSet(pEvdev->abs_bitmask, ABS_Y))) {
