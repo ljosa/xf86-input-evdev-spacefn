@@ -1145,8 +1145,8 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
         /* We don't post wheel events, so ignore them here too */
         if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
             continue;
-        if (!EvdevBitIsSet(pEvdev->rel_bitmask, axis))
 #endif
+        if (!EvdevBitIsSet(pEvdev->rel_bitmask, axis))
             continue;
         pEvdev->axis_map[axis] = i;
         i++;
