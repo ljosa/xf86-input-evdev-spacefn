@@ -57,6 +57,8 @@ AC_ARG_ENABLE(multitouch,
 
 if test "x$MULTITOUCH" = xyes; then
         AC_DEFINE(MULTITOUCH, 1, [Enable experimental multitouch code])
+        AC_DEFINE(XINPUT2_1_USE_UNSTABLE_PROTOCOL, 1, [Enable XI 2.1 protocol])
+        AC_DEFINE(XINPUT2_2_USE_UNSTABLE_PROTOCOL, 1, [Enable XI 2.2 protocol])
 
         # Obtain compiler/linker options for mtdev
         PKG_CHECK_MODULES(MTDEV, mtdev)
