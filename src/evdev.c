@@ -781,14 +781,14 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
     if (EvdevWheelEmuFilterMotion(pInfo, ev))
         return;
 
-    if (ev->code >= ABS_MT_SLOT)
+    if (ev->code >= ABS_MT_SLOT) {
         EvdevProcessTouchEvent(pInfo, ev);
-    else {
+        pEvdev->abs_queued = 1;
+    } else if (!pEvdev->mt_mask) {
         map = pEvdev->axis_map[ev->code];
         valuator_mask_set(pEvdev->vals, map, value);
+        pEvdev->abs_queued = 1;
     }
-
-    pEvdev->abs_queued = 1;
 }
 
 /**
@@ -823,7 +823,8 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
              * BTN_TOUCH as the proximity notifier */
             if (!pEvdev->use_proximity)
                 pEvdev->in_proximity = value ? ev->code : 0;
-            if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)))
+            if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)) ||
+                pEvdev->mt_mask)
                 break;
             /* Treat BTN_TOUCH from devices that only have BTN_TOUCH as
              * BTN_LEFT. */
