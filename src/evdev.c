@@ -1275,11 +1275,12 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         if (pEvdev->absinfo[axis].resolution)
             resolution = pEvdev->absinfo[axis].resolution * 1000;
 
-        xf86InitTouchValuatorAxisStruct(device, axnum,
-                                        atoms[axnum + pEvdev->num_vals],
-                                        pEvdev->absinfo[axis].minimum,
-                                        pEvdev->absinfo[axis].maximum,
-                                        pEvdev->absinfo[axis].resolution);
+        xf86InitValuatorAxisStruct(device, axnum,
+                                   atoms[axnum + pEvdev->num_vals],
+                                   pEvdev->absinfo[axis].minimum,
+                                   pEvdev->absinfo[axis].maximum,
+                                   resolution, 0, resolution,
+                                   Absolute);
     }
 #endif
 
