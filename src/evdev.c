@@ -436,9 +436,29 @@ EvdevProcessValuators(InputInfoPtr pInfo)
      * just works.
      */
     else if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        int unswapped_x = valuator_mask_get(pEvdev->vals, 0);
-        int unswapped_y = valuator_mask_get(pEvdev->vals, 1);
         int i;
+
+        if (pEvdev->swap_axes) {
+            int swapped_isset[2] = {0, 0};
+            int swapped_values[2];
+
+            for(i = 0; i <= 1; i++)
+                if (valuator_mask_isset(pEvdev->vals, i)) {
+                    swapped_isset[1 - i] = 1;
+                    swapped_values[1 - i] =
+                        xf86ScaleAxis(valuator_mask_get(pEvdev->vals, i),
+                                      pEvdev->absinfo[1 - i].maximum,
+                                      pEvdev->absinfo[1 - i].minimum,
+                                      pEvdev->absinfo[i].maximum,
+                                      pEvdev->absinfo[i].minimum);
+                }
+
+            for (i = 0; i <= 1; i++)
+                if (swapped_isset[i])
+                    valuator_mask_set(pEvdev->vals, i, swapped_values[i]);
+                else
+                    valuator_mask_unset(pEvdev->vals, i);
+        }
 
         for (i = 0; i <= 1; i++) {
             int val;
@@ -457,13 +477,6 @@ EvdevProcessValuators(InputInfoPtr pInfo)
                 calib_min = pEvdev->calibration.min_y;
                 calib_max = pEvdev->calibration.max_y;
             }
-
-            if (pEvdev->swap_axes)
-                val = xf86ScaleAxis((i == 0 ? unswapped_y : unswapped_x),
-                                    pEvdev->absinfo[i].maximum,
-                                    pEvdev->absinfo[i].minimum,
-                                    pEvdev->absinfo[1 - i].maximum,
-                                    pEvdev->absinfo[1 - i].minimum);
 
             if (pEvdev->flags & EVDEV_CALIBRATED)
                 val = xf86ScaleAxis(val, pEvdev->absinfo[i].maximum,
