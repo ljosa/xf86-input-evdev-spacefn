@@ -408,6 +408,10 @@ EvdevProcessValuators(InputInfoPtr pInfo)
             tmp = pEvdev->delta[REL_X];
             pEvdev->delta[REL_X] = pEvdev->delta[REL_Y];
             pEvdev->delta[REL_Y] = tmp;
+            if (pEvdev->delta[REL_X] == 0)
+                valuator_mask_unset(pEvdev->vals, REL_X);
+            if (pEvdev->delta[REL_Y] == 0)
+                valuator_mask_unset(pEvdev->vals, REL_Y);
         }
         if (pEvdev->invert_x)
             pEvdev->delta[REL_X] *= -1;
