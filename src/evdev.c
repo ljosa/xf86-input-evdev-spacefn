@@ -1131,6 +1131,23 @@ EvdevAddKeyClass(DeviceIntPtr device)
     return Success;
 }
 
+/**
+ * return TRUE if the axis is not one we should count as true axis
+ */
+static int
+is_blacklisted_axis(int axis)
+{
+    switch(axis)
+    {
+        case ABS_MT_SLOT:
+        case ABS_MT_TRACKING_ID:
+            return TRUE;
+        default:
+            return FALSE;
+    }
+}
+
+
 static int
 EvdevAddAbsValuatorClass(DeviceIntPtr device)
 {
@@ -1155,7 +1172,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     {
         if (EvdevBitIsSet(pEvdev->abs_bitmask, axis))
         {
-            if(axis != ABS_MT_SLOT && axis != ABS_MT_TRACKING_ID)
+            if (!is_blacklisted_axis(axis))
                 num_mt_axes++;
             num_axes--;
         }
@@ -1215,7 +1232,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
         pEvdev->axis_map[axis] = -1;
         if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis) ||
-            axis == ABS_MT_SLOT || axis == ABS_MT_TRACKING_ID)
+            is_blacklisted_axis(axis))
             continue;
         pEvdev->axis_map[axis] = i;
         i++;
