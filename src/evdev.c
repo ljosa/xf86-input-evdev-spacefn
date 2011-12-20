@@ -748,7 +748,12 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
         else
             pEvdev->slot_state = SLOTSTATE_CLOSE;
         } else {
-            map = pEvdev->axis_map[ev->code] - pEvdev->num_vals;
+            if (ev->code == ABS_MT_POSITION_X)
+                map = pEvdev->axis_map[ABS_X];
+            else if (ev->code == ABS_MT_POSITION_Y)
+                map = pEvdev->axis_map[ABS_Y];
+            else
+                map = pEvdev->axis_map[ev->code] - pEvdev->num_vals;
             valuator_mask_set(pEvdev->mt_mask, map, ev->value);
         }
     }
