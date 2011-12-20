@@ -748,12 +748,7 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
         else
             pEvdev->slot_state = SLOTSTATE_CLOSE;
         } else {
-            if (ev->code == ABS_MT_POSITION_X)
-                map = pEvdev->axis_map[ABS_X];
-            else if (ev->code == ABS_MT_POSITION_Y)
-                map = pEvdev->axis_map[ABS_Y];
-            else
-                map = pEvdev->axis_map[ev->code] - pEvdev->num_vals;
+            map = pEvdev->axis_map[ev->code];
             valuator_mask_set(pEvdev->mt_mask, map, ev->value);
         }
     }
@@ -1131,6 +1126,24 @@ EvdevAddKeyClass(DeviceIntPtr device)
     return Success;
 }
 
+/* MT axes are counted twice - once as ABS_X (which the kernel keeps for
+ * backwards compatibility), once as ABS_MT_POSITION_X. So we need to keep a
+ * mapping of those axes to make sure we only count them once
+ */
+struct mt_axis_mappings {
+    int mt_code;
+    int code;
+    Bool needs_mapping; /* TRUE if both code and mt_code are present */
+    int mapping;        /* Logical mapping of 'code' axis */
+};
+
+static struct mt_axis_mappings mt_axis_mappings[] = {
+    {ABS_MT_POSITION_X, ABS_X},
+    {ABS_MT_POSITION_Y, ABS_Y},
+    {ABS_MT_PRESSURE, ABS_PRESSURE},
+    {ABS_MT_DISTANCE, ABS_DISTANCE},
+};
+
 /**
  * return TRUE if the axis is not one we should count as true axis
  */
@@ -1154,7 +1167,9 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
     int num_axes, axis, i = 0;
-    int num_mt_axes = 0;
+    int num_mt_axes = 0, /* number of MT-only axes */
+        num_mt_axes_total = 0; /* total number of MT axes, including
+                                  double-counted ones, excluding blacklisted */
     Atom *atoms;
 
     pInfo = device->public.devicePrivate;
@@ -1172,26 +1187,35 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     {
         if (EvdevBitIsSet(pEvdev->abs_bitmask, axis))
         {
+            int j;
+            Bool skip = FALSE;
+
+            for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+            {
+                if (mt_axis_mappings[j].mt_code == axis &&
+                    BitIsOn(pEvdev->abs_bitmask, mt_axis_mappings[j].code))
+                {
+                    mt_axis_mappings[j].needs_mapping = TRUE;
+                    skip = TRUE;
+                }
+            }
+
             if (!is_blacklisted_axis(axis))
-                num_mt_axes++;
+            {
+                num_mt_axes_total++;
+                if (!skip)
+                    num_mt_axes++;
+            }
             num_axes--;
         }
     }
 #endif
-
-    if (num_axes > MAX_VALUATORS) {
+    if (num_axes + num_mt_axes > MAX_VALUATORS) {
         xf86IDrvMsg(pInfo, X_WARNING, "found %d axes, limiting to %d.\n", num_axes, MAX_VALUATORS);
         num_axes = MAX_VALUATORS;
     }
 
-#ifdef MULTITOUCH
-    if (num_mt_axes > MAX_VALUATORS) {
-        xf86Msg(X_WARNING, "%s: found %d MT axes, limiting to %d.\n", device->name, num_axes, MAX_VALUATORS);
-        num_mt_axes = MAX_VALUATORS;
-    }
-#endif
-
-    if (num_axes < 1 && num_mt_axes < 1) {
+    if (num_axes < 1 && num_mt_axes_total < 1) {
         xf86Msg(X_WARNING, "%s: no absolute or touch axes found.\n",
                 device->name);
         return !Success;
@@ -1207,8 +1231,8 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         }
     }
 #ifdef MULTITOUCH
-    if (num_mt_axes > 0) {
-        pEvdev->mt_mask = valuator_mask_new(num_mt_axes);
+    if (num_mt_axes_total > 0) {
+        pEvdev->mt_mask = valuator_mask_new(num_mt_axes_total);
         if (!pEvdev->mt_mask) {
             xf86Msg(X_ERROR, "%s: failed to allocate MT valuator mask.\n",
                     device->name);
@@ -1217,7 +1241,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
         for (i = 0; i < EVDEV_MAXQUEUE; i++) {
             pEvdev->queue[i].touchMask =
-                valuator_mask_new(num_mt_axes);
+                valuator_mask_new(num_mt_axes_total);
             if (!pEvdev->queue[i].touchMask) {
                 xf86Msg(X_ERROR, "%s: failed to allocate MT valuator masks for "
                         "evdev event queue.\n", device->name);
@@ -1230,12 +1254,27 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
     i = 0;
     for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
+        int j;
+        int mapping;
         pEvdev->axis_map[axis] = -1;
         if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis) ||
             is_blacklisted_axis(axis))
             continue;
-        pEvdev->axis_map[axis] = i;
-        i++;
+
+        mapping = i;
+
+        for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+        {
+            if (mt_axis_mappings[j].code == axis)
+                mt_axis_mappings[j].mapping = mapping;
+            else if (mt_axis_mappings[j].mt_code == axis &&
+                    mt_axis_mappings[j].needs_mapping)
+                mapping = mt_axis_mappings[j].mapping;
+        }
+
+        pEvdev->axis_map[axis] = mapping;
+        if (mapping == i)
+            i++;
     }
 
     EvdevInitAxesLabels(pEvdev, pEvdev->num_vals + num_mt_axes, atoms);
@@ -1247,7 +1286,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     }
 
 #ifdef MULTITOUCH
-    if (num_mt_axes > 0)
+    if (num_mt_axes_total > 0)
     {
         int num_touches = 0;
         int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
@@ -1257,7 +1296,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             num_touches = pEvdev->mtdev->caps.slot.maximum;
 
         if (!InitTouchClassDeviceStruct(device, num_touches, mode,
-                                        num_mt_axes)) {
+                                        num_mt_axes_total)) {
             xf86Msg(X_ERROR, "%s: failed to initialize touch class device.\n",
                     device->name);
             goto out;
@@ -1288,17 +1327,31 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
 #ifdef MULTITOUCH
     for (axis = ABS_MT_TOUCH_MAJOR; axis <= ABS_MAX; axis++) {
-        int axnum = pEvdev->axis_map[axis] - pEvdev->num_vals;
+        int axnum = pEvdev->axis_map[axis];
         int resolution = 10000;
+        int j;
+        BOOL skip = FALSE;
 
         if (axnum < 0)
+            continue;
+
+        for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+            if (mt_axis_mappings[j].mt_code == axis &&
+                    mt_axis_mappings[j].needs_mapping)
+            {
+                skip = TRUE;
+                break;
+            }
+
+        /* MT axis is mapped, don't set up twice */
+        if (skip)
             continue;
 
         if (pEvdev->absinfo[axis].resolution)
             resolution = pEvdev->absinfo[axis].resolution * 1000;
 
         xf86InitValuatorAxisStruct(device, axnum,
-                                   atoms[axnum + pEvdev->num_vals],
+                                   atoms[axnum],
                                    pEvdev->absinfo[axis].minimum,
                                    pEvdev->absinfo[axis].maximum,
                                    resolution, 0, resolution,
