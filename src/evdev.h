@@ -39,6 +39,10 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
+#ifdef MULTITOUCH
+#include <mtdev.h>
+#endif
+
 #ifndef EV_CNT /* linux 2.6.23 kernels and earlier lack _CNT defines */
 #define EV_CNT (EV_MAX+1)
 #endif
@@ -96,6 +100,18 @@ enum fkeymode {
     FKEYMODE_MMKEYS,      /* function keys send multimedia keys */
 };
 
+enum SlotState {
+    SLOTSTATE_OPEN = 8,
+    SLOTSTATE_CLOSE,
+    SLOTSTATE_UPDATE,
+    SLOTSTATE_EMPTY,
+};
+
+enum ButtonAction {
+    BUTTON_RELEASE = 0,
+    BUTTON_PRESS = 1
+};
+
 /* axis specific data for wheel emulation */
 typedef struct {
     int up_button;
@@ -109,9 +125,20 @@ typedef struct {
         EV_QUEUE_KEY,	/* xf86PostKeyboardEvent() */
         EV_QUEUE_BTN,	/* xf86PostButtonEvent() */
         EV_QUEUE_PROXIMITY, /* xf86PostProximityEvent() */
+#ifdef MULTITOUCH
+        EV_QUEUE_TOUCH,	/*xf86PostTouchEvent() */
+#endif
     } type;
-    int key;		/* May be either a key code or button number. */
-    int val;		/* State of the key/button; pressed or released. */
+    union {
+        int key;	/* May be either a key code or button number. */
+#ifdef MULTITOUCH
+        unsigned int touch; /* Touch ID */
+#endif
+    } detail;
+    int val;	/* State of the key/button/touch; pressed or released. */
+#ifdef MULTITOUCH
+    ValuatorMask *touchMask;
+#endif
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
@@ -126,6 +153,12 @@ typedef struct {
     ValuatorMask *vals;     /* new values coming in */
     ValuatorMask *old_vals; /* old values for calculating relative motion */
     ValuatorMask *prox;     /* last values set while not in proximity */
+#ifdef MULTITOUCH
+    ValuatorMask *mt_mask;
+    int cur_slot;
+    enum SlotState slot_state;
+    struct mtdev *mtdev;
+#endif
 
     int flags;
     int in_proximity;           /* device in proximity */
@@ -216,7 +249,11 @@ typedef struct {
 void EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
 void EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value);
 void EvdevQueueProximityEvent(InputInfoPtr pInfo, int value);
-void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, int value);
+#ifdef MULTITOUCH
+void EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch,
+                          ValuatorMask *mask, uint16_t type);
+#endif
+void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
 				   int v[MAX_VALUATORS]);
