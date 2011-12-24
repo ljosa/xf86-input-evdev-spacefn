@@ -43,6 +43,17 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
+/* FIXME: once the server version is bumped, we can remove this with a
+ * proper pkg-config check. Right now we need an inputproto check for
+ * the right protocol, the pkgconfig check for the mtdev pkgconfig, and an
+ * ABI check to undo the first two if the proto was updated but the server
+ * wasn't yet */
+#ifdef MULTITOUCH
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 16
+#undef MULTITOUCH
+#endif
+#endif
+
 #ifdef MULTITOUCH
 #include <mtdev.h>
 #endif
