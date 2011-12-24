@@ -28,6 +28,10 @@
  *	Oliver McFadden (oliver.mcfadden@nokia.com)
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifndef EVDEV_H
 #define EVDEV_H
 
