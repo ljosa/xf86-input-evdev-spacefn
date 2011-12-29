@@ -48,7 +48,7 @@ XORG_DEFAULT_OPTIONS
 PKG_CHECK_MODULES(XORG, [xorg-server >= 1.10] xproto inputproto)
 PKG_CHECK_MODULES(UDEV, udev)
 
-PKG_CHECK_MODULES(XI22, [inputproto >= 2.1.99.3], HAVE_XI22="yes", HAVE_XI22="no")
+PKG_CHECK_MODULES(XI22, [inputproto >= 2.1.99.3] [xorg-server >= 1.11.99.901], HAVE_XI22="yes", HAVE_XI22="no")
 
 if test "x$HAVE_XI22" = xyes; then
         # Obtain compiler/linker options for mtdev
