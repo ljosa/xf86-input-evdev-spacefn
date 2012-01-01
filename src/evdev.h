@@ -278,7 +278,6 @@ void EvdevMBEmuFinalize(InputInfoPtr);
 CARD32 Evdev3BEmuTimer(OsTimerPtr timer, CARD32 time, pointer arg);
 BOOL Evdev3BEmuFilterEvent(InputInfoPtr, int, BOOL);
 void Evdev3BEmuPreInit(InputInfoPtr pInfo);
-void Evdev3BEmuPreInit(InputInfoPtr);
 void Evdev3BEmuOn(InputInfoPtr);
 void Evdev3BEmuFinalize(InputInfoPtr);
 void Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, int dx, int dy);
