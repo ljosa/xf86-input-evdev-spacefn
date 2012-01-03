@@ -1323,7 +1323,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
     for (axis = ABS_X; axis < ABS_MT_SLOT; axis++) {
         int axnum = pEvdev->axis_map[axis];
-        int resolution = 10000;
+        int resolution = 0;
 
         if (axnum == -1)
             continue;
@@ -1345,7 +1345,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 #ifdef MULTITOUCH
     for (axis = ABS_MT_TOUCH_MAJOR; axis <= ABS_MAX; axis++) {
         int axnum = pEvdev->axis_map[axis];
-        int resolution = 10000;
+        int resolution = 0;
         int j;
         BOOL skip = FALSE;
 
