@@ -1143,6 +1143,7 @@ EvdevAddKeyClass(DeviceIntPtr device)
     return Success;
 }
 
+#ifdef MULTITOUCH
 /* MT axes are counted twice - once as ABS_X (which the kernel keeps for
  * backwards compatibility), once as ABS_MT_POSITION_X. So we need to keep a
  * mapping of those axes to make sure we only count them once
@@ -1160,6 +1161,7 @@ static struct mt_axis_mappings mt_axis_mappings[] = {
     {ABS_MT_PRESSURE, ABS_PRESSURE},
     {ABS_MT_DISTANCE, ABS_DISTANCE},
 };
+#endif
 
 /**
  * return TRUE if the axis is not one we should count as true axis
@@ -1280,6 +1282,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
         mapping = i;
 
+#ifdef MULTITOUCH
         for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
         {
             if (mt_axis_mappings[j].code == axis)
@@ -1288,7 +1291,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
                     mt_axis_mappings[j].needs_mapping)
                 mapping = mt_axis_mappings[j].mapping;
         }
-
+#endif
         pEvdev->axis_map[axis] = mapping;
         if (mapping == i)
             i++;
