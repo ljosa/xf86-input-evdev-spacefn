@@ -1958,6 +1958,38 @@ EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab)
     return TRUE;
 }
 
+/**
+ * Some devices only have other axes (e.g. wheels), but we
+ * still need x/y for these. The server relies on devices having
+ * x/y as axes 0/1 and core/XI 1.x clients expect it too (#44655)
+ */
+static void
+EvdevForceXY(InputInfoPtr pInfo, int mode)
+{
+    EvdevPtr pEvdev = pInfo->private;
+
+    xf86IDrvMsg(pInfo, X_INFO, "Forcing %s x/y axes to exist.\n",
+                (mode == Relative) ? "relative" : "absolute");
+
+    if (mode == Relative)
+    {
+        EvdevSetBit(pEvdev->rel_bitmask, REL_X);
+        EvdevSetBit(pEvdev->rel_bitmask, REL_Y);
+    } else if (mode == Absolute)
+    {
+        EvdevSetBit(pEvdev->abs_bitmask, ABS_X);
+        EvdevSetBit(pEvdev->abs_bitmask, ABS_Y);
+        pEvdev->absinfo[ABS_X].minimum = 0;
+        pEvdev->absinfo[ABS_X].maximum = 1000;
+        pEvdev->absinfo[ABS_X].value = 0;
+        pEvdev->absinfo[ABS_X].resolution = 0;
+        pEvdev->absinfo[ABS_Y].minimum = 0;
+        pEvdev->absinfo[ABS_Y].maximum = 1000;
+        pEvdev->absinfo[ABS_Y].value = 0;
+        pEvdev->absinfo[ABS_Y].resolution = 0;
+    }
+}
+
 static int
 EvdevProbe(InputInfoPtr pInfo)
 {
@@ -2051,7 +2083,8 @@ EvdevProbe(InputInfoPtr pInfo)
             if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_X) &&
                 EvdevBitIsSet(pEvdev->rel_bitmask, REL_Y)) {
                 xf86IDrvMsg(pInfo, X_PROBED, "Found x and y relative axes\n");
-            }
+            } else
+                EvdevForceXY(pInfo, Relative);
         } else {
             xf86IDrvMsg(pInfo, X_INFO, "Relative axes present but ignored.\n");
             has_rel_axes = FALSE;
@@ -2116,7 +2149,16 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->flags |= EVDEV_TOUCHSCREEN;
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
             }
+        } else {
+#ifdef MULTITOUCH
+            if (!EvdevBitIsSet(pEvdev->abs_bitmask, ABS_MT_POSITION_X) ||
+                !EvdevBitIsSet(pEvdev->abs_bitmask, ABS_MT_POSITION_Y))
+#endif
+                EvdevForceXY(pInfo, Absolute);
         }
+
+
+
     }
 
     for (i = 0; i < BTN_MISC; i++) {
