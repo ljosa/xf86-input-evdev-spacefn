@@ -120,7 +120,7 @@ static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
 static int EvdevOpenDevice(InputInfoPtr pInfo);
 
-static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
+static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms);
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
@@ -1297,7 +1297,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             i++;
     }
 
-    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals + num_mt_axes, atoms);
+    EvdevInitAxesLabels(pEvdev, Absolute, pEvdev->num_vals + num_mt_axes, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes + num_mt_axes, atoms,
                                        GetMotionHistorySize(), Absolute)) {
@@ -1496,7 +1496,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
         i++;
     }
 
-    EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
+    EvdevInitAxesLabels(pEvdev, Relative, pEvdev->num_vals, atoms);
 
     if (!InitValuatorClassDeviceStruct(device, num_axes, atoms,
                                        GetMotionHistorySize(), Relative)) {
@@ -2637,18 +2637,18 @@ static char* btn_labels[][16] = {
     }
 };
 
-static void EvdevInitAxesLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
+static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms)
 {
     Atom atom;
     int axis;
     char **labels;
     int labels_len = 0;
 
-    if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+    if (mode == Absolute)
     {
         labels     = abs_labels;
         labels_len = ArrayLength(abs_labels);
-    } else if ((pEvdev->flags & EVDEV_RELATIVE_EVENTS))
+    } else if (mode == Relative)
     {
         labels     = rel_labels;
         labels_len = ArrayLength(rel_labels);
@@ -2810,8 +2810,19 @@ EvdevInitProperty(DeviceIntPtr dev)
         /* Axis labelling */
         if ((pEvdev->num_vals > 0) && (prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
+            int mode;
             Atom atoms[pEvdev->num_vals];
-            EvdevInitAxesLabels(pEvdev, pEvdev->num_vals, atoms);
+
+            if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
+                mode = Absolute;
+            else if (pEvdev->flags & EVDEV_RELATIVE_EVENTS)
+                mode = Relative;
+            else {
+                xf86IDrvMsg(pInfo, X_ERROR, "BUG: mode is neither absolute nor relative\n");
+                mode = Absolute;
+            }
+
+            EvdevInitAxesLabels(pEvdev, mode, pEvdev->num_vals, atoms);
             XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
                                    PropModeReplace, pEvdev->num_vals, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
