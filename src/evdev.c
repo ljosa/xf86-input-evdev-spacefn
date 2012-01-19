@@ -746,6 +746,24 @@ EvdevProcessTouch(InputInfoPtr pInfo)
     valuator_mask_zero(pEvdev->mt_mask);
 }
 
+static int
+num_slots(EvdevPtr pEvdev)
+{
+    int value = pEvdev->absinfo[ABS_MT_SLOT].maximum -
+                pEvdev->absinfo[ABS_MT_SLOT].minimum + 1;
+
+    /* If we don't know how many slots there are, assume at least 10 */
+    return value > 1 ? value : 10;
+}
+
+static int
+last_mt_vals_slot(EvdevPtr pEvdev)
+{
+    int value = pEvdev->cur_slot - pEvdev->absinfo[ABS_MT_SLOT].minimum;
+
+    return value < num_slots(pEvdev) ? value : -1;
+}
+
 static void
 EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
@@ -757,16 +775,29 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
         pEvdev->cur_slot = ev->value;
     } else
     {
+        int slot_index = last_mt_vals_slot(pEvdev);
+
         if (pEvdev->slot_state == SLOTSTATE_EMPTY)
             pEvdev->slot_state = SLOTSTATE_UPDATE;
         if (ev->code == ABS_MT_TRACKING_ID) {
-        if (ev->value >= 0)
-            pEvdev->slot_state = SLOTSTATE_OPEN;
-        else
-            pEvdev->slot_state = SLOTSTATE_CLOSE;
+            if (ev->value >= 0) {
+                pEvdev->slot_state = SLOTSTATE_OPEN;
+
+                if (slot_index >= 0)
+                    valuator_mask_copy(pEvdev->mt_mask,
+                                       pEvdev->last_mt_vals[slot_index]);
+                else
+                    xf86IDrvMsg(pInfo, X_WARNING,
+                                "Attempted to copy values from out-of-range "
+                                "slot, touch events may be incorrect.\n");
+            } else
+                pEvdev->slot_state = SLOTSTATE_CLOSE;
         } else {
             map = pEvdev->axis_map[ev->code];
             valuator_mask_set(pEvdev->mt_mask, map, ev->value);
+            if (slot_index >= 0)
+                valuator_mask_set(pEvdev->last_mt_vals[slot_index], map,
+                                  ev->value);
         }
     }
 }
@@ -1027,6 +1058,28 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
 #undef ABS_Y_VALUE
 #undef ABS_VALUE
 
+static void
+EvdevFreeMasks(EvdevPtr pEvdev)
+{
+    int i;
+
+    valuator_mask_free(&pEvdev->vals);
+    valuator_mask_free(&pEvdev->old_vals);
+    valuator_mask_free(&pEvdev->prox);
+#ifdef MULTITOUCH
+    valuator_mask_free(&pEvdev->mt_mask);
+    if (pEvdev->last_mt_vals)
+    {
+        for (i = 0; i < num_slots(pEvdev); i++)
+            valuator_mask_free(&pEvdev->last_mt_vals[i]);
+        free(pEvdev->last_mt_vals);
+        pEvdev->last_mt_vals = NULL;
+    }
+    for (i = 0; i < EVDEV_MAXQUEUE; i++)
+        valuator_mask_free(&pEvdev->queue[i].touchMask);
+#endif
+}
+
 /* just a magic number to reduce the number of reads */
 #define NUM_EVENTS 16
 
@@ -1258,6 +1311,24 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             goto out;
         }
 
+        pEvdev->last_mt_vals = calloc(num_slots(pEvdev), sizeof(ValuatorMask *));
+        if (!pEvdev->last_mt_vals) {
+            xf86IDrvMsg(pInfo, X_ERROR,
+                        "%s: failed to allocate MT last values mask array.\n",
+                        device->name);
+            goto out;
+        }
+
+        for (i = 0; i < num_slots(pEvdev); i++) {
+            pEvdev->last_mt_vals[i] = valuator_mask_new(num_mt_axes_total);
+            if (!pEvdev->last_mt_vals[i]) {
+                xf86IDrvMsg(pInfo, X_ERROR,
+                            "%s: failed to allocate MT last values mask.\n",
+                            device->name);
+                goto out;
+            }
+        }
+
         for (i = 0; i < EVDEV_MAXQUEUE; i++) {
             pEvdev->queue[i].touchMask =
                 valuator_mask_new(num_mt_axes_total);
@@ -1320,6 +1391,17 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             xf86Msg(X_ERROR, "%s: failed to initialize touch class device.\n",
                     device->name);
             goto out;
+        }
+
+        for (i = 0; i < num_slots(pEvdev); i++) {
+            for (axis = ABS_MT_TOUCH_MAJOR; axis < ABS_MAX; axis++) {
+                if (pEvdev->axis_map[axis] >= 0) {
+                    /* XXX: read initial values from mtdev when it adds support
+                     *      for doing so. */
+                    valuator_mask_set(pEvdev->last_mt_vals[i],
+                                      pEvdev->axis_map[axis], 0);
+                }
+            }
         }
     }
 #endif
@@ -1426,14 +1508,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     return Success;
 
 out:
-    valuator_mask_free(&pEvdev->vals);
-    valuator_mask_free(&pEvdev->old_vals);
-    valuator_mask_free(&pEvdev->prox);
-#ifdef MULTITOUCH
-    valuator_mask_free(&pEvdev->mt_mask);
-    for (i = 0; i < EVDEV_MAXQUEUE; i++)
-        valuator_mask_free(&pEvdev->queue[i].touchMask);
-#endif
+    EvdevFreeMasks(pEvdev);
     return !Success;
 }
 
@@ -1767,9 +1842,6 @@ EvdevProc(DeviceIntPtr device, int what)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
-#ifdef MULTITOUCH
-    int i;
-#endif
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -1806,16 +1878,7 @@ EvdevProc(DeviceIntPtr device, int what)
             close(pInfo->fd);
             pInfo->fd = -1;
         }
-        valuator_mask_free(&pEvdev->vals);
-        valuator_mask_free(&pEvdev->old_vals);
-        valuator_mask_free(&pEvdev->prox);
-#ifdef MULTITOUCH
-        valuator_mask_free(&pEvdev->mt_mask);
-        for (i = 0; i < EVDEV_MAXQUEUE; i++)
-            valuator_mask_free(&pEvdev->queue[i].touchMask);
-        if (pEvdev->mtdev)
-            mtdev_close(pEvdev->mtdev);
-#endif
+        EvdevFreeMasks(pEvdev);
         EvdevRemoveDevice(pInfo);
         pEvdev->min_maj = 0;
 	break;

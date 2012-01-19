@@ -158,6 +158,7 @@ typedef struct {
     ValuatorMask *old_vals; /* old values for calculating relative motion */
     ValuatorMask *prox;     /* last values set while not in proximity */
     ValuatorMask *mt_mask;
+    ValuatorMask **last_mt_vals;
     int cur_slot;
     enum SlotState slot_state;
 #ifdef MULTITOUCH
