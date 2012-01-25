@@ -2146,7 +2146,8 @@ EvdevProbe(InputInfoPtr pInfo)
             if (EvdevBitIsSet(pEvdev->rel_bitmask, REL_X) &&
                 EvdevBitIsSet(pEvdev->rel_bitmask, REL_Y)) {
                 xf86IDrvMsg(pInfo, X_PROBED, "Found x and y relative axes\n");
-            } else
+            } else if (!EvdevBitIsSet(pEvdev->abs_bitmask, ABS_X) ||
+                       !EvdevBitIsSet(pEvdev->abs_bitmask, ABS_Y))
                 EvdevForceXY(pInfo, Relative);
         } else {
             xf86IDrvMsg(pInfo, X_INFO, "Relative axes present but ignored.\n");
