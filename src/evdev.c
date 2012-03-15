@@ -1600,7 +1600,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
         else if (axis == REL_DIAL)
             SetScrollValuator(device, axnum, SCROLL_TYPE_VERTICAL, -1.0, SCROLL_FLAG_NONE);
         else if (axis == REL_HWHEEL)
-            SetScrollValuator(device, axnum, SCROLL_TYPE_HORIZONTAL, -1.0, SCROLL_FLAG_NONE);
+            SetScrollValuator(device, axnum, SCROLL_TYPE_HORIZONTAL, 1.0, SCROLL_FLAG_NONE);
 #endif
     }
 
