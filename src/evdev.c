@@ -122,6 +122,8 @@ static int EvdevOpenDevice(InputInfoPtr pInfo);
 static void EvdevCloseDevice(InputInfoPtr pInfo);
 
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms);
+static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int axis,
+                                  const char **labels, int label_idx, Atom *atoms);
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
 static int EvdevSetProperty(DeviceIntPtr dev, Atom atom,
@@ -2719,9 +2721,23 @@ static const char *btn_labels[][16] = {
     }
 };
 
-static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms)
+static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int axis,
+                                  const char **labels, int label_idx, Atom *atoms)
 {
     Atom atom;
+
+    if (pEvdev->axis_map[axis] == -1)
+        return;
+
+    atom = XIGetKnownProperty(labels[label_idx]);
+    if (!atom) /* Should not happen */
+        return;
+
+    atoms[pEvdev->axis_map[axis]] = atom;
+}
+
+static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms)
+{
     int axis;
     const char **labels;
     int labels_len = 0;
@@ -2741,16 +2757,7 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *ato
 
     /* Now fill the ones we know */
     for (axis = 0; axis < labels_len; axis++)
-    {
-        if (pEvdev->axis_map[axis] == -1)
-            continue;
-
-        atom = XIGetKnownProperty(labels[axis]);
-        if (!atom) /* Should not happen */
-            continue;
-
-        atoms[pEvdev->axis_map[axis]] = atom;
-    }
+        EvdevInitOneAxisLabel(pEvdev, axis, labels, axis, atoms);
 }
 
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
