@@ -39,5 +39,6 @@ AM_CPPFLAGS =-I$(top_srcdir)/include
                                emuThird.c \
                                emuWheel.c \
                                draglock.c \
-                               apple.c
+                               apple.c \
+                               axis_labels.h
 
