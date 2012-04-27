@@ -2271,6 +2271,9 @@ EvdevProbe(InputInfoPtr pInfo)
             xf86IDrvMsg(pInfo, X_INFO, "Configuring as touchscreen\n");
             pInfo->type_name = XI_TOUCHSCREEN;
 	} else {
+            if (!EvdevBitIsSet(pEvdev->rel_bitmask, REL_X) ||
+                !EvdevBitIsSet(pEvdev->rel_bitmask, REL_Y))
+                EvdevForceXY(pInfo, Relative);
 	    xf86IDrvMsg(pInfo, X_INFO, "Configuring as mouse\n");
 	    pInfo->type_name = XI_MOUSE;
 	}
