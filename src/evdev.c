@@ -277,7 +277,7 @@ EvdevRemoveDevice(InputInfoPtr pInfo)
 
 
 static void
-SetXkbOption(InputInfoPtr pInfo, char *name, char **option)
+SetXkbOption(InputInfoPtr pInfo, const char *name, char **option)
 {
     char *s;
 
@@ -2547,7 +2547,7 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
 /* Aligned with linux/input.h.
    Note that there are holes in the ABS_ range, these are simply replaced with
    MISC here */
-static char* abs_labels[] = {
+static const char *abs_labels[] = {
     AXIS_LABEL_PROP_ABS_X,              /* 0x00 */
     AXIS_LABEL_PROP_ABS_Y,              /* 0x01 */
     AXIS_LABEL_PROP_ABS_Z,              /* 0x02 */
@@ -2610,7 +2610,7 @@ static char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_MT_PRESSURE,    /* 0x3a */
 };
 
-static char* rel_labels[] = {
+static const char *rel_labels[] = {
     AXIS_LABEL_PROP_REL_X,
     AXIS_LABEL_PROP_REL_Y,
     AXIS_LABEL_PROP_REL_Z,
@@ -2623,7 +2623,7 @@ static char* rel_labels[] = {
     AXIS_LABEL_PROP_REL_MISC
 };
 
-static char* btn_labels[][16] = {
+static const char *btn_labels[][16] = {
     { /* BTN_MISC group                 offset 0x100*/
         BTN_LABEL_PROP_BTN_0,           /* 0x00 */
         BTN_LABEL_PROP_BTN_1,           /* 0x01 */
@@ -2708,7 +2708,7 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *ato
 {
     Atom atom;
     int axis;
-    char **labels;
+    const char **labels;
     int labels_len = 0;
 
     if (mode == Absolute)
