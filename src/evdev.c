@@ -1384,7 +1384,8 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
             XIDependentTouch : XIDirectTouch;
 
         if (pEvdev->mtdev->caps.slot.maximum > 0)
-            num_touches = pEvdev->mtdev->caps.slot.maximum;
+            num_touches = pEvdev->mtdev->caps.slot.maximum -
+                          pEvdev->mtdev->caps.slot.minimum + 1;
 
         if (!InitTouchClassDeviceStruct(device, num_touches, mode,
                                         num_mt_axes_total)) {
