@@ -196,8 +196,8 @@ EvdevMBEmuTimer(InputInfoPtr pInfo)
         pEvdev->emulateMB.state =
             stateTab[pEvdev->emulateMB.state][4][2];
     } else {
-        ErrorF("Got unexpected buttonTimer in state %d\n",
-                pEvdev->emulateMB.state);
+        xf86IDrvMsg(pInfo, X_ERROR, "Got unexpected buttonTimer in state %d\n",
+                    pEvdev->emulateMB.state);
     }
 
     xf86UnblockSIGIO (sigstate);
