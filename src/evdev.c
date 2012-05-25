@@ -342,7 +342,7 @@ EvdevNextInQueue(InputInfoPtr pInfo)
 
     if (pEvdev->num_queue >= EVDEV_MAXQUEUE)
     {
-        xf86IDrvMsg(pInfo, X_NONE, "dropping event due to full queue!\n");
+        LogMessageVerbSigSafe(X_WARNING, 0, "dropping event due to full queue!\n");
         return NULL;
     }
 
@@ -794,9 +794,10 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
                     valuator_mask_copy(pEvdev->mt_mask,
                                        pEvdev->last_mt_vals[slot_index]);
                 else
-                    xf86IDrvMsg(pInfo, X_WARNING,
-                                "Attempted to copy values from out-of-range "
-                                "slot, touch events may be incorrect.\n");
+                    LogMessageVerbSigSafe(X_WARNING, 0,
+                                "%s: Attempted to copy values from out-of-range "
+                                "slot, touch events may be incorrect.\n",
+                                pInfo->name);
             } else
                 pEvdev->slot_state = SLOTSTATE_CLOSE;
         } else {
@@ -1115,19 +1116,15 @@ EvdevReadInput(InputInfoPtr pInfo)
             if (errno == ENODEV) /* May happen after resume */
                 xf86RemoveEnabledDevice(pInfo);
             else if (errno != EAGAIN)
-            {
-                /* We use X_NONE here because it doesn't alloc */
-                xf86MsgVerb(X_NONE, 0, "%s: Read error: %s\n", pInfo->name,
-                        strerror(errno));
-            }
+                LogMessageVerbSigSafe(X_ERROR, 0, "%s: Read error: %s\n", pInfo->name,
+                                       strerror(errno));
             break;
         }
 
         /* The kernel promises that we always only read a complete
          * event, so len != sizeof ev is an error. */
         if (len % sizeof(ev[0])) {
-            /* We use X_NONE here because it doesn't alloc */
-            xf86MsgVerb(X_NONE, 0, "%s: Read error: %s\n", pInfo->name, strerror(errno));
+            LogMessageVerbSigSafe(X_ERROR, 0, "%s: Read error: %s\n", pInfo->name, strerror(errno));
             break;
         }
 

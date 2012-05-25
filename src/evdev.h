@@ -67,6 +67,10 @@
 #define HAVE_SMOOTH_SCROLLING 1
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 18
+#define LogMessageVerbSigSafe xf86MsgVerb
+#endif
+
 #define EVDEV_MAXBUTTONS 32
 #define EVDEV_MAXQUEUE 32
 
