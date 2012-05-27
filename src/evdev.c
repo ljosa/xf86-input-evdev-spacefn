@@ -2355,6 +2355,7 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
     else {
         xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
+        EvdevCloseDevice(pInfo);
         return FALSE;
     }
 #endif
