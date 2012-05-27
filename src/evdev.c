@@ -119,6 +119,7 @@ static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode);
 static BOOL EvdevGrabDevice(InputInfoPtr pInfo, int grab, int ungrab);
 static void EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4]);
 static int EvdevOpenDevice(InputInfoPtr pInfo);
+static void EvdevCloseDevice(InputInfoPtr pInfo);
 
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms);
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
@@ -1108,8 +1109,7 @@ EvdevReadInput(InputInfoPtr pInfo)
                 EvdevMBEmuFinalize(pInfo);
                 Evdev3BEmuFinalize(pInfo);
                 xf86RemoveEnabledDevice(pInfo);
-                close(pInfo->fd);
-                pInfo->fd = -1;
+                EvdevCloseDevice(pInfo);
             } else if (errno != EAGAIN)
             {
                 /* We use X_NONE here because it doesn't alloc */
@@ -1866,8 +1866,7 @@ EvdevProc(DeviceIntPtr device, int what)
         {
             EvdevGrabDevice(pInfo, 0, 1);
             xf86RemoveEnabledDevice(pInfo);
-            close(pInfo->fd);
-            pInfo->fd = -1;
+            EvdevCloseDevice(pInfo);
         }
         pEvdev->min_maj = 0;
         pEvdev->flags &= ~EVDEV_INITIALIZED;
@@ -1876,10 +1875,7 @@ EvdevProc(DeviceIntPtr device, int what)
 
     case DEVICE_CLOSE:
 	xf86IDrvMsg(pInfo, X_INFO, "Close\n");
-        if (pInfo->fd != -1) {
-            close(pInfo->fd);
-            pInfo->fd = -1;
-        }
+        EvdevCloseDevice(pInfo);
         EvdevFreeMasks(pEvdev);
         EvdevRemoveDevice(pInfo);
         pEvdev->min_maj = 0;
@@ -2368,16 +2364,33 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     if (EvdevIsDuplicate(pInfo))
     {
         xf86IDrvMsg(pInfo, X_WARNING, "device file is duplicate. Ignoring.\n");
-        close(pInfo->fd);
-#ifdef MULTITOUCH
-        mtdev_close_delete(pEvdev->mtdev);
-        pEvdev->mtdev = NULL;
-#endif
+        EvdevCloseDevice(pInfo);
         return BadMatch;
     }
 
     return Success;
 }
+
+static void
+EvdevCloseDevice(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    if (pInfo->fd >= 0)
+    {
+        close(pInfo->fd);
+        pInfo->fd = -1;
+    }
+
+#ifdef MULTITOUCH
+    if (pEvdev->mtdev)
+    {
+        mtdev_close_delete(pEvdev->mtdev);
+        pEvdev->mtdev = NULL;
+    }
+#endif
+
+}
+
 
 static void
 EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
@@ -2459,8 +2472,7 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     return Success;
 
 error:
-    if (pInfo->fd >= 0)
-        close(pInfo->fd);
+    EvdevCloseDevice(pInfo);
     return rc;
 }
 
