@@ -2349,6 +2349,15 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         }
     }
 
+    /* Check major/minor of device node to avoid adding duplicate devices. */
+    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
+    if (EvdevIsDuplicate(pInfo))
+    {
+        xf86IDrvMsg(pInfo, X_WARNING, "device file is duplicate. Ignoring.\n");
+        EvdevCloseDevice(pInfo);
+        return BadMatch;
+    }
+
 #ifdef MULTITOUCH
     pEvdev->mtdev = mtdev_new_open(pInfo->fd);
     if (pEvdev->mtdev)
@@ -2359,15 +2368,6 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         return FALSE;
     }
 #endif
-
-    /* Check major/minor of device node to avoid adding duplicate devices. */
-    pEvdev->min_maj = EvdevGetMajorMinor(pInfo);
-    if (EvdevIsDuplicate(pInfo))
-    {
-        xf86IDrvMsg(pInfo, X_WARNING, "device file is duplicate. Ignoring.\n");
-        EvdevCloseDevice(pInfo);
-        return BadMatch;
-    }
 
     return Success;
 }
