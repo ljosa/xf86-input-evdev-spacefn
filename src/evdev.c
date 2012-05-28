@@ -93,7 +93,7 @@
 #define ABS_MT_TRACKING_ID 0x39
 #endif
 
-static char *evdevDefaults[] = {
+static const char *evdevDefaults[] = {
     "XkbRules",     "evdev",
     "XkbModel",     "evdev",
     "XkbLayout",    "us",
