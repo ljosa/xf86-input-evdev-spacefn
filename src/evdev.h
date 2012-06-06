@@ -153,6 +153,7 @@ typedef struct {
     int grabDevice;         /* grab the event device? */
 
     int num_vals;           /* number of valuators */
+    int num_mt_vals;        /* number of multitouch valuators */
     int axis_map[max(ABS_CNT, REL_CNT)]; /* Map evdev <axis> to index */
     ValuatorMask *vals;     /* new values coming in */
     ValuatorMask *old_vals; /* old values for calculating relative motion */

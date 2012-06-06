@@ -1304,6 +1304,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     }
 #ifdef MULTITOUCH
     if (num_mt_axes_total > 0) {
+        pEvdev->num_mt_vals = num_mt_axes_total;
         pEvdev->mt_mask = valuator_mask_new(num_mt_axes_total);
         if (!pEvdev->mt_mask) {
             xf86Msg(X_ERROR, "%s: failed to allocate MT valuator mask.\n",
@@ -2879,7 +2880,8 @@ EvdevInitProperty(DeviceIntPtr dev)
         if ((pEvdev->num_vals > 0) && (prop_axis_label = XIGetKnownProperty(AXIS_LABEL_PROP)))
         {
             int mode;
-            Atom atoms[pEvdev->num_vals];
+            int num_axes = pEvdev->num_vals + pEvdev->num_mt_vals;
+            Atom atoms[num_axes];
 
             if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS)
                 mode = Absolute;
@@ -2890,9 +2892,9 @@ EvdevInitProperty(DeviceIntPtr dev)
                 mode = Absolute;
             }
 
-            EvdevInitAxesLabels(pEvdev, mode, pEvdev->num_vals, atoms);
+            EvdevInitAxesLabels(pEvdev, mode, num_axes, atoms);
             XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
-                                   PropModeReplace, pEvdev->num_vals, atoms, FALSE);
+                                   PropModeReplace, num_axes, atoms, FALSE);
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
