@@ -2366,14 +2366,16 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     }
 
 #ifdef MULTITOUCH
-    pEvdev->mtdev = mtdev_new_open(pInfo->fd);
+    if (!pEvdev->mtdev) { /* after PreInit mtdev is still valid */
+        pEvdev->mtdev = mtdev_new_open(pInfo->fd);
+        if (!pEvdev->mtdev) {
+            xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
+            EvdevCloseDevice(pInfo);
+            return FALSE;
+        }
+    }
     if (pEvdev->mtdev)
         pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
-    else {
-        xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
-        EvdevCloseDevice(pInfo);
-        return FALSE;
-    }
 #endif
 
     return Success;
