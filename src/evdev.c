@@ -774,6 +774,9 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
     EvdevPtr pEvdev = pInfo->private;
     int map;
 
+    if (!pEvdev->mtdev)
+        return;
+
     if (ev->code == ABS_MT_SLOT) {
         EvdevProcessTouch(pInfo);
         pEvdev->cur_slot = ev->value;
@@ -1385,7 +1388,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
     }
 
 #ifdef MULTITOUCH
-    if (num_mt_axes_total > 0)
+    if (pEvdev->mtdev && num_mt_axes_total > 0)
     {
         int num_touches = 0;
         int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
@@ -2326,6 +2329,68 @@ EvdevSetCalibration(InputInfoPtr pInfo, int num_calibration, int calibration[4])
     }
 }
 
+#ifdef MULTITOUCH
+/**
+ * Open an mtdev device for this device. mtdev is a bit too generous with
+ * memory usage, so only do so for devices with multitouch bits set.
+ *
+ * @return FALSE on error, TRUE if mtdev was initiated or the device doesn't
+ * need it
+ */
+static Bool
+EvdevOpenMTDev(InputInfoPtr pInfo)
+{
+    EvdevPtr pEvdev = pInfo->private;
+    unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
+    unsigned long abs_bitmask[NLONGS(ABS_CNT)] = {0};
+    int len;
+
+    if (pEvdev->mtdev) {
+        pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
+        return TRUE;
+    }
+
+    if (pInfo->fd < 0) {
+        xf86Msg(X_ERROR, "%s: Bug. fd < 0\n", pInfo->name);
+        return FALSE;
+    }
+
+    /* Use ioctl here, this may be called before EvdevCache */
+    len = ioctl(pInfo->fd, EVIOCGBIT(0, sizeof(bitmask)), bitmask);
+    if (len < 0) {
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+                    strerror(errno));
+        return FALSE;
+    }
+
+    if (!EvdevBitIsSet(bitmask, EV_ABS))
+        return TRUE;
+
+    len = ioctl(pInfo->fd, EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask);
+    if (len < 0) {
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+                    strerror(errno));
+        return FALSE;
+    }
+
+    if (!EvdevBitIsSet(abs_bitmask, ABS_MT_POSITION_X) ||
+        !EvdevBitIsSet(abs_bitmask, ABS_MT_POSITION_Y))
+        return TRUE;
+
+    xf86IDrvMsg(pInfo, X_INFO, "Using mtdev for this device\n");
+    pEvdev->mtdev = mtdev_new_open(pInfo->fd);
+    if (pEvdev->mtdev)
+        pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
+    else {
+        xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
+        EvdevCloseDevice(pInfo);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+#endif
+
 static int
 EvdevOpenDevice(InputInfoPtr pInfo)
 {
@@ -2366,16 +2431,11 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     }
 
 #ifdef MULTITOUCH
-    if (!pEvdev->mtdev) { /* after PreInit mtdev is still valid */
-        pEvdev->mtdev = mtdev_new_open(pInfo->fd);
-        if (!pEvdev->mtdev) {
-            xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
-            EvdevCloseDevice(pInfo);
-            return FALSE;
-        }
+    if (!EvdevOpenMTDev(pInfo)) {
+        xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
+        EvdevCloseDevice(pInfo);
+        return FALSE;
     }
-    if (pEvdev->mtdev)
-        pEvdev->cur_slot = pEvdev->mtdev->caps.slot.value;
 #endif
 
     return Success;
