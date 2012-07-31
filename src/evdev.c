@@ -1113,12 +1113,8 @@ EvdevReadInput(InputInfoPtr pInfo)
         if (len <= 0)
         {
             if (errno == ENODEV) /* May happen after resume */
-            {
-                EvdevMBEmuFinalize(pInfo);
-                Evdev3BEmuFinalize(pInfo);
                 xf86RemoveEnabledDevice(pInfo);
-                EvdevCloseDevice(pInfo);
-            } else if (errno != EAGAIN)
+            else if (errno != EAGAIN)
             {
                 /* We use X_NONE here because it doesn't alloc */
                 xf86MsgVerb(X_NONE, 0, "%s: Read error: %s\n", pInfo->name,
