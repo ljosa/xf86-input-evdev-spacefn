@@ -30,7 +30,7 @@ AM_CPPFLAGS =-I$(top_srcdir)/include
 
 @DRIVER_NAME@_drv_la_LTLIBRARIES = @DRIVER_NAME@_drv.la
 @DRIVER_NAME@_drv_la_LDFLAGS = -module -avoid-version
-@DRIVER_NAME@_drv_la_LIBADD = $(MTDEV_LIBS)
+@DRIVER_NAME@_drv_la_LIBADD = $(MTDEV_LIBS) $(UDEV_LIBS)
 @DRIVER_NAME@_drv_ladir = @inputdir@
 
 @DRIVER_NAME@_drv_la_SOURCES = @DRIVER_NAME@.c \
