@@ -1671,7 +1671,7 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 
         xf86IDrvMsg(pInfo, X_CONFIG, "ButtonMapping '%s'\n", mapping);
         map = mapping;
-        while (s && *s != '\0' && nbuttons < EVDEV_MAXBUTTONS)
+        do
         {
             btn = strtol(map, &s, 10);
 
@@ -1685,7 +1685,7 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 
             pEvdev->btnmap[nbuttons++] = btn;
             map = s;
-        }
+        } while (s && *s != '\0' && nbuttons < EVDEV_MAXBUTTONS);
         free(mapping);
     }
 
