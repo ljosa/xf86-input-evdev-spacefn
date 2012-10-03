@@ -226,6 +226,17 @@ Specify the X Input 1.x type (see XListInputDevices(__libmansuffix__)).
 There is rarely a need to use this option, evdev will guess the device type
 based on the device's capabilities. This option is provided for devices that
 need quirks.
+.TP 7
+.BI "Option \*qVertScrollDelta\*q \*q" integer \*q
+The amount of motion considered one unit of scrolling vertically.
+Default: "1".
+.TP 7
+.BI "Option \*qHorizScrollDelta\*q \*q" integer \*q
+The amount of motion considered one unit of scrolling horizontally.
+Default: "1".
+.TP 7
+.BI "Option \*qDialDelta\*q \*q" integer \*q
+The amount of motion considered one unit of turning the dial.  Default: "1".
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the
