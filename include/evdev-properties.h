@@ -87,4 +87,8 @@
 */
 #define EVDEV_PROP_FUNCTION_KEYS "Evdev Function Keys"
 
+/* Smooth scroll */
+/* INT32, 3 values (vertical, horizontal, dial) */
+#define EVDEV_PROP_SCROLL_DISTANCE "Evdev Scrolling Distance"
+
 #endif

@@ -229,14 +229,15 @@ need quirks.
 .TP 7
 .BI "Option \*qVertScrollDelta\*q \*q" integer \*q
 The amount of motion considered one unit of scrolling vertically.
-Default: "1".
+Default: "1".  Property: "Evdev Scrolling Distance".
 .TP 7
 .BI "Option \*qHorizScrollDelta\*q \*q" integer \*q
 The amount of motion considered one unit of scrolling horizontally.
-Default: "1".
+Default: "1".  Property: "Evdev Scrolling Distance".
 .TP 7
 .BI "Option \*qDialDelta\*q \*q" integer \*q
 The amount of motion considered one unit of turning the dial.  Default: "1".
+Property: "Evdev Scrolling Distance".
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the
@@ -277,6 +278,9 @@ value.
 .TP 7
 .BI "Evdev Wheel Emulation Timeout"
 1 16-bit positive value.
+.TP 7
+.BI "Evdev Scrolling Distance"
+3 32-bit values: vertical, horizontal and dial.
 
 .SH AUTHORS
 Kristian Høgsberg, Peter Hutterer
