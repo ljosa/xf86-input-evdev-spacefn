@@ -94,6 +94,11 @@ static const char* abs_labels[] = {
     AXIS_LABEL_PROP_ABS_MT_BLOB_ID,     /* 0x38 */
     AXIS_LABEL_PROP_ABS_MT_TRACKING_ID, /* 0x39 */
     AXIS_LABEL_PROP_ABS_MT_PRESSURE,    /* 0x3a */
+#ifdef AXIS_LABEL_PROP_ABS_MT_DISTANCE
+    AXIS_LABEL_PROP_ABS_MT_DISTANCE,    /* 0x3b */
+    AXIS_LABEL_PROP_ABS_MT_TOOL_X,      /* 0x3c */
+    AXIS_LABEL_PROP_ABS_MT_TOOL_Y,      /* 0x3d */
+#endif /* AXIS_LABEL_PROP_ABS_MT_DISTANCE */
 };
 
 static const char* rel_labels[] = {
