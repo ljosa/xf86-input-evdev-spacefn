@@ -308,7 +308,9 @@ EvdevDeviceIsVirtual(const char* devicenode)
     if (!udev)
         goto out;
 
-    stat(devicenode, &st);
+    if (stat(devicenode, &st) == -1)
+        goto out;
+
     device = udev_device_new_from_devnum(udev, 'c', st.st_rdev);
 
     if (!device)
