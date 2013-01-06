@@ -1171,32 +1171,34 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
 static int
 EvdevAddKeyClass(DeviceIntPtr device)
 {
+    int rc = Success;
+    XkbRMLVOSet rmlvo = {0};
     InputInfoPtr pInfo;
-    EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
-    pEvdev = pInfo->private;
 
     /* sorry, no rules change allowed for you */
     xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
-    SetXkbOption(pInfo, "xkb_rules", &pEvdev->rmlvo.rules);
-    SetXkbOption(pInfo, "xkb_model", &pEvdev->rmlvo.model);
-    if (!pEvdev->rmlvo.model)
-        SetXkbOption(pInfo, "XkbModel", &pEvdev->rmlvo.model);
-    SetXkbOption(pInfo, "xkb_layout", &pEvdev->rmlvo.layout);
-    if (!pEvdev->rmlvo.layout)
-        SetXkbOption(pInfo, "XkbLayout", &pEvdev->rmlvo.layout);
-    SetXkbOption(pInfo, "xkb_variant", &pEvdev->rmlvo.variant);
-    if (!pEvdev->rmlvo.variant)
-        SetXkbOption(pInfo, "XkbVariant", &pEvdev->rmlvo.variant);
-    SetXkbOption(pInfo, "xkb_options", &pEvdev->rmlvo.options);
-    if (!pEvdev->rmlvo.options)
-        SetXkbOption(pInfo, "XkbOptions", &pEvdev->rmlvo.options);
+    SetXkbOption(pInfo, "xkb_rules", &rmlvo.rules);
+    SetXkbOption(pInfo, "xkb_model", &rmlvo.model);
+    if (!rmlvo.model)
+        SetXkbOption(pInfo, "XkbModel", &rmlvo.model);
+    SetXkbOption(pInfo, "xkb_layout", &rmlvo.layout);
+    if (!rmlvo.layout)
+        SetXkbOption(pInfo, "XkbLayout", &rmlvo.layout);
+    SetXkbOption(pInfo, "xkb_variant", &rmlvo.variant);
+    if (!rmlvo.variant)
+        SetXkbOption(pInfo, "XkbVariant", &rmlvo.variant);
+    SetXkbOption(pInfo, "xkb_options", &rmlvo.options);
+    if (!rmlvo.options)
+        SetXkbOption(pInfo, "XkbOptions", &rmlvo.options);
 
-    if (!InitKeyboardDeviceStruct(device, &pEvdev->rmlvo, NULL, EvdevKbdCtrl))
-        return !Success;
+    if (!InitKeyboardDeviceStruct(device, &rmlvo, NULL, EvdevKbdCtrl))
+        rc = !Success;
 
-    return Success;
+    XkbFreeRMLVOSet(&rmlvo, FALSE);
+
+    return rc;
 }
 
 #ifdef MULTITOUCH
@@ -2463,8 +2465,6 @@ EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     EvdevPtr pEvdev = pInfo ? pInfo->private : NULL;
     if (pEvdev)
     {
-        /* Release strings allocated in EvdevAddKeyClass. */
-        XkbFreeRMLVOSet(&pEvdev->rmlvo, FALSE);
         /* Release string allocated in EvdevOpenDevice. */
         free(pEvdev->device);
         pEvdev->device = NULL;

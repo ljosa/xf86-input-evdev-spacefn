@@ -181,9 +181,6 @@ typedef struct {
     int delta[REL_CNT];
     unsigned int abs_queued, rel_queued, prox_queued;
 
-    /* XKB stuff has to be per-device rather than per-driver */
-    XkbRMLVOSet rmlvo;
-
     /* Middle mouse button emulation */
     struct {
         BOOL                enabled;
