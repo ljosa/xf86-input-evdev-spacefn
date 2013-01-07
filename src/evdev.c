@@ -279,22 +279,6 @@ EvdevRemoveDevice(InputInfoPtr pInfo)
     }
 }
 
-
-static void
-SetXkbOption(InputInfoPtr pInfo, const char *name, char **option)
-{
-    char *s;
-
-    if ((s = xf86SetStrOption(pInfo->options, name, NULL))) {
-        if (!s[0]) {
-            free(s);
-            *option = NULL;
-        } else {
-            *option = s;
-        }
-    }
-}
-
 static BOOL
 EvdevDeviceIsVirtual(const char* devicenode)
 {
@@ -1179,19 +1163,11 @@ EvdevAddKeyClass(DeviceIntPtr device)
 
     /* sorry, no rules change allowed for you */
     xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
-    SetXkbOption(pInfo, "xkb_rules", &rmlvo.rules);
-    SetXkbOption(pInfo, "xkb_model", &rmlvo.model);
-    if (!rmlvo.model)
-        SetXkbOption(pInfo, "XkbModel", &rmlvo.model);
-    SetXkbOption(pInfo, "xkb_layout", &rmlvo.layout);
-    if (!rmlvo.layout)
-        SetXkbOption(pInfo, "XkbLayout", &rmlvo.layout);
-    SetXkbOption(pInfo, "xkb_variant", &rmlvo.variant);
-    if (!rmlvo.variant)
-        SetXkbOption(pInfo, "XkbVariant", &rmlvo.variant);
-    SetXkbOption(pInfo, "xkb_options", &rmlvo.options);
-    if (!rmlvo.options)
-        SetXkbOption(pInfo, "XkbOptions", &rmlvo.options);
+    rmlvo.rules = xf86SetStrOption(pInfo->options, "xkb_rules", NULL);
+    rmlvo.model = xf86SetStrOption(pInfo->options, "xkb_model", NULL);
+    rmlvo.layout = xf86SetStrOption(pInfo->options, "xkb_layout", NULL);
+    rmlvo.variant = xf86SetStrOption(pInfo->options, "xkb_variant", NULL);
+    rmlvo.options = xf86SetStrOption(pInfo->options, "xkb_options", NULL);
 
     if (!InitKeyboardDeviceStruct(device, &rmlvo, NULL, EvdevKbdCtrl))
         rc = !Success;
