@@ -2160,8 +2160,20 @@ EvdevProbe(InputInfoPtr pInfo)
         xf86IDrvMsg(pInfo, X_PROBED, "Found absolute axes\n");
         pEvdev->flags |= EVDEV_ABSOLUTE_EVENTS;
 
-        if (has_mt)
+        if (has_mt) {
             xf86IDrvMsg(pInfo, X_PROBED, "Found absolute multitouch axes\n");
+            if (num_buttons == 0) {
+                if (EvdevBitIsSet(pEvdev->key_bitmask, BTN_JOYSTICK)) {
+                    xf86IDrvMsg(pInfo, X_INFO, "Device is a Joystick with MT without buttons. Ignoring it.\n");
+                    goto out;
+                } else {
+                    xf86IDrvMsg(pInfo, X_INFO, "No buttons found, faking one.\n");
+                    num_buttons = 1;
+                    pEvdev->num_buttons = num_buttons;
+                    pEvdev->flags |= EVDEV_BUTTON_EVENTS;
+                }
+            }
+        }
 
         if ((EvdevBitIsSet(pEvdev->abs_bitmask, ABS_X) &&
              EvdevBitIsSet(pEvdev->abs_bitmask, ABS_Y))) {
@@ -2276,6 +2288,7 @@ EvdevProbe(InputInfoPtr pInfo)
         pEvdev->flags |= EVDEV_RELATIVE_EVENTS;
     }
 
+out:
     if (rc)
         xf86IDrvMsg(pInfo, X_WARNING, "Don't know how to use device\n");
 
