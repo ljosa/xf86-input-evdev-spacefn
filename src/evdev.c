@@ -424,7 +424,6 @@ EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
 static void
 EvdevProcessValuators(InputInfoPtr pInfo)
 {
-    int tmp;
     EvdevPtr pEvdev = pInfo->private;
     int *delta = pEvdev->delta;
 
@@ -456,6 +455,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
     }
 
     if (pEvdev->rel_queued) {
+        int tmp;
         int i;
 
         if (pEvdev->swap_axes) {
