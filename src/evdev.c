@@ -448,6 +448,42 @@ EvdevSwapAbsValuators(EvdevPtr pEvdev, ValuatorMask *mask)
     }
 }
 
+static void
+EvdevApplyCalibration(EvdevPtr pEvdev, ValuatorMask *mask)
+{
+    int i;
+
+    for (i = 0; i <= 1; i++) {
+        int val;
+        int calib_min;
+        int calib_max;
+
+        if (!valuator_mask_isset(mask, i))
+            continue;
+
+        val = valuator_mask_get(mask, i);
+
+        if (i == 0) {
+            calib_min = pEvdev->calibration.min_x;
+            calib_max = pEvdev->calibration.max_x;
+        } else {
+            calib_min = pEvdev->calibration.min_y;
+            calib_max = pEvdev->calibration.max_y;
+        }
+
+        if (pEvdev->flags & EVDEV_CALIBRATED)
+            val = xf86ScaleAxis(val, pEvdev->absinfo[i].maximum,
+                                pEvdev->absinfo[i].minimum, calib_max,
+                                calib_min);
+
+        if ((i == 0 && pEvdev->invert_x) || (i == 1 && pEvdev->invert_y))
+            val = (pEvdev->absinfo[i].maximum - val +
+                   pEvdev->absinfo[i].minimum);
+
+        valuator_mask_set(mask, i, val);
+    }
+}
+
 /**
  * Take the valuators and process them accordingly.
  */
@@ -524,39 +560,8 @@ EvdevProcessValuators(InputInfoPtr pInfo)
      * just works.
      */
     else if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        int i;
-
         EvdevSwapAbsValuators(pEvdev, pEvdev->vals);
-
-        for (i = 0; i <= 1; i++) {
-            int val;
-            int calib_min;
-            int calib_max;
-
-            if (!valuator_mask_isset(pEvdev->vals, i))
-                continue;
-
-            val = valuator_mask_get(pEvdev->vals, i);
-
-            if (i == 0) {
-                calib_min = pEvdev->calibration.min_x;
-                calib_max = pEvdev->calibration.max_x;
-            } else {
-                calib_min = pEvdev->calibration.min_y;
-                calib_max = pEvdev->calibration.max_y;
-            }
-
-            if (pEvdev->flags & EVDEV_CALIBRATED)
-                val = xf86ScaleAxis(val, pEvdev->absinfo[i].maximum,
-                                    pEvdev->absinfo[i].minimum, calib_max,
-                                    calib_min);
-
-            if ((i == 0 && pEvdev->invert_x) || (i == 1 && pEvdev->invert_y))
-                val = (pEvdev->absinfo[i].maximum - val +
-                       pEvdev->absinfo[i].minimum);
-
-            valuator_mask_set(pEvdev->vals, i, val);
-        }
+        EvdevApplyCalibration(pEvdev, pEvdev->vals);
         Evdev3BEmuProcessAbsMotion(pInfo, pEvdev->vals);
     }
 }
