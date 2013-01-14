@@ -418,6 +418,36 @@ EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
     }
 }
 
+static void
+EvdevSwapAbsValuators(EvdevPtr pEvdev, ValuatorMask *mask)
+{
+    int i;
+    int swapped_isset[2] = {0, 0};
+    int swapped_values[2];
+
+    if (!pEvdev->swap_axes)
+        return;
+
+    for(i = 0; i <= 1; i++) {
+        if (valuator_mask_isset(mask, i)) {
+            swapped_isset[1 - i] = 1;
+            swapped_values[1 - i] =
+                xf86ScaleAxis(valuator_mask_get(mask, i),
+                              pEvdev->absinfo[1 - i].maximum,
+                              pEvdev->absinfo[1 - i].minimum,
+                              pEvdev->absinfo[i].maximum,
+                              pEvdev->absinfo[i].minimum);
+        }
+    }
+
+    for (i = 0; i <= 1; i++) {
+        if (swapped_isset[i])
+            valuator_mask_set(mask, i, swapped_values[i]);
+        else
+            valuator_mask_unset(mask, i);
+    }
+}
+
 /**
  * Take the valuators and process them accordingly.
  */
@@ -496,27 +526,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
     else if (pEvdev->abs_queued && pEvdev->in_proximity) {
         int i;
 
-        if (pEvdev->swap_axes) {
-            int swapped_isset[2] = {0, 0};
-            int swapped_values[2];
-
-            for(i = 0; i <= 1; i++)
-                if (valuator_mask_isset(pEvdev->vals, i)) {
-                    swapped_isset[1 - i] = 1;
-                    swapped_values[1 - i] =
-                        xf86ScaleAxis(valuator_mask_get(pEvdev->vals, i),
-                                      pEvdev->absinfo[1 - i].maximum,
-                                      pEvdev->absinfo[1 - i].minimum,
-                                      pEvdev->absinfo[i].maximum,
-                                      pEvdev->absinfo[i].minimum);
-                }
-
-            for (i = 0; i <= 1; i++)
-                if (swapped_isset[i])
-                    valuator_mask_set(pEvdev->vals, i, swapped_values[i]);
-                else
-                    valuator_mask_unset(pEvdev->vals, i);
-        }
+        EvdevSwapAbsValuators(pEvdev, pEvdev->vals);
 
         for (i = 0; i <= 1; i++) {
             int val;
