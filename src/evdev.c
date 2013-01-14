@@ -744,6 +744,9 @@ EvdevProcessTouch(InputInfoPtr pInfo)
         type = XI_TouchUpdate;
 
 
+    EvdevSwapAbsValuators(pEvdev, pEvdev->mt_mask);
+    EvdevApplyCalibration(pEvdev, pEvdev->mt_mask);
+
     EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask, type);
 
     pEvdev->slot_state = SLOTSTATE_EMPTY;
