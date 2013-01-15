@@ -2464,7 +2464,25 @@ EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 static EvdevPtr
 EvdevAlloc(void)
 {
+    int i;
     EvdevPtr pEvdev = calloc(sizeof(EvdevRec), 1);
+
+    if (!pEvdev)
+        return NULL;
+    /*
+     * We initialize pEvdev->in_proximity to 1 so that device that doesn't use
+     * proximity will still report events.
+     */
+    pEvdev->in_proximity = 1;
+    pEvdev->use_proximity = 1;
+
+#ifdef MULTITOUCH
+    pEvdev->cur_slot = -1;
+#endif
+
+    for (i = 0; i < ArrayLength(pEvdev->axis_map); i++)
+        pEvdev->axis_map[i] = -1;
+
     return pEvdev;
 }
 
@@ -2486,17 +2504,6 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     rc = EvdevOpenDevice(pInfo);
     if (rc != Success)
         goto error;
-
-#ifdef MULTITOUCH
-    pEvdev->cur_slot = -1;
-#endif
-
-    /*
-     * We initialize pEvdev->in_proximity to 1 so that device that doesn't use
-     * proximity will still report events.
-     */
-    pEvdev->in_proximity = 1;
-    pEvdev->use_proximity = 1;
 
     /* Grabbing the event device stops in-kernel event forwarding. In other
        words, it disables rfkill and the "Macintosh mouse button emulation".
