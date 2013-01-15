@@ -123,7 +123,7 @@ static int EvdevOpenDevice(InputInfoPtr pInfo);
 static void EvdevCloseDevice(InputInfoPtr pInfo);
 
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms);
-static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int axis,
+static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int mapped_axis,
                                   const char **labels, int label_idx, Atom *atoms);
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms);
 static void EvdevInitProperty(DeviceIntPtr dev);
@@ -479,7 +479,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
 
         for (i = 0; i < REL_CNT; i++)
         {
-            int map = pEvdev->axis_map[i];
+            int map = pEvdev->rel_axis_map[i];
             if (pEvdev->delta[i] && map != -1)
                 valuator_mask_set(pEvdev->vals, map, pEvdev->delta[i]);
         }
@@ -701,7 +701,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 
             pEvdev->rel_queued = 1;
             pEvdev->delta[ev->code] += value;
-            map = pEvdev->axis_map[ev->code];
+            map = pEvdev->rel_axis_map[ev->code];
             valuator_mask_set(pEvdev->vals, map, value);
             break;
     }
@@ -787,7 +787,7 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
             } else
                 pEvdev->slot_state = SLOTSTATE_CLOSE;
         } else {
-            map = pEvdev->axis_map[ev->code];
+            map = pEvdev->abs_axis_map[ev->code];
             valuator_mask_set(pEvdev->mt_mask, map, ev->value);
             if (slot_index >= 0)
                 valuator_mask_set(pEvdev->last_mt_vals[slot_index], map,
@@ -827,7 +827,7 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
         EvdevProcessTouchEvent(pInfo, ev);
         pEvdev->abs_queued = 1;
     } else if (!pEvdev->mt_mask) {
-        map = pEvdev->axis_map[ev->code];
+        map = pEvdev->abs_axis_map[ev->code];
         valuator_mask_set(pEvdev->vals, map, value);
         pEvdev->abs_queued = 1;
     }
@@ -1330,7 +1330,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
         int j;
 #endif
         int mapping;
-        pEvdev->axis_map[axis] = -1;
+        pEvdev->abs_axis_map[axis] = -1;
         if (!EvdevBitIsSet(pEvdev->abs_bitmask, axis) ||
             is_blacklisted_axis(axis))
             continue;
@@ -1347,7 +1347,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
                 mapping = mt_axis_mappings[j].mapping;
         }
 #endif
-        pEvdev->axis_map[axis] = mapping;
+        pEvdev->abs_axis_map[axis] = mapping;
         if (mapping == i)
             i++;
     }
@@ -1380,11 +1380,11 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
         for (i = 0; i < num_slots(pEvdev); i++) {
             for (axis = ABS_MT_TOUCH_MAJOR; axis < ABS_MAX; axis++) {
-                if (pEvdev->axis_map[axis] >= 0) {
+                if (pEvdev->abs_axis_map[axis] >= 0) {
                     /* XXX: read initial values from mtdev when it adds support
                      *      for doing so. */
                     valuator_mask_set(pEvdev->last_mt_vals[i],
-                                      pEvdev->axis_map[axis], 0);
+                                      pEvdev->abs_axis_map[axis], 0);
                 }
             }
         }
@@ -1392,7 +1392,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 #endif
 
     for (axis = ABS_X; axis < ABS_MT_SLOT; axis++) {
-        int axnum = pEvdev->axis_map[axis];
+        int axnum = pEvdev->abs_axis_map[axis];
         int resolution = 0;
 
         if (axnum == -1)
@@ -1414,7 +1414,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device)
 
 #ifdef MULTITOUCH
     for (axis = ABS_MT_TOUCH_MAJOR; axis <= ABS_MAX; axis++) {
-        int axnum = pEvdev->axis_map[axis];
+        int axnum = pEvdev->abs_axis_map[axis];
         int resolution = 0;
         int j;
         BOOL skip = FALSE;
@@ -1544,7 +1544,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
 
     for (axis = REL_X; i < MAX_VALUATORS && axis <= REL_MAX; axis++)
     {
-        pEvdev->axis_map[axis] = -1;
+        pEvdev->rel_axis_map[axis] = -1;
 #ifndef HAVE_SMOOTH_SCROLLING
         /* We don't post wheel events, so ignore them here too */
         if (axis == REL_WHEEL || axis == REL_HWHEEL || axis == REL_DIAL)
@@ -1552,7 +1552,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
 #endif
         if (!EvdevBitIsSet(pEvdev->rel_bitmask, axis))
             continue;
-        pEvdev->axis_map[axis] = i;
+        pEvdev->rel_axis_map[axis] = i;
         i++;
     }
 
@@ -1572,7 +1572,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
 
     for (axis = REL_X; axis <= REL_MAX; axis++)
     {
-        int axnum = pEvdev->axis_map[axis];
+        int axnum = pEvdev->rel_axis_map[axis];
 
         if (axnum == -1)
             continue;
@@ -1739,16 +1739,11 @@ EvdevInitTouchDevice(DeviceIntPtr device, EvdevPtr pEvdev)
 static int
 EvdevInit(DeviceIntPtr device)
 {
-    int i;
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
-
-    /* clear all axis_map entries */
-    for(i = 0; i < max(ABS_CNT,REL_CNT); i++)
-      pEvdev->axis_map[i]=-1;
 
     if (pEvdev->flags & EVDEV_KEYBOARD_EVENTS)
 	EvdevAddKeyClass(device);
@@ -2480,8 +2475,10 @@ EvdevAlloc(void)
     pEvdev->cur_slot = -1;
 #endif
 
-    for (i = 0; i < ArrayLength(pEvdev->axis_map); i++)
-        pEvdev->axis_map[i] = -1;
+    for (i = 0; i < ArrayLength(pEvdev->rel_axis_map); i++)
+        pEvdev->rel_axis_map[i] = -1;
+    for (i = 0; i < ArrayLength(pEvdev->abs_axis_map); i++)
+        pEvdev->abs_axis_map[i] = -1;
 
     return pEvdev;
 }
@@ -2626,43 +2623,32 @@ EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code)
     }
 }
 
-static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int axis,
+static void EvdevInitOneAxisLabel(EvdevPtr pEvdev, int mapped_axis,
                                   const char **labels, int label_idx, Atom *atoms)
 {
     Atom atom;
 
-    if (pEvdev->axis_map[axis] == -1)
+    if (mapped_axis == -1)
         return;
 
     atom = XIGetKnownProperty(labels[label_idx]);
     if (!atom) /* Should not happen */
         return;
 
-    atoms[pEvdev->axis_map[axis]] = atom;
+    atoms[mapped_axis] = atom;
 }
 
 static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *atoms)
 {
     int axis;
-    const char **labels;
-    int labels_len = 0;
-
-    if (mode == Absolute)
-    {
-        labels     = abs_labels;
-        labels_len = ArrayLength(abs_labels);
-    } else if (mode == Relative)
-    {
-        labels     = rel_labels;
-        labels_len = ArrayLength(rel_labels);
-    } else
-        return;
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
-    /* Now fill the ones we know */
-    for (axis = 0; axis < labels_len; axis++)
-        EvdevInitOneAxisLabel(pEvdev, axis, labels, axis, atoms);
+    for (axis = 0; axis < ArrayLength(rel_labels); axis++)
+        EvdevInitOneAxisLabel(pEvdev, pEvdev->rel_axis_map[axis], rel_labels, axis, atoms);
+
+    for (axis = 0; axis < ArrayLength(abs_labels); axis++)
+        EvdevInitOneAxisLabel(pEvdev, pEvdev->abs_axis_map[axis], abs_labels, axis, atoms);
 }
 
 static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
