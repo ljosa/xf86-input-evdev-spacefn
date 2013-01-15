@@ -2461,13 +2461,20 @@ EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
     xf86DeleteInput(pInfo, flags);
 }
 
+static EvdevPtr
+EvdevAlloc(void)
+{
+    EvdevPtr pEvdev = calloc(sizeof(EvdevRec), 1);
+    return pEvdev;
+}
+
 static int
 EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 {
     EvdevPtr pEvdev;
     int rc = BadAlloc;
 
-    if (!(pEvdev = calloc(sizeof(EvdevRec), 1)))
+    if (!(pEvdev = EvdevAlloc()))
         goto error;
 
     pInfo->private = pEvdev;
