@@ -2576,6 +2576,9 @@ EvdevAlloc(void)
     for (i = 0; i < ArrayLength(pEvdev->abs_axis_map); i++)
         pEvdev->abs_axis_map[i] = -1;
 
+    pEvdev->rel_axis_map[0] = 0;
+    pEvdev->rel_axis_map[1] = 1;
+
     return pEvdev;
 }
 
@@ -2740,6 +2743,8 @@ static void EvdevInitAxesLabels(EvdevPtr pEvdev, int mode, int natoms, Atom *ato
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
+    /* rel[0] and [1] are always mapped, so we get the rel labels. if we
+       have abs x/y, the labels will be overwritten with the right one */
     for (axis = 0; axis < ArrayLength(rel_labels); axis++)
         EvdevInitOneAxisLabel(pEvdev, pEvdev->rel_axis_map[axis], rel_labels, axis, atoms);
 
