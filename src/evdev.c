@@ -418,13 +418,78 @@ EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count)
     }
 }
 
+static void
+EvdevSwapAbsValuators(EvdevPtr pEvdev, ValuatorMask *mask)
+{
+    int i;
+    int swapped_isset[2] = {0, 0};
+    int swapped_values[2];
+
+    if (!pEvdev->swap_axes)
+        return;
+
+    for(i = 0; i <= 1; i++) {
+        if (valuator_mask_isset(mask, i)) {
+            swapped_isset[1 - i] = 1;
+            swapped_values[1 - i] =
+                xf86ScaleAxis(valuator_mask_get(mask, i),
+                              pEvdev->absinfo[1 - i].maximum,
+                              pEvdev->absinfo[1 - i].minimum,
+                              pEvdev->absinfo[i].maximum,
+                              pEvdev->absinfo[i].minimum);
+        }
+    }
+
+    for (i = 0; i <= 1; i++) {
+        if (swapped_isset[i])
+            valuator_mask_set(mask, i, swapped_values[i]);
+        else
+            valuator_mask_unset(mask, i);
+    }
+}
+
+static void
+EvdevApplyCalibration(EvdevPtr pEvdev, ValuatorMask *mask)
+{
+    int i;
+
+    for (i = 0; i <= 1; i++) {
+        int val;
+        int calib_min;
+        int calib_max;
+
+        if (!valuator_mask_isset(mask, i))
+            continue;
+
+        val = valuator_mask_get(mask, i);
+
+        if (i == 0) {
+            calib_min = pEvdev->calibration.min_x;
+            calib_max = pEvdev->calibration.max_x;
+        } else {
+            calib_min = pEvdev->calibration.min_y;
+            calib_max = pEvdev->calibration.max_y;
+        }
+
+        if (pEvdev->flags & EVDEV_CALIBRATED)
+            val = xf86ScaleAxis(val, pEvdev->absinfo[i].maximum,
+                                pEvdev->absinfo[i].minimum, calib_max,
+                                calib_min);
+
+        if ((i == 0 && pEvdev->invert_x) || (i == 1 && pEvdev->invert_y))
+            val = (pEvdev->absinfo[i].maximum - val +
+                   pEvdev->absinfo[i].minimum);
+
+        valuator_mask_set(mask, i, val);
+    }
+}
+
 /**
  * Take the valuators and process them accordingly.
  */
 static void
 EvdevProcessValuators(InputInfoPtr pInfo)
 {
-    int tmp;
     EvdevPtr pEvdev = pInfo->private;
     int *delta = pEvdev->delta;
 
@@ -456,6 +521,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
     }
 
     if (pEvdev->rel_queued) {
+        int tmp;
         int i;
 
         if (pEvdev->swap_axes) {
@@ -494,59 +560,8 @@ EvdevProcessValuators(InputInfoPtr pInfo)
      * just works.
      */
     else if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        int i;
-
-        if (pEvdev->swap_axes) {
-            int swapped_isset[2] = {0, 0};
-            int swapped_values[2];
-
-            for(i = 0; i <= 1; i++)
-                if (valuator_mask_isset(pEvdev->vals, i)) {
-                    swapped_isset[1 - i] = 1;
-                    swapped_values[1 - i] =
-                        xf86ScaleAxis(valuator_mask_get(pEvdev->vals, i),
-                                      pEvdev->absinfo[1 - i].maximum,
-                                      pEvdev->absinfo[1 - i].minimum,
-                                      pEvdev->absinfo[i].maximum,
-                                      pEvdev->absinfo[i].minimum);
-                }
-
-            for (i = 0; i <= 1; i++)
-                if (swapped_isset[i])
-                    valuator_mask_set(pEvdev->vals, i, swapped_values[i]);
-                else
-                    valuator_mask_unset(pEvdev->vals, i);
-        }
-
-        for (i = 0; i <= 1; i++) {
-            int val;
-            int calib_min;
-            int calib_max;
-
-            if (!valuator_mask_isset(pEvdev->vals, i))
-                continue;
-
-            val = valuator_mask_get(pEvdev->vals, i);
-
-            if (i == 0) {
-                calib_min = pEvdev->calibration.min_x;
-                calib_max = pEvdev->calibration.max_x;
-            } else {
-                calib_min = pEvdev->calibration.min_y;
-                calib_max = pEvdev->calibration.max_y;
-            }
-
-            if (pEvdev->flags & EVDEV_CALIBRATED)
-                val = xf86ScaleAxis(val, pEvdev->absinfo[i].maximum,
-                                    pEvdev->absinfo[i].minimum, calib_max,
-                                    calib_min);
-
-            if ((i == 0 && pEvdev->invert_x) || (i == 1 && pEvdev->invert_y))
-                val = (pEvdev->absinfo[i].maximum - val +
-                       pEvdev->absinfo[i].minimum);
-
-            valuator_mask_set(pEvdev->vals, i, val);
-        }
+        EvdevSwapAbsValuators(pEvdev, pEvdev->vals);
+        EvdevApplyCalibration(pEvdev, pEvdev->vals);
         Evdev3BEmuProcessAbsMotion(pInfo, pEvdev->vals);
     }
 }
@@ -730,6 +745,9 @@ EvdevProcessTouch(InputInfoPtr pInfo)
     else
         type = XI_TouchUpdate;
 
+
+    EvdevSwapAbsValuators(pEvdev, pEvdev->mt_mask);
+    EvdevApplyCalibration(pEvdev, pEvdev->mt_mask);
 
     EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask, type);
 
