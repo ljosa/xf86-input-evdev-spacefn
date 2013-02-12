@@ -2511,7 +2511,7 @@ EvdevOpenDevice(InputInfoPtr pInfo)
     if (!EvdevOpenMTDev(pInfo)) {
         xf86Msg(X_ERROR, "%s: Couldn't open mtdev device\n", pInfo->name);
         EvdevCloseDevice(pInfo);
-        return FALSE;
+        return BadValue;
     }
 #endif
 
