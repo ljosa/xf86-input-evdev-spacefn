@@ -2000,7 +2000,7 @@ EvdevCache(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(0, sizeof(bitmask)), bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for bitmask failed: %s\n",
                     strerror(errno));
         goto error;
     }
@@ -2009,7 +2009,7 @@ EvdevCache(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_REL failed: %s\n",
                     strerror(errno));
         goto error;
     }
@@ -2018,7 +2018,7 @@ EvdevCache(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_ABS failed: %s\n",
                     strerror(errno));
         goto error;
     }
@@ -2027,7 +2027,7 @@ EvdevCache(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_LED, sizeof(led_bitmask)), led_bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_LED failed: %s\n",
                     strerror(errno));
         goto error;
     }
@@ -2053,7 +2053,7 @@ EvdevCache(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_KEY failed: %s\n",
                     strerror(errno));
         goto error;
     }
@@ -2435,8 +2435,8 @@ EvdevOpenMTDev(InputInfoPtr pInfo)
     /* Use ioctl here, this may be called before EvdevCache */
     len = ioctl(pInfo->fd, EVIOCGBIT(0, sizeof(bitmask)), bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
-                    strerror(errno));
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for bitmask in %s failed: %s\n",
+                    __func__, strerror(errno));
         return FALSE;
     }
 
@@ -2445,8 +2445,8 @@ EvdevOpenMTDev(InputInfoPtr pInfo)
 
     len = ioctl(pInfo->fd, EVIOCGBIT(EV_ABS, sizeof(abs_bitmask)), abs_bitmask);
     if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT failed: %s\n",
-                    strerror(errno));
+        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_ABS in %s failed: %s\n",
+                    __func__, strerror(errno));
         return FALSE;
     }
 
