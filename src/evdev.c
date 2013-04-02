@@ -2548,6 +2548,9 @@ EvdevUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
         /* Release string allocated in EvdevOpenDevice. */
         free(pEvdev->device);
         pEvdev->device = NULL;
+
+        free(pEvdev->type_name);
+        pEvdev->type_name = NULL;
     }
     xf86DeleteInput(pInfo, flags);
 }
@@ -2578,6 +2581,8 @@ EvdevAlloc(void)
 
     pEvdev->rel_axis_map[0] = 0;
     pEvdev->rel_axis_map[1] = 1;
+
+    pEvdev->type_name = NULL;
 
     return pEvdev;
 }
@@ -2622,6 +2627,14 @@ EvdevPreInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
         rc = BadMatch;
         goto error;
     }
+
+    /* Overwrite type_name with custom-defined one (#62831).
+       Note: pInfo->type_name isn't freed so we need to manually do this
+     */
+    pEvdev->type_name = xf86SetStrOption(pInfo->options,
+                                         "TypeName",
+                                         pInfo->type_name);
+    pInfo->type_name = pEvdev->type_name;
 
     EvdevAddDevice(pInfo);
 

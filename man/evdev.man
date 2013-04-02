@@ -220,6 +220,12 @@ is mapped to the negative Y axis motion and button number
 .I N2
 is mapped to the positive Y axis motion.  Default: "4 5". Property:
 "Evdev Wheel Emulation Axes".
+.TP 7
+.BI "Option \*qTypeName\*q \*q"type"\*q
+Specify the X Input 1.x type (see XListInputDevices(__libmansuffix__)).
+There is rarely a need to use this option, evdev will guess the device type
+based on the device's capabilities. This option is provided for devices that
+need quirks.
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the

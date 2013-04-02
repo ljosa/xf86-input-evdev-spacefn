@@ -251,6 +251,8 @@ typedef struct {
     EventQueueRec           queue[EVDEV_MAXQUEUE];
 
     enum fkeymode           fkeymode;
+
+    char *type_name;
 } EvdevRec, *EvdevPtr;
 
 /* Event posting functions */
