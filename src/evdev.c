@@ -1283,6 +1283,15 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
             num_axes--;
         }
     }
+
+    /* device only has mt-axes. the kernel should give us ABS_X etc for
+       backwards compat but some devices don't have it. */
+    if (num_axes == 0 && num_mt_axes > 0) {
+        xf86IDrvMsg(pInfo, X_ERROR,
+                    "found only multitouch-axes. That shouldn't happen.\n");
+        goto out;
+    }
+
 #endif
 
 #ifdef HAVE_SMOOTH_SCROLLING
