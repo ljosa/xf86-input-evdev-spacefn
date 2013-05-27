@@ -96,7 +96,7 @@
 
 static const char *evdevDefaults[] = {
     "XkbRules",     "evdev",
-    "XkbModel",     "evdev",
+    "XkbModel",     "pc104", /* the right model for 'us' */
     "XkbLayout",    "us",
     NULL
 };
