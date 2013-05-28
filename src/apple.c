@@ -303,7 +303,8 @@ EvdevAppleInitProperty(DeviceIntPtr dev)
     enum fkeymode fkeymode;
 
     if (!product_check(apple_keyboard_table,
-                       pEvdev->id_vendor, pEvdev->id_product))
+                       libevdev_get_id_vendor(pEvdev->dev),
+                       libevdev_get_id_product(pEvdev->dev)))
         return;
 
     fkeymode = get_fnmode();
