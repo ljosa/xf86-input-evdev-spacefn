@@ -1983,12 +1983,10 @@ EvdevCache(InputInfoPtr pInfo)
     int i, len;
     struct input_id id;
 
-    char name[1024]                  = {0};
     unsigned long bitmask[NLONGS(EV_CNT)]      = {0};
     unsigned long key_bitmask[NLONGS(KEY_CNT)] = {0};
     unsigned long rel_bitmask[NLONGS(REL_CNT)] = {0};
     unsigned long abs_bitmask[NLONGS(ABS_CNT)] = {0};
-    unsigned long led_bitmask[NLONGS(LED_CNT)] = {0};
 
 
     if (ioctl(pInfo->fd, EVIOCGID, &id) < 0)
@@ -1999,13 +1997,6 @@ EvdevCache(InputInfoPtr pInfo)
 
     pEvdev->id_vendor = id.vendor;
     pEvdev->id_product = id.product;
-
-    if (ioctl(pInfo->fd, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGNAME failed: %s\n", strerror(errno));
-        goto error;
-    }
-
-    strcpy(pEvdev->name, name);
 
     len = ioctl(pInfo->fd, EVIOCGBIT(0, sizeof(bitmask)), bitmask);
     if (len < 0) {
@@ -2033,15 +2024,6 @@ EvdevCache(InputInfoPtr pInfo)
     }
 
     memcpy(pEvdev->abs_bitmask, abs_bitmask, len);
-
-    len = ioctl(pInfo->fd, EVIOCGBIT(EV_LED, sizeof(led_bitmask)), led_bitmask);
-    if (len < 0) {
-        xf86IDrvMsg(pInfo, X_ERROR, "ioctl EVIOCGBIT for EV_LED failed: %s\n",
-                    strerror(errno));
-        goto error;
-    }
-
-    memcpy(pEvdev->led_bitmask, led_bitmask, len);
 
     /*
      * Do not try to validate absinfo data since it is not expected
