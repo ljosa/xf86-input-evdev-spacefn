@@ -1267,7 +1267,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
             for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
             {
                 if (mt_axis_mappings[j].mt_code == axis &&
-                    BitIsOn(pEvdev->abs_bitmask, mt_axis_mappings[j].code))
+                    EvdevBitIsSet(pEvdev->abs_bitmask, mt_axis_mappings[j].code))
                 {
                     mt_axis_mappings[j].needs_mapping = TRUE;
                     skip = TRUE;
