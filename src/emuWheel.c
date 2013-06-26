@@ -392,7 +392,7 @@ EvdevWheelEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         inertia = *((CARD16*)val->data);
 
-        if (inertia < 0)
+        if (inertia <= 0)
             return BadValue;
 
         if (!checkonly)
