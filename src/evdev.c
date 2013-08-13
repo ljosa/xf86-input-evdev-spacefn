@@ -1157,7 +1157,7 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
     };
 
     InputInfoPtr pInfo;
-    struct input_event ev[ArrayLength(bits)];
+    struct input_event ev[ArrayLength(bits) + 1];
     int i;
 
     memset(ev, 0, sizeof(ev));
@@ -1168,6 +1168,10 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
         ev[i].code = bits[i].code;
         ev[i].value = (ctrl->leds & bits[i].xbit) > 0;
     }
+
+    ev[i].type = EV_SYN;
+    ev[i].code = SYN_REPORT;
+    ev[i].value = 0;
 
     write(pInfo->fd, ev, sizeof ev);
 }
