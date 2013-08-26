@@ -97,7 +97,6 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
     WheelAxisPtr pAxis = NULL, pOtherAxis = NULL;
     int value = pEv->value;
-    int oldValue;
 
     /* Has wheel emulation been configured to be enabled? */
     if (!pEvdev->emulateWheel.enabled)
@@ -117,9 +116,13 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 
 	if(pEv->type == EV_ABS) {
 	    int axis = pEvdev->abs_axis_map[pEv->code];
-	    oldValue = valuator_mask_get(pEvdev->vals, axis);
-	    valuator_mask_set(pEvdev->vals, axis, value);
-	    value -= oldValue; /* make value into a differential measurement */
+	    int oldValue;
+
+	    if (axis > -1 && valuator_mask_fetch(pEvdev->old_vals, axis, &oldValue)) {
+		valuator_mask_set(pEvdev->vals, axis, value);
+		value -= oldValue; /* make value into a differential measurement */
+	    } else
+                value = 0; /* avoid a jump on the first touch */
 	}
 
 	switch(pEv->code) {

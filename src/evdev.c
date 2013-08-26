@@ -483,31 +483,39 @@ EvdevProcessValuators(InputInfoPtr pInfo)
     EvdevPtr pEvdev = pInfo->private;
     int *delta = pEvdev->delta;
 
-    /* convert to relative motion for touchpads */
-    if (pEvdev->abs_queued && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
-        if (pEvdev->in_proximity) {
-            if (valuator_mask_isset(pEvdev->vals, 0))
-            {
-                if (valuator_mask_isset(pEvdev->old_vals, 0))
-                    delta[REL_X] = valuator_mask_get(pEvdev->vals, 0) -
-                                   valuator_mask_get(pEvdev->old_vals, 0);
-                valuator_mask_set(pEvdev->old_vals, 0,
-                                  valuator_mask_get(pEvdev->vals, 0));
+    if (pEvdev->abs_queued) {
+        /* convert to relative motion for touchpads */
+        if (pEvdev->flags & EVDEV_RELATIVE_MODE) {
+            if (pEvdev->in_proximity) {
+                if (valuator_mask_isset(pEvdev->vals, 0))
+                {
+                    if (valuator_mask_isset(pEvdev->old_vals, 0))
+                        delta[REL_X] = valuator_mask_get(pEvdev->vals, 0) -
+                            valuator_mask_get(pEvdev->old_vals, 0);
+                    valuator_mask_set(pEvdev->old_vals, 0,
+                            valuator_mask_get(pEvdev->vals, 0));
+                }
+                if (valuator_mask_isset(pEvdev->vals, 1))
+                {
+                    if (valuator_mask_isset(pEvdev->old_vals, 1))
+                        delta[REL_Y] = valuator_mask_get(pEvdev->vals, 1) -
+                            valuator_mask_get(pEvdev->old_vals, 1);
+                    valuator_mask_set(pEvdev->old_vals, 1,
+                            valuator_mask_get(pEvdev->vals, 1));
+                }
+            } else {
+                valuator_mask_zero(pEvdev->old_vals);
             }
-            if (valuator_mask_isset(pEvdev->vals, 1))
-            {
-                if (valuator_mask_isset(pEvdev->old_vals, 1))
-                    delta[REL_Y] = valuator_mask_get(pEvdev->vals, 1) -
-                                   valuator_mask_get(pEvdev->old_vals, 1);
-                valuator_mask_set(pEvdev->old_vals, 1,
-                                  valuator_mask_get(pEvdev->vals, 1));
-            }
+            valuator_mask_zero(pEvdev->vals);
+            pEvdev->abs_queued = 0;
+            pEvdev->rel_queued = 1;
         } else {
-            valuator_mask_zero(pEvdev->old_vals);
+            int val;
+            if (valuator_mask_fetch(pEvdev->vals, 0, &val))
+                valuator_mask_set(pEvdev->old_vals, 0, val);
+            if (valuator_mask_fetch(pEvdev->vals, 1, &val))
+                valuator_mask_set(pEvdev->old_vals, 1, val);
         }
-        valuator_mask_zero(pEvdev->vals);
-        pEvdev->abs_queued = 0;
-        pEvdev->rel_queued = 1;
     }
 
     if (pEvdev->rel_queued) {
