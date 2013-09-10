@@ -1455,8 +1455,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
                 num_touches = pEvdev->mtdev->caps.slot.maximum -
                               pEvdev->mtdev->caps.slot.minimum + 1;
         } else
-            num_touches = pEvdev->absinfo[ABS_MT_SLOT].maximum -
-                          pEvdev->absinfo[ABS_MT_SLOT].minimum + 1;
+            num_touches = num_slots(pEvdev);
 
         if (!InitTouchClassDeviceStruct(device, num_touches, mode,
                                         num_mt_axes_total)) {
