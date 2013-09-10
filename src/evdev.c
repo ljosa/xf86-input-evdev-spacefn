@@ -762,8 +762,7 @@ EvdevProcessTouch(InputInfoPtr pInfo)
 static int
 num_slots(EvdevPtr pEvdev)
 {
-    int value = pEvdev->absinfo[ABS_MT_SLOT].maximum -
-                pEvdev->absinfo[ABS_MT_SLOT].minimum + 1;
+    int value = pEvdev->absinfo[ABS_MT_SLOT].maximum + 1;
 
     /* If we don't know how many slots there are, assume at least 10 */
     return value > 1 ? value : 10;
@@ -772,7 +771,7 @@ num_slots(EvdevPtr pEvdev)
 static int
 last_mt_vals_slot(EvdevPtr pEvdev)
 {
-    int value = pEvdev->cur_slot - pEvdev->absinfo[ABS_MT_SLOT].minimum;
+    int value = pEvdev->cur_slot;
 
     return value < num_slots(pEvdev) ? value : -1;
 }
