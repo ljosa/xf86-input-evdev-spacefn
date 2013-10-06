@@ -47,6 +47,8 @@
 #include <mtdev.h>
 #endif
 
+#include <libevdev/libevdev.h>
+
 #ifndef EV_CNT /* linux 2.6.23 kernels and earlier lack _CNT defines */
 #define EV_CNT (EV_MAX+1)
 #endif
@@ -150,8 +152,7 @@ typedef struct {
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
-    unsigned short id_vendor;
-    unsigned short id_product;
+    struct libevdev *dev;
 
     char *device;
     int grabDevice;         /* grab the event device? */
@@ -233,13 +234,6 @@ typedef struct {
     int reopen_attempts; /* max attempts to re-open after read failure */
     int reopen_left;     /* number of attempts left to re-open the device */
     OsTimerPtr reopen_timer;
-
-    /* Cached info from device. */
-    unsigned long bitmask[NLONGS(EV_CNT)];
-    unsigned long key_bitmask[NLONGS(KEY_CNT)];
-    unsigned long rel_bitmask[NLONGS(REL_CNT)];
-    unsigned long abs_bitmask[NLONGS(ABS_CNT)];
-    struct input_absinfo absinfo[ABS_CNT];
 
     /* minor/major number */
     dev_t min_maj;
