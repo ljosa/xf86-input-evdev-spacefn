@@ -1342,13 +1342,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
     }
 #ifdef MULTITOUCH
     if (num_mt_axes_total > 0) {
-        int num_slots = 0;
-
-        if (pEvdev->mtdev) {
-            num_slots = pEvdev->mtdev->caps.slot.maximum -
-                          pEvdev->mtdev->caps.slot.minimum + 1;
-        } else
-            num_slots = libevdev_get_num_slots(pEvdev->dev);
+        int nslots = num_slots(pEvdev);
 
         pEvdev->num_mt_vals = num_mt_axes_total;
         pEvdev->mt_mask = valuator_mask_new(num_mt_axes_total);
@@ -1358,7 +1352,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
             goto out;
         }
 
-        pEvdev->last_mt_vals = calloc(num_slots, sizeof(ValuatorMask *));
+        pEvdev->last_mt_vals = calloc(nslots, sizeof(ValuatorMask *));
         if (!pEvdev->last_mt_vals) {
             xf86IDrvMsg(pInfo, X_ERROR,
                         "%s: failed to allocate MT last values mask array.\n",
@@ -1366,7 +1360,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
             goto out;
         }
 
-        for (i = 0; i < num_slots; i++) {
+        for (i = 0; i < nslots; i++) {
             pEvdev->last_mt_vals[i] = valuator_mask_new(num_mt_axes_total);
             if (!pEvdev->last_mt_vals[i]) {
                 xf86IDrvMsg(pInfo, X_ERROR,
@@ -1445,12 +1439,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
         int mode = pEvdev->flags & EVDEV_TOUCHPAD ?
             XIDependentTouch : XIDirectTouch;
 
-        if (pEvdev->mtdev) {
-            if (pEvdev->mtdev->caps.slot.maximum > 0)
-                num_touches = pEvdev->mtdev->caps.slot.maximum -
-                              pEvdev->mtdev->caps.slot.minimum + 1;
-        } else
-            num_touches = num_slots(pEvdev);
+        num_touches = num_slots(pEvdev);
 
         if (!InitTouchClassDeviceStruct(device, num_touches, mode,
                                         num_mt_axes_total)) {
