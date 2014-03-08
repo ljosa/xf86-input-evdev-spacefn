@@ -97,6 +97,10 @@
 #define ABS_MT_TRACKING_ID 0x39
 #endif
 
+#ifndef XI86_SERVER_FD
+#define XI86_SERVER_FD 0x20
+#endif
+
 static const char *evdevDefaults[] = {
     "XkbRules",     "evdev",
     "XkbModel",     "pc104", /* the right model for 'us' */
@@ -2478,32 +2482,32 @@ EvdevOpenDevice(InputInfoPtr pInfo)
         xf86IDrvMsg(pInfo, X_CONFIG, "Device: \"%s\"\n", device);
     }
 
-    if (pInfo->fd < 0)
+    if (!(pInfo->flags & XI86_SERVER_FD) && pInfo->fd < 0)
     {
         do {
             pInfo->fd = open(device, O_RDWR | O_NONBLOCK, 0);
         } while (pInfo->fd < 0 && errno == EINTR);
+    }
 
-        if (pInfo->fd < 0) {
-            xf86IDrvMsg(pInfo, X_ERROR, "Unable to open evdev device \"%s\".\n", device);
+    if (pInfo->fd < 0) {
+        xf86IDrvMsg(pInfo, X_ERROR, "Unable to open evdev device \"%s\".\n", device);
+        return BadValue;
+    }
+
+    if (libevdev_get_fd(pEvdev->dev) != -1) {
+        struct input_event ev;
+
+        libevdev_change_fd(pEvdev->dev, pInfo->fd);
+        /* re-sync libevdev's view of the device, but
+           we don't care about the actual events here */
+        libevdev_next_event(pEvdev->dev, LIBEVDEV_READ_FLAG_FORCE_SYNC, &ev);
+        while (libevdev_next_event(pEvdev->dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC)
+            ;
+    } else {
+        int rc = libevdev_set_fd(pEvdev->dev, pInfo->fd);
+        if (rc < 0) {
+            xf86IDrvMsg(pInfo, X_ERROR, "Unable to query fd: %s\n", strerror(-rc));
             return BadValue;
-        }
-
-        if (libevdev_get_fd(pEvdev->dev) != -1) {
-            struct input_event ev;
-
-            libevdev_change_fd(pEvdev->dev, pInfo->fd);
-            /* re-sync libevdev's view of the device, but
-               we don't care about the actual events here */
-            libevdev_next_event(pEvdev->dev, LIBEVDEV_READ_FLAG_FORCE_SYNC, &ev);
-            while (libevdev_next_event(pEvdev->dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC)
-                ;
-        } else {
-            int rc = libevdev_set_fd(pEvdev->dev, pInfo->fd);
-            if (rc < 0) {
-                xf86IDrvMsg(pInfo, X_ERROR, "Unable to query fd: %s\n", strerror(-rc));
-                return BadValue;
-            }
         }
     }
 
@@ -2531,7 +2535,7 @@ static void
 EvdevCloseDevice(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
-    if (pInfo->fd >= 0)
+    if (!(pInfo->flags & XI86_SERVER_FD) && pInfo->fd >= 0)
     {
         close(pInfo->fd);
         pInfo->fd = -1;
@@ -2679,7 +2683,10 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     EvdevUnInit,
     NULL,
-    evdevDefaults
+    evdevDefaults,
+#ifdef XI86_DRV_CAP_SERVER_FD
+    XI86_DRV_CAP_SERVER_FD
+#endif
 };
 
 static void
