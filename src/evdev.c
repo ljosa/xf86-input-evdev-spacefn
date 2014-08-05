@@ -687,28 +687,38 @@ EvdevProcessTouch(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
     int type;
+    int slot = pEvdev->cur_slot;
 
-    if (pEvdev->cur_slot < 0 || !pEvdev->mt_mask)
+    if (slot < 0 || !pEvdev->mt_mask)
         return;
 
-    /* If the ABS_MT_SLOT is the first event we get after EV_SYN, skip this */
-    if (pEvdev->slot_state == SLOTSTATE_EMPTY)
+    if (!pEvdev->slots[slot].dirty)
         return;
 
-    if (pEvdev->slot_state == SLOTSTATE_CLOSE)
-        type = XI_TouchEnd;
-    else if (pEvdev->slot_state == SLOTSTATE_OPEN)
-        type = XI_TouchBegin;
-    else
-        type = XI_TouchUpdate;
-
+    switch(pEvdev->slots[slot].state)
+    {
+        case SLOTSTATE_EMPTY:
+            return;
+        case SLOTSTATE_CLOSE:
+            type = XI_TouchEnd;
+            pEvdev->slots[slot].state = SLOTSTATE_EMPTY;
+            break;
+        case SLOTSTATE_OPEN:
+            type = XI_TouchBegin;
+            pEvdev->slots[slot].state = SLOTSTATE_UPDATE;
+            break;
+        case SLOTSTATE_UPDATE:
+        default:
+            type = XI_TouchUpdate;
+            break;
+    }
 
     EvdevSwapAbsValuators(pEvdev, pEvdev->mt_mask);
     EvdevApplyCalibration(pEvdev, pEvdev->mt_mask);
 
     EvdevQueueTouchEvent(pInfo, pEvdev->cur_slot, pEvdev->mt_mask, type);
 
-    pEvdev->slot_state = SLOTSTATE_EMPTY;
+    pEvdev->slots[slot].dirty = 0;
 
     valuator_mask_zero(pEvdev->mt_mask);
 }
@@ -751,29 +761,28 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
     } else
     {
         int slot_index = last_mt_vals_slot(pEvdev);
+        if (slot_index < 0) {
+                    LogMessageVerbSigSafe(X_WARNING, 0,
+                                          "%s: Invalid slot index %d, touch events may be incorrect.\n",
+                                          pInfo->name,
+                                          slot_index);
+                    return;
+        }
 
-        if (pEvdev->slot_state == SLOTSTATE_EMPTY)
-            pEvdev->slot_state = SLOTSTATE_UPDATE;
+        pEvdev->slots[slot_index].dirty = 1;
         if (ev->code == ABS_MT_TRACKING_ID) {
             if (ev->value >= 0) {
-                pEvdev->slot_state = SLOTSTATE_OPEN;
+                pEvdev->slots[slot_index].state = SLOTSTATE_OPEN;
 
-                if (slot_index >= 0)
-                    valuator_mask_copy(pEvdev->mt_mask,
-                                       pEvdev->last_mt_vals[slot_index]);
-                else
-                    LogMessageVerbSigSafe(X_WARNING, 0,
-                                "%s: Attempted to copy values from out-of-range "
-                                "slot, touch events may be incorrect.\n",
-                                pInfo->name);
-            } else
-                pEvdev->slot_state = SLOTSTATE_CLOSE;
+                valuator_mask_copy(pEvdev->mt_mask,
+                                   pEvdev->last_mt_vals[slot_index]);
+            } else if (pEvdev->slots[slot_index].state != SLOTSTATE_EMPTY)
+                pEvdev->slots[slot_index].state = SLOTSTATE_CLOSE;
         } else {
             map = pEvdev->abs_axis_map[ev->code];
             valuator_mask_set(pEvdev->mt_mask, map, ev->value);
-            if (slot_index >= 0)
-                valuator_mask_set(pEvdev->last_mt_vals[slot_index], map,
-                                  ev->value);
+            valuator_mask_set(pEvdev->last_mt_vals[slot_index], map,
+                              ev->value);
         }
     }
 }
@@ -1041,6 +1050,8 @@ EvdevFreeMasks(EvdevPtr pEvdev)
     int i;
 #endif
 
+    free(pEvdev->slots);
+    pEvdev->slots = NULL;
     valuator_mask_free(&pEvdev->vals);
     valuator_mask_free(&pEvdev->old_vals);
     valuator_mask_free(&pEvdev->prox);
@@ -1318,6 +1329,17 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
             xf86Msg(X_ERROR, "%s: failed to allocate MT valuator mask.\n",
                     device->name);
             goto out;
+        }
+
+        pEvdev->slots = calloc(nslots, sizeof(*pEvdev->slots));
+        if (!pEvdev->slots) {
+            xf86Msg(X_ERROR, "%s: failed to allocate slot state array.\n",
+                    device->name);
+            goto out;
+        }
+        for (i = 0; i < nslots; i++) {
+            pEvdev->slots[i].state = SLOTSTATE_EMPTY;
+            pEvdev->slots[i].dirty = 0;
         }
 
         pEvdev->last_mt_vals = calloc(nslots, sizeof(ValuatorMask *));

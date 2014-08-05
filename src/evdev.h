@@ -167,7 +167,10 @@ typedef struct {
     ValuatorMask *mt_mask;
     ValuatorMask **last_mt_vals;
     int cur_slot;
-    enum SlotState slot_state;
+    struct slot {
+        int dirty;
+        enum SlotState state;
+    } *slots;
 #ifdef MULTITOUCH
     struct mtdev *mtdev;
 #endif
