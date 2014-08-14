@@ -1921,7 +1921,9 @@ EvdevInit(DeviceIntPtr device)
      * used and relative axes are ignored.
      */
 
-    if (pEvdev->flags & (EVDEV_UNIGNORE_RELATIVE | EVDEV_UNIGNORE_ABSOLUTE))
+    if ((pEvdev->flags & (EVDEV_UNIGNORE_RELATIVE|EVDEV_UNIGNORE_ABSOLUTE)) == EVDEV_UNIGNORE_RELATIVE)
+        EvdevInitRelValuators(device, pEvdev);
+    else if (pEvdev->flags & EVDEV_UNIGNORE_ABSOLUTE)
         EvdevInitAnyValuators(device, pEvdev);
     else if (pEvdev->flags & (EVDEV_TOUCHPAD | EVDEV_TOUCHSCREEN | EVDEV_TABLET))
         EvdevInitTouchDevice(device, pEvdev);
