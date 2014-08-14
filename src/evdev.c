@@ -1225,7 +1225,7 @@ is_blacklisted_axis(int axis)
 
 
 static int
-EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
+EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
@@ -1287,16 +1287,9 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
 
 #endif
 
+
 #ifdef HAVE_SMOOTH_SCROLLING
-    if (want_scroll_axes && libevdev_has_event_type(pEvdev->dev, EV_REL))
-    {
-        if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_WHEEL))
-            num_axes++;
-        if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_HWHEEL))
-            num_axes++;
-        if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_DIAL))
-            num_axes++;
-    }
+    num_axes += num_scroll_axes;
 #endif
 
     if (num_axes + num_mt_axes > MAX_VALUATORS) {
@@ -1401,7 +1394,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
     }
 
 #ifdef HAVE_SMOOTH_SCROLLING
-    if (want_scroll_axes)
+    if (num_scroll_axes > 0)
     {
         mapping++; /* continue from abs axis mapping */
 
@@ -1511,7 +1504,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int want_scroll_axes)
 #endif
 
 #ifdef HAVE_SMOOTH_SCROLLING
-    if (want_scroll_axes)
+    if (num_scroll_axes)
     {
         int idx;
         if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_WHEEL))
@@ -1646,7 +1639,7 @@ EvdevSetScrollValuators(DeviceIntPtr device)
 }
 
 static int
-EvdevAddRelValuatorClass(DeviceIntPtr device)
+EvdevAddRelValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
@@ -1659,24 +1652,22 @@ EvdevAddRelValuatorClass(DeviceIntPtr device)
     if (!libevdev_has_event_type(pEvdev->dev, EV_REL))
         goto out;
 
-    for (i = 0; i < REL_MAX; i++)
+    for (i = 0; i < REL_MAX; i++) {
+        if (i == REL_WHEEL || i == REL_HWHEEL || i == REL_DIAL)
+            continue;
+
         if (libevdev_has_event_code(pEvdev->dev, EV_REL, i))
             num_axes++;
-    if (num_axes < 1)
-        goto out;
+    }
 
-#ifndef HAVE_SMOOTH_SCROLLING
-    /* Wheels are special, we post them as button events. So let's ignore them
-     * in the axes list too */
-    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_WHEEL))
-        num_axes--;
-    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_HWHEEL))
-        num_axes--;
-    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_DIAL))
-        num_axes--;
+    /* If we have only relative scroll axes, then we punt axis init to
+       EvdevInitAbsValuators if possible */
+    if (num_axes < 1 &&
+        (num_scroll_axes == 0 || pEvdev->flags & EVDEV_ABSOLUTE_EVENTS))
+            goto out;
 
-    if (num_axes <= 0)
-        goto out;
+#ifdef HAVE_SMOOTH_SCROLLING
+    num_axes += num_scroll_axes;
 #endif
 
     if (num_axes > MAX_VALUATORS) {
@@ -1815,20 +1806,36 @@ EvdevInitButtonMapping(InputInfoPtr pInfo)
 
 }
 
+static int
+EvdevCountScrollAxes(EvdevPtr pEvdev)
+{
+    int num_scroll_axes = 0;
+
+#ifdef HAVE_SMOOTH_SCROLLING
+    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_WHEEL))
+        num_scroll_axes++;
+    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_HWHEEL))
+        num_scroll_axes++;
+    if (libevdev_has_event_code(pEvdev->dev, EV_REL, REL_DIAL))
+        num_scroll_axes++;
+#endif
+
+    return num_scroll_axes;
+}
+
 static void
 EvdevInitAnyValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
-    int rel_success = FALSE;
+    int num_scroll_axes = EvdevCountScrollAxes(pEvdev);
 
     if (pEvdev->flags & EVDEV_RELATIVE_EVENTS &&
-        EvdevAddRelValuatorClass(device) == Success)
-    {
-        rel_success = TRUE;
+        EvdevAddRelValuatorClass(device, num_scroll_axes) == Success)
         xf86IDrvMsg(pInfo, X_INFO, "initialized for relative axes.\n");
-    }
+    /* FIXME: EvdevAddAbsValuatorClass overwrites the valuators initialized
+       in EvdevAddRelValuatorClass and leaks the latter's memory */
     if (pEvdev->flags & EVDEV_ABSOLUTE_EVENTS &&
-        EvdevAddAbsValuatorClass(device, !rel_success) == Success)
+        EvdevAddAbsValuatorClass(device, num_scroll_axes) == Success)
         xf86IDrvMsg(pInfo, X_INFO, "initialized for absolute axes.\n");
 }
 
@@ -1836,8 +1843,9 @@ static void
 EvdevInitAbsValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
+    int num_scroll_axes = EvdevCountScrollAxes(pEvdev);
 
-    if (EvdevAddAbsValuatorClass(device, TRUE) == Success) {
+    if (EvdevAddAbsValuatorClass(device, num_scroll_axes) == Success) {
         xf86IDrvMsg(pInfo, X_INFO,"initialized for absolute axes.\n");
     } else {
         xf86IDrvMsg(pInfo, X_ERROR,"failed to initialize for absolute axes.\n");
@@ -1850,8 +1858,9 @@ EvdevInitRelValuators(DeviceIntPtr device, EvdevPtr pEvdev)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
     int has_abs_axes = pEvdev->flags & EVDEV_ABSOLUTE_EVENTS;
+    int num_scroll_axes = EvdevCountScrollAxes(pEvdev);
 
-    if (EvdevAddRelValuatorClass(device) == Success) {
+    if (EvdevAddRelValuatorClass(device, num_scroll_axes) == Success) {
 
         xf86IDrvMsg(pInfo, X_INFO,"initialized for relative axes.\n");
 
@@ -2278,9 +2287,6 @@ EvdevProbe(InputInfoPtr pInfo)
 #endif
                 EvdevForceXY(pInfo, Absolute);
         }
-
-
-
     }
 
     for (i = 0; i < BTN_MISC; i++) {
