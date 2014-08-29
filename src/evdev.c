@@ -71,12 +71,6 @@
 #define ArrayLength(a) (sizeof(a) / (sizeof((a)[0])))
 
 #define MIN_KEYCODE 8
-#define GLYPHS_PER_KEY 2
-#define AltMask		Mod1Mask
-#define NumLockMask	Mod2Mask
-#define AltLangMask	Mod3Mask
-#define KanaMask	Mod4Mask
-#define ScrollLockMask	Mod5Mask
 
 #define CAPSFLAG	1
 #define NUMFLAG		2
