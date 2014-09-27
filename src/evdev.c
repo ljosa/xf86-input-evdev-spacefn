@@ -868,8 +868,7 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
  * Post the relative motion events.
  */
 void
-EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
-                              int v[MAX_VALUATORS])
+EvdevPostRelativeMotionEvents(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
 
@@ -882,8 +881,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
  * Post the absolute motion events.
  */
 void
-EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
-                              int v[MAX_VALUATORS])
+EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
 
@@ -902,8 +900,7 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
 }
 
 static void
-EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
-                                  int v[MAX_VALUATORS])
+EvdevPostProximityEvents(InputInfoPtr pInfo, int which)
 {
     int i;
     EvdevPtr pEvdev = pInfo->private;
@@ -918,8 +915,7 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
                 break;
             case EV_QUEUE_PROXIMITY:
                 if (pEvdev->queue[i].val == which)
-                    xf86PostProximityEventP(pInfo->dev, which, first_v, num_v,
-                            v + first_v);
+                    xf86PostProximityEvent(pInfo->dev, which, 0, 0);
                 break;
         }
     }
@@ -928,8 +924,7 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which, int num_v, int first_v,
 /**
  * Post the queued key/button events.
  */
-static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
-                                  int v[MAX_VALUATORS])
+static void EvdevPostQueuedEvents(InputInfoPtr pInfo)
 {
     int i;
     EvdevPtr pEvdev = pInfo->private;
@@ -947,9 +942,8 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo, int num_v, int first_v,
                 break;
 
             if (pEvdev->abs_queued && pEvdev->in_proximity) {
-                xf86PostButtonEventP(pInfo->dev, Absolute, pEvdev->queue[i].detail.key,
-                                     pEvdev->queue[i].val, first_v, num_v,
-                                     v + first_v);
+                xf86PostButtonEvent(pInfo->dev, Absolute, pEvdev->queue[i].detail.key,
+                                     pEvdev->queue[i].val, 0, 0);
 
             } else
                 xf86PostButtonEvent(pInfo->dev, Relative, pEvdev->queue[i].detail.key,
@@ -976,8 +970,6 @@ static void
 EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
 {
     int i;
-    int num_v = 0, first_v = 0;
-    int v[MAX_VALUATORS] = {};
     EvdevPtr pEvdev = pInfo->private;
 
     EvdevProcessProximityState(pInfo);
@@ -985,11 +977,11 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     EvdevProcessValuators(pInfo);
     EvdevProcessTouch(pInfo);
 
-    EvdevPostProximityEvents(pInfo, TRUE, num_v, first_v, v);
-    EvdevPostRelativeMotionEvents(pInfo, num_v, first_v, v);
-    EvdevPostAbsoluteMotionEvents(pInfo, num_v, first_v, v);
-    EvdevPostQueuedEvents(pInfo, num_v, first_v, v);
-    EvdevPostProximityEvents(pInfo, FALSE, num_v, first_v, v);
+    EvdevPostProximityEvents(pInfo, TRUE);
+    EvdevPostRelativeMotionEvents(pInfo);
+    EvdevPostAbsoluteMotionEvents(pInfo);
+    EvdevPostQueuedEvents(pInfo);
+    EvdevPostProximityEvents(pInfo, FALSE);
 
     memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
     for (i = 0; i < ArrayLength(pEvdev->queue); i++)

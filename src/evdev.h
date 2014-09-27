@@ -265,10 +265,8 @@ void EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch,
 #endif
 void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
-void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
-				   int v[MAX_VALUATORS]);
-void EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo, int num_v, int first_v,
-				   int v[MAX_VALUATORS]);
+void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo);
+void EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo);
 unsigned int EvdevUtilButtonEventToButtonNumber(EvdevPtr pEvdev, int code);
 
 /* Middle Button emulation */
