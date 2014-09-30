@@ -434,7 +434,8 @@ static void
 EvdevProcessValuators(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
-    int *delta = pEvdev->delta;
+
+    int deltaX = 0, deltaY = 0;
 
     if (pEvdev->abs_queued) {
         /* convert to relative motion for touchpads */
@@ -443,7 +444,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
                 if (valuator_mask_isset(pEvdev->abs_vals, 0))
                 {
                     if (valuator_mask_isset(pEvdev->old_vals, 0))
-                        delta[REL_X] = valuator_mask_get(pEvdev->abs_vals, 0) -
+                        deltaX = valuator_mask_get(pEvdev->abs_vals, 0) -
                             valuator_mask_get(pEvdev->old_vals, 0);
                     valuator_mask_set(pEvdev->old_vals, 0,
                             valuator_mask_get(pEvdev->abs_vals, 0));
@@ -451,7 +452,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
                 if (valuator_mask_isset(pEvdev->abs_vals, 1))
                 {
                     if (valuator_mask_isset(pEvdev->old_vals, 1))
-                        delta[REL_Y] = valuator_mask_get(pEvdev->abs_vals, 1) -
+                        deltaY = valuator_mask_get(pEvdev->abs_vals, 1) -
                             valuator_mask_get(pEvdev->old_vals, 1);
                     valuator_mask_set(pEvdev->old_vals, 1,
                             valuator_mask_get(pEvdev->abs_vals, 1));
@@ -471,35 +472,40 @@ EvdevProcessValuators(InputInfoPtr pInfo)
         }
     }
 
+    /* Apply transformations on relative coordinates */
     if (pEvdev->rel_queued) {
-        int tmp;
-        int i;
+        /* deltaX and deltaY may be non-zero if they got computed
+         * because EVDEV_RELATIVE_MODE, but then we don't expect
+         * pEvdev->rel_vals also to be set...
+         */
+        if (valuator_mask_isset(pEvdev->rel_vals, REL_X))
+            deltaX = valuator_mask_get(pEvdev->rel_vals, REL_X);
+        if (valuator_mask_isset(pEvdev->rel_vals, REL_Y))
+            deltaY = valuator_mask_get(pEvdev->rel_vals, REL_Y);
 
         if (pEvdev->swap_axes) {
-            tmp = pEvdev->delta[REL_X];
-            pEvdev->delta[REL_X] = pEvdev->delta[REL_Y];
-            pEvdev->delta[REL_Y] = tmp;
-            if (pEvdev->delta[REL_X] == 0)
-                valuator_mask_unset(pEvdev->rel_vals, REL_X);
-            if (pEvdev->delta[REL_Y] == 0)
-                valuator_mask_unset(pEvdev->rel_vals, REL_Y);
+            int tmp = deltaX;
+            deltaX = deltaY;
+            deltaY = tmp;
         }
+
         if (pEvdev->invert_x)
-            pEvdev->delta[REL_X] *= -1;
+            deltaX *= -1;
         if (pEvdev->invert_y)
-            pEvdev->delta[REL_Y] *= -1;
+            deltaY *= -1;
 
+        if (deltaX)
+            valuator_mask_set(pEvdev->rel_vals, REL_X, deltaX);
+        else
+            valuator_mask_unset(pEvdev->rel_vals, REL_X);
 
-        Evdev3BEmuProcessRelMotion(pInfo,
-                                   pEvdev->delta[REL_X],
-                                   pEvdev->delta[REL_Y]);
+        if (deltaY)
+            valuator_mask_set(pEvdev->rel_vals, REL_Y, deltaY);
+        else
+            valuator_mask_unset(pEvdev->rel_vals, REL_Y);
 
-        for (i = 0; i < REL_CNT; i++)
-        {
-            int map = pEvdev->rel_axis_map[i];
-            if (pEvdev->delta[i] && map != -1)
-                valuator_mask_set(pEvdev->rel_vals, map, pEvdev->delta[i]);
-        }
+        Evdev3BEmuProcessRelMotion(pInfo, deltaX, deltaY);
+
     }
     /*
      * Some devices only generate valid abs coords when BTN_TOOL_PEN is
@@ -668,8 +674,11 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
                 return;
 
             pEvdev->rel_queued = 1;
-            pEvdev->delta[ev->code] += value;
             map = pEvdev->rel_axis_map[ev->code];
+
+            if (valuator_mask_isset(pEvdev->rel_vals, map))
+                value += valuator_mask_get(pEvdev->rel_vals, map);
+
             valuator_mask_set(pEvdev->rel_vals, map, value);
             break;
     }
@@ -983,7 +992,6 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
     EvdevPostQueuedEvents(pInfo);
     EvdevPostProximityEvents(pInfo, FALSE);
 
-    memset(pEvdev->delta, 0, sizeof(pEvdev->delta));
     for (i = 0; i < ArrayLength(pEvdev->queue); i++)
     {
         EventQueuePtr queue = &pEvdev->queue[i];

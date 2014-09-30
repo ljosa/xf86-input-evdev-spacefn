@@ -184,7 +184,6 @@ typedef struct {
     BOOL invert_x;
     BOOL invert_y;
 
-    int delta[REL_CNT];
     unsigned int abs_queued, rel_queued, prox_queued;
 
     /* Middle mouse button emulation */
