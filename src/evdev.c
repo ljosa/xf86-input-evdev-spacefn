@@ -447,39 +447,10 @@ EvdevProcessValuators(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
 
-    int deltaX = 0, deltaY = 0;
-
-    if (pEvdev->abs_queued) {
-        /* convert to relative motion for touchpads */
-        if (pEvdev->flags & EVDEV_RELATIVE_MODE) {
-            if (valuator_mask_isset(pEvdev->abs_vals, 0))
-            {
-                if (valuator_mask_isset(pEvdev->old_vals, 0))
-                    deltaX = valuator_mask_get(pEvdev->abs_vals, 0) -
-                        valuator_mask_get(pEvdev->old_vals, 0);
-                valuator_mask_set(pEvdev->old_vals, 0,
-                        valuator_mask_get(pEvdev->abs_vals, 0));
-            }
-            if (valuator_mask_isset(pEvdev->abs_vals, 1))
-            {
-                if (valuator_mask_isset(pEvdev->old_vals, 1))
-                    deltaY = valuator_mask_get(pEvdev->abs_vals, 1) -
-                        valuator_mask_get(pEvdev->old_vals, 1);
-                valuator_mask_set(pEvdev->old_vals, 1,
-                        valuator_mask_get(pEvdev->abs_vals, 1));
-            }
-            valuator_mask_zero(pEvdev->abs_vals);
-            pEvdev->abs_queued = 0;
-            pEvdev->rel_queued = 1;
-        }
-    }
-
     /* Apply transformations on relative coordinates */
     if (pEvdev->rel_queued) {
-        /* deltaX and deltaY may be non-zero if they got computed
-         * because EVDEV_RELATIVE_MODE, but then we don't expect
-         * pEvdev->rel_vals also to be set...
-         */
+        int deltaX = 0, deltaY = 0;
+
         if (valuator_mask_isset(pEvdev->rel_vals, REL_X))
             deltaX = valuator_mask_get(pEvdev->rel_vals, REL_X);
         if (valuator_mask_isset(pEvdev->rel_vals, REL_Y))
@@ -824,8 +795,20 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
         pEvdev->abs_queued = 1;
     } else if (!pEvdev->mt_mask) {
         map = pEvdev->abs_axis_map[ev->code];
-        valuator_mask_set(pEvdev->abs_vals, map, value);
-        pEvdev->abs_queued = 1;
+
+        /* check if the event must be translated into relative */
+        if (map < 2 && (pEvdev->flags & EVDEV_RELATIVE_MODE)) {
+            int oldval;
+            if (valuator_mask_fetch(pEvdev->old_vals, map, &oldval)) {
+                valuator_mask_set(pEvdev->rel_vals, map, value - oldval);
+                pEvdev->rel_queued = 1;
+            }
+            valuator_mask_set(pEvdev->old_vals, map, value);
+        } else {
+            /* the normal case: just store the number. */
+            valuator_mask_set(pEvdev->abs_vals, map, value);
+            pEvdev->abs_queued = 1;
+        }
     }
 }
 
