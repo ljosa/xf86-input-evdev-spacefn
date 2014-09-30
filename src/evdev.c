@@ -440,25 +440,21 @@ EvdevProcessValuators(InputInfoPtr pInfo)
     if (pEvdev->abs_queued) {
         /* convert to relative motion for touchpads */
         if (pEvdev->flags & EVDEV_RELATIVE_MODE) {
-            if (pEvdev->in_proximity) {
-                if (valuator_mask_isset(pEvdev->abs_vals, 0))
-                {
-                    if (valuator_mask_isset(pEvdev->old_vals, 0))
-                        deltaX = valuator_mask_get(pEvdev->abs_vals, 0) -
-                            valuator_mask_get(pEvdev->old_vals, 0);
-                    valuator_mask_set(pEvdev->old_vals, 0,
-                            valuator_mask_get(pEvdev->abs_vals, 0));
-                }
-                if (valuator_mask_isset(pEvdev->abs_vals, 1))
-                {
-                    if (valuator_mask_isset(pEvdev->old_vals, 1))
-                        deltaY = valuator_mask_get(pEvdev->abs_vals, 1) -
-                            valuator_mask_get(pEvdev->old_vals, 1);
-                    valuator_mask_set(pEvdev->old_vals, 1,
-                            valuator_mask_get(pEvdev->abs_vals, 1));
-                }
-            } else {
-                valuator_mask_zero(pEvdev->old_vals);
+            if (valuator_mask_isset(pEvdev->abs_vals, 0))
+            {
+                if (valuator_mask_isset(pEvdev->old_vals, 0))
+                    deltaX = valuator_mask_get(pEvdev->abs_vals, 0) -
+                        valuator_mask_get(pEvdev->old_vals, 0);
+                valuator_mask_set(pEvdev->old_vals, 0,
+                        valuator_mask_get(pEvdev->abs_vals, 0));
+            }
+            if (valuator_mask_isset(pEvdev->abs_vals, 1))
+            {
+                if (valuator_mask_isset(pEvdev->old_vals, 1))
+                    deltaY = valuator_mask_get(pEvdev->abs_vals, 1) -
+                        valuator_mask_get(pEvdev->old_vals, 1);
+                valuator_mask_set(pEvdev->old_vals, 1,
+                        valuator_mask_get(pEvdev->abs_vals, 1));
             }
             valuator_mask_zero(pEvdev->abs_vals);
             pEvdev->abs_queued = 0;
@@ -859,6 +855,15 @@ EvdevProcessKeyEvent(InputInfoPtr pInfo, struct input_event *ev)
              * BTN_TOUCH as the proximity notifier */
             if (!pEvdev->use_proximity)
                 pEvdev->in_proximity = value ? ev->code : 0;
+            /* When !pEvdev->use_proximity, we don't report
+             * proximity events to the X server. However, we
+             * still want to keep track if one is in proximity or
+             * not. This is especially important for touchpad
+             * who report proximity information to the computer
+             * (but it is not sent to X) and who might send unreliable
+             * position information when not in_proximity.
+             */
+
             if (!(pEvdev->flags & (EVDEV_TOUCHSCREEN | EVDEV_TABLET)) ||
                 pEvdev->mt_mask)
                 break;
@@ -881,7 +886,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
 
-    if (pEvdev->rel_queued) {
+    if (pEvdev->rel_queued && pEvdev->in_proximity) {
         xf86PostMotionEventM(pInfo->dev, Relative, pEvdev->rel_vals);
     }
 }
