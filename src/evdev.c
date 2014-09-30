@@ -139,6 +139,7 @@ static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode)
 {
     InputInfoPtr pInfo;
     EvdevPtr pEvdev;
+    int val;
 
     pInfo = device->public.devicePrivate;
     pEvdev = pInfo->private;
@@ -154,10 +155,21 @@ static int EvdevSwitchMode(ClientPtr client, DeviceIntPtr device, int mode)
     switch (mode) {
         case Absolute:
             pEvdev->flags &= ~EVDEV_RELATIVE_MODE;
+            if (valuator_mask_fetch(pEvdev->old_vals, 0, &val))
+                valuator_mask_set(pEvdev->abs_vals, 0, val);
+            if (valuator_mask_fetch(pEvdev->old_vals, 1, &val))
+                valuator_mask_set(pEvdev->abs_vals, 1, val);
+            valuator_mask_zero(pEvdev->old_vals);
             break;
 
         case Relative:
             pEvdev->flags |= EVDEV_RELATIVE_MODE;
+            if (valuator_mask_fetch(pEvdev->abs_vals, 0, &val))
+                valuator_mask_set(pEvdev->old_vals, 0, val);
+            if (valuator_mask_fetch(pEvdev->abs_vals, 1, &val))
+                valuator_mask_set(pEvdev->old_vals, 1, val);
+            valuator_mask_unset(pEvdev->abs_vals, 0);
+            valuator_mask_unset(pEvdev->abs_vals, 1);
             break;
 
         default:
@@ -459,12 +471,6 @@ EvdevProcessValuators(InputInfoPtr pInfo)
             valuator_mask_zero(pEvdev->abs_vals);
             pEvdev->abs_queued = 0;
             pEvdev->rel_queued = 1;
-        } else {
-            int val;
-            if (valuator_mask_fetch(pEvdev->abs_vals, 0, &val))
-                valuator_mask_set(pEvdev->old_vals, 0, val);
-            if (valuator_mask_fetch(pEvdev->abs_vals, 1, &val))
-                valuator_mask_set(pEvdev->old_vals, 1, val);
         }
     }
 
