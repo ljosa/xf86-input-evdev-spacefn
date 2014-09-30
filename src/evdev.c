@@ -440,33 +440,33 @@ EvdevProcessValuators(InputInfoPtr pInfo)
         /* convert to relative motion for touchpads */
         if (pEvdev->flags & EVDEV_RELATIVE_MODE) {
             if (pEvdev->in_proximity) {
-                if (valuator_mask_isset(pEvdev->vals, 0))
+                if (valuator_mask_isset(pEvdev->abs_vals, 0))
                 {
                     if (valuator_mask_isset(pEvdev->old_vals, 0))
-                        delta[REL_X] = valuator_mask_get(pEvdev->vals, 0) -
+                        delta[REL_X] = valuator_mask_get(pEvdev->abs_vals, 0) -
                             valuator_mask_get(pEvdev->old_vals, 0);
                     valuator_mask_set(pEvdev->old_vals, 0,
-                            valuator_mask_get(pEvdev->vals, 0));
+                            valuator_mask_get(pEvdev->abs_vals, 0));
                 }
-                if (valuator_mask_isset(pEvdev->vals, 1))
+                if (valuator_mask_isset(pEvdev->abs_vals, 1))
                 {
                     if (valuator_mask_isset(pEvdev->old_vals, 1))
-                        delta[REL_Y] = valuator_mask_get(pEvdev->vals, 1) -
+                        delta[REL_Y] = valuator_mask_get(pEvdev->abs_vals, 1) -
                             valuator_mask_get(pEvdev->old_vals, 1);
                     valuator_mask_set(pEvdev->old_vals, 1,
-                            valuator_mask_get(pEvdev->vals, 1));
+                            valuator_mask_get(pEvdev->abs_vals, 1));
                 }
             } else {
                 valuator_mask_zero(pEvdev->old_vals);
             }
-            valuator_mask_zero(pEvdev->vals);
+            valuator_mask_zero(pEvdev->abs_vals);
             pEvdev->abs_queued = 0;
             pEvdev->rel_queued = 1;
         } else {
             int val;
-            if (valuator_mask_fetch(pEvdev->vals, 0, &val))
+            if (valuator_mask_fetch(pEvdev->abs_vals, 0, &val))
                 valuator_mask_set(pEvdev->old_vals, 0, val);
-            if (valuator_mask_fetch(pEvdev->vals, 1, &val))
+            if (valuator_mask_fetch(pEvdev->abs_vals, 1, &val))
                 valuator_mask_set(pEvdev->old_vals, 1, val);
         }
     }
@@ -480,9 +480,9 @@ EvdevProcessValuators(InputInfoPtr pInfo)
             pEvdev->delta[REL_X] = pEvdev->delta[REL_Y];
             pEvdev->delta[REL_Y] = tmp;
             if (pEvdev->delta[REL_X] == 0)
-                valuator_mask_unset(pEvdev->vals, REL_X);
+                valuator_mask_unset(pEvdev->rel_vals, REL_X);
             if (pEvdev->delta[REL_Y] == 0)
-                valuator_mask_unset(pEvdev->vals, REL_Y);
+                valuator_mask_unset(pEvdev->rel_vals, REL_Y);
         }
         if (pEvdev->invert_x)
             pEvdev->delta[REL_X] *= -1;
@@ -498,7 +498,7 @@ EvdevProcessValuators(InputInfoPtr pInfo)
         {
             int map = pEvdev->rel_axis_map[i];
             if (pEvdev->delta[i] && map != -1)
-                valuator_mask_set(pEvdev->vals, map, pEvdev->delta[i]);
+                valuator_mask_set(pEvdev->rel_vals, map, pEvdev->delta[i]);
         }
     }
     /*
@@ -511,9 +511,9 @@ EvdevProcessValuators(InputInfoPtr pInfo)
      * just works.
      */
     else if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        EvdevSwapAbsValuators(pEvdev, pEvdev->vals);
-        EvdevApplyCalibration(pEvdev, pEvdev->vals);
-        Evdev3BEmuProcessAbsMotion(pInfo, pEvdev->vals);
+        EvdevSwapAbsValuators(pEvdev, pEvdev->abs_vals);
+        EvdevApplyCalibration(pEvdev, pEvdev->abs_vals);
+        Evdev3BEmuProcessAbsMotion(pInfo, pEvdev->abs_vals);
     }
 }
 
@@ -559,10 +559,10 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
     if (!pEvdev->prox_queued)
     {
         if (pEvdev->abs_queued && !pEvdev->in_proximity)
-            for (i = 0; i < valuator_mask_size(pEvdev->vals); i++)
-                if (valuator_mask_isset(pEvdev->vals, i))
+            for (i = 0; i < valuator_mask_size(pEvdev->abs_vals); i++)
+                if (valuator_mask_isset(pEvdev->abs_vals, i))
                     valuator_mask_set(pEvdev->prox, i,
-                                      valuator_mask_get(pEvdev->vals, i));
+                                      valuator_mask_get(pEvdev->abs_vals, i));
         return 0;
     }
 
@@ -581,13 +581,13 @@ EvdevProcessProximityState(InputInfoPtr pInfo)
         /* We're about to go into/out of proximity but have no abs events
          * within the EV_SYN. Use the last coordinates we have. */
         for (i = 0; i < valuator_mask_size(pEvdev->prox); i++)
-            if (!valuator_mask_isset(pEvdev->vals, i) &&
+            if (!valuator_mask_isset(pEvdev->abs_vals, i) &&
                 valuator_mask_isset(pEvdev->prox, i))
-                valuator_mask_set(pEvdev->vals, i,
+                valuator_mask_set(pEvdev->abs_vals, i,
                                   valuator_mask_get(pEvdev->prox, i));
         valuator_mask_zero(pEvdev->prox);
 
-        pEvdev->abs_queued = valuator_mask_size(pEvdev->vals);
+        pEvdev->abs_queued = valuator_mask_size(pEvdev->abs_vals);
     }
 
     pEvdev->in_proximity = prox_state;
@@ -670,7 +670,7 @@ EvdevProcessRelativeMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
             pEvdev->rel_queued = 1;
             pEvdev->delta[ev->code] += value;
             map = pEvdev->rel_axis_map[ev->code];
-            valuator_mask_set(pEvdev->vals, map, value);
+            valuator_mask_set(pEvdev->rel_vals, map, value);
             break;
     }
 }
@@ -813,7 +813,7 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
         pEvdev->abs_queued = 1;
     } else if (!pEvdev->mt_mask) {
         map = pEvdev->abs_axis_map[ev->code];
-        valuator_mask_set(pEvdev->vals, map, value);
+        valuator_mask_set(pEvdev->abs_vals, map, value);
         pEvdev->abs_queued = 1;
     }
 }
@@ -873,7 +873,7 @@ EvdevPostRelativeMotionEvents(InputInfoPtr pInfo)
     EvdevPtr pEvdev = pInfo->private;
 
     if (pEvdev->rel_queued) {
-        xf86PostMotionEventM(pInfo->dev, Relative, pEvdev->vals);
+        xf86PostMotionEventM(pInfo->dev, Relative, pEvdev->rel_vals);
     }
 }
 
@@ -895,7 +895,7 @@ EvdevPostAbsoluteMotionEvents(InputInfoPtr pInfo)
      * this scheme still just work.
      */
     if (pEvdev->abs_queued && pEvdev->in_proximity) {
-        xf86PostMotionEventM(pInfo->dev, Absolute, pEvdev->vals);
+        xf86PostMotionEventM(pInfo->dev, Absolute, pEvdev->abs_vals);
     }
 }
 
@@ -993,8 +993,10 @@ EvdevProcessSyncEvent(InputInfoPtr pInfo, struct input_event *ev)
         /* don't reset the touchMask */
     }
 
-    if (pEvdev->vals)
-        valuator_mask_zero(pEvdev->vals);
+    if (pEvdev->rel_vals)
+        valuator_mask_zero(pEvdev->rel_vals);
+    if (pEvdev->abs_vals)
+        valuator_mask_zero(pEvdev->abs_vals);
     pEvdev->num_queue = 0;
     pEvdev->abs_queued = 0;
     pEvdev->rel_queued = 0;
@@ -1034,7 +1036,8 @@ EvdevFreeMasks(EvdevPtr pEvdev)
 
     free(pEvdev->slots);
     pEvdev->slots = NULL;
-    valuator_mask_free(&pEvdev->vals);
+    valuator_mask_free(&pEvdev->abs_vals);
+    valuator_mask_free(&pEvdev->rel_vals);
     valuator_mask_free(&pEvdev->old_vals);
     valuator_mask_free(&pEvdev->prox);
 #ifdef MULTITOUCH
@@ -1287,13 +1290,19 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 
     pEvdev->num_vals = num_axes;
     if (num_axes > 0) {
-        pEvdev->vals = valuator_mask_new(num_axes);
+        pEvdev->abs_vals = valuator_mask_new(num_axes);
         pEvdev->old_vals = valuator_mask_new(num_axes);
-        if (!pEvdev->vals || !pEvdev->old_vals) {
+        pEvdev->rel_vals = valuator_mask_new(num_axes);
+        /* One needs rel_vals for an absolute device because
+         *   a) their might be some (relative) scroll axes
+         *   b) the device could be set in EVDEV_RELATIVE_MODE
+         */
+        if (!pEvdev->abs_vals || !pEvdev->rel_vals || !pEvdev->old_vals) {
             xf86IDrvMsg(pInfo, X_ERROR, "failed to allocate valuator masks.\n");
             goto out;
         }
     }
+
 #ifdef MULTITOUCH
     if (num_mt_axes_total > 0) {
         int nslots = num_slots(pEvdev);
@@ -1659,8 +1668,8 @@ EvdevAddRelValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 
     pEvdev->num_vals = num_axes;
     if (num_axes > 0) {
-        pEvdev->vals = valuator_mask_new(num_axes);
-        if (!pEvdev->vals)
+        pEvdev->rel_vals = valuator_mask_new(num_axes);
+        if (!pEvdev->rel_vals)
             goto out;
     }
     atoms = malloc(pEvdev->num_vals * sizeof(Atom));
@@ -1711,7 +1720,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device, int num_scroll_axes)
     return Success;
 
 out:
-    valuator_mask_free(&pEvdev->vals);
+    valuator_mask_free(&pEvdev->rel_vals);
     return !Success;
 }
 

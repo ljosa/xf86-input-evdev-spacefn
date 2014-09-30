@@ -161,9 +161,10 @@ typedef struct {
     int num_mt_vals;        /* number of multitouch valuators */
     int abs_axis_map[ABS_CNT]; /* Map evdev ABS_* to index */
     int rel_axis_map[REL_CNT]; /* Map evdev REL_* to index */
-    ValuatorMask *vals;     /* new values coming in */
-    ValuatorMask *old_vals; /* old values for calculating relative motion */
-    ValuatorMask *prox;     /* last values set while not in proximity */
+    ValuatorMask *abs_vals;     /* values for absolute axis */
+    ValuatorMask *rel_vals;     /* values for relative axis */
+    ValuatorMask *old_vals; /* old absolute values for calculating relative motion */
+    ValuatorMask *prox;     /* last absolute values set while not in proximity */
     ValuatorMask *mt_mask;
     ValuatorMask **last_mt_vals;
     int cur_slot;

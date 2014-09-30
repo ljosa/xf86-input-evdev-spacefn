@@ -119,7 +119,7 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 	    int oldValue;
 
 	    if (axis > -1 && valuator_mask_fetch(pEvdev->old_vals, axis, &oldValue)) {
-		valuator_mask_set(pEvdev->vals, axis, value);
+		valuator_mask_set(pEvdev->abs_vals, axis, value);
 		value -= oldValue; /* make value into a differential measurement */
 	    } else
                 value = 0; /* avoid a jump on the first touch */
