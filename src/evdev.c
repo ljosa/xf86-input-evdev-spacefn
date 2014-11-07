@@ -1025,10 +1025,6 @@ EvdevProcessEvent(InputInfoPtr pInfo, struct input_event *ev)
     }
 }
 
-#undef ABS_X_VALUE
-#undef ABS_Y_VALUE
-#undef ABS_VALUE
-
 static void
 EvdevFreeMasks(EvdevPtr pEvdev)
 {
