@@ -25,6 +25,7 @@
  *	Adam Jackson (ajax@redhat.com)
  *	Peter Hutterer (peter.hutterer@redhat.com)
  *	Oliver McFadden (oliver.mcfadden@nokia.com)
+ *	Thomas H.P. Andersen (phomes@gmail.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -432,17 +433,22 @@ EvdevProcessValuators(InputInfoPtr pInfo)
 
     /* Apply transformations on relative coordinates */
     if (pEvdev->rel_queued) {
-        int deltaX = 0, deltaY = 0;
+        double deltaX = 0, deltaY = 0;
 
         if (valuator_mask_isset(pEvdev->rel_vals, REL_X))
-            deltaX = valuator_mask_get(pEvdev->rel_vals, REL_X);
+            deltaX = valuator_mask_get_double(pEvdev->rel_vals, REL_X);
         if (valuator_mask_isset(pEvdev->rel_vals, REL_Y))
-            deltaY = valuator_mask_get(pEvdev->rel_vals, REL_Y);
+            deltaY = valuator_mask_get_double(pEvdev->rel_vals, REL_Y);
 
         if (pEvdev->swap_axes) {
-            int tmp = deltaX;
+            double tmp = deltaX;
             deltaX = deltaY;
             deltaY = tmp;
+        }
+
+        if (pEvdev->resolution > 0) {
+            deltaX *= DEFAULT_MOUSE_DPI / pEvdev->resolution;
+            deltaY *= DEFAULT_MOUSE_DPI / pEvdev->resolution;
         }
 
         if (pEvdev->invert_x)
@@ -451,12 +457,12 @@ EvdevProcessValuators(InputInfoPtr pInfo)
             deltaY *= -1;
 
         if (deltaX)
-            valuator_mask_set(pEvdev->rel_vals, REL_X, deltaX);
+            valuator_mask_set_double(pEvdev->rel_vals, REL_X, deltaX);
         else
             valuator_mask_unset(pEvdev->rel_vals, REL_X);
 
         if (deltaY)
-            valuator_mask_set(pEvdev->rel_vals, REL_Y, deltaY);
+            valuator_mask_set_double(pEvdev->rel_vals, REL_Y, deltaY);
         else
             valuator_mask_unset(pEvdev->rel_vals, REL_Y);
 
@@ -2292,6 +2298,12 @@ EvdevProbe(InputInfoPtr pInfo)
         pEvdev->invert_x = xf86SetBoolOption(pInfo->options, "InvertX", FALSE);
         pEvdev->invert_y = xf86SetBoolOption(pInfo->options, "InvertY", FALSE);
         pEvdev->swap_axes = xf86SetBoolOption(pInfo->options, "SwapAxes", FALSE);
+
+        pEvdev->resolution = xf86SetIntOption(pInfo->options, "Resolution", 0);
+        if (pEvdev->resolution < 0) {
+            xf86IDrvMsg(pInfo, X_ERROR, "Resolution must be a positive number");
+            pEvdev->resolution = 0;
+        }
 
         str = xf86CheckStrOption(pInfo->options, "Calibration", NULL);
         if (str) {

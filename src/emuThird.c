@@ -229,8 +229,8 @@ Evdev3BEmuProcessAbsMotion(InputInfoPtr pInfo, ValuatorMask *vals)
     {
         if (valuator_mask_isset(vals, axis))
         {
-            int delta = valuator_mask_get(vals, axis) - emu3B->startpos[axis];
-            if (abs(delta) > emu3B->threshold)
+            double delta = valuator_mask_get_double(vals, axis) - emu3B->startpos[axis];
+            if (fabs(delta) > emu3B->threshold)
                 cancel = TRUE;
         }
         axis++;
@@ -248,7 +248,7 @@ Evdev3BEmuProcessAbsMotion(InputInfoPtr pInfo, ValuatorMask *vals)
  * emulation.
  */
 void
-Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, int dx, int dy)
+Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, double dx, double dy)
 {
     EvdevPtr          pEvdev = pInfo->private;
     struct emulate3B *emu3B  = &pEvdev->emulate3B;
@@ -260,8 +260,8 @@ Evdev3BEmuProcessRelMotion(InputInfoPtr pInfo, int dx, int dy)
     emu3B->delta[1] += dy;
     emu3B->flags |= EVDEV_RELATIVE_EVENTS;
 
-    if (abs(emu3B->delta[0]) > emu3B->threshold ||
-        abs(emu3B->delta[1]) > emu3B->threshold)
+    if (fabs(emu3B->delta[0]) > emu3B->threshold ||
+        fabs(emu3B->delta[1]) > emu3B->threshold)
     {
         Evdev3BEmuPostButtonEvent(pInfo, 1, BUTTON_PRESS);
         Evdev3BCancel(pInfo);

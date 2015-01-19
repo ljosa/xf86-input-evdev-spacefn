@@ -238,6 +238,12 @@ Default: "1".  Property: "Evdev Scrolling Distance".
 .BI "Option \*qDialDelta\*q \*q" integer \*q
 The amount of motion considered one unit of turning the dial.  Default: "1".
 Property: "Evdev Scrolling Distance".
+.TP 7
+.BI "Option \*qResolution\*q \*q" integer \*q
+Sets the resolution of the device in dots per inch. The resolution is used
+to scale relative motion events from mouse devices to 1000 DPI resolution. This
+can be used to make high resolution mice less sensitive without turning off
+acceleration. If set to 0 no scaling will be performed. Default: "0".
 
 .SH SUPPORTED PROPERTIES
 The following properties are provided by the
