@@ -733,6 +733,14 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     if (ev->code == ABS_MT_SLOT) {
         EvdevProcessTouch(pInfo);
+        if (ev->value >= num_slots(pEvdev) ) {
+            LogMessageVerbSigSafe(X_WARNING, 0,
+                                  "%s: Slot index %d out of bounds (max %d), touch events may be incorrect.\n",
+                                  pInfo->name,
+                                  ev->value,
+                                  num_slots(pEvdev) - 1);
+            return;
+        }
         pEvdev->cur_slot = ev->value;
     } else
     {
