@@ -90,13 +90,6 @@
 #define XI86_SERVER_FD 0x20
 #endif
 
-static const char *evdevDefaults[] = {
-    "XkbRules",     "evdev",
-    "XkbModel",     "pc104", /* the right model for 'us' */
-    "XkbLayout",    "us",
-    NULL
-};
-
 /* Any of those triggers a proximity event */
 static int proximity_bits[] = {
         BTN_TOOL_PEN,
@@ -1161,23 +1154,27 @@ static int
 EvdevAddKeyClass(DeviceIntPtr device)
 {
     int rc = Success;
-    XkbRMLVOSet rmlvo = {0};
+    XkbRMLVOSet rmlvo = {0},
+                defaults;
     InputInfoPtr pInfo;
 
     pInfo = device->public.devicePrivate;
 
+    XkbGetRulesDflts(&defaults);
+
     /* sorry, no rules change allowed for you */
     xf86ReplaceStrOption(pInfo->options, "xkb_rules", "evdev");
     rmlvo.rules = xf86SetStrOption(pInfo->options, "xkb_rules", NULL);
-    rmlvo.model = xf86SetStrOption(pInfo->options, "xkb_model", NULL);
-    rmlvo.layout = xf86SetStrOption(pInfo->options, "xkb_layout", NULL);
-    rmlvo.variant = xf86SetStrOption(pInfo->options, "xkb_variant", NULL);
-    rmlvo.options = xf86SetStrOption(pInfo->options, "xkb_options", NULL);
+    rmlvo.model = xf86SetStrOption(pInfo->options, "xkb_model", defaults.model);
+    rmlvo.layout = xf86SetStrOption(pInfo->options, "xkb_layout", defaults.layout);
+    rmlvo.variant = xf86SetStrOption(pInfo->options, "xkb_variant", defaults.variant);
+    rmlvo.options = xf86SetStrOption(pInfo->options, "xkb_options", defaults.options);
 
     if (!InitKeyboardDeviceStruct(device, &rmlvo, NULL, EvdevKbdCtrl))
         rc = !Success;
 
     XkbFreeRMLVOSet(&rmlvo, FALSE);
+    XkbFreeRMLVOSet(&defaults, FALSE);
 
     return rc;
 }
@@ -2692,7 +2689,7 @@ _X_EXPORT InputDriverRec EVDEV = {
     EvdevPreInit,
     EvdevUnInit,
     NULL,
-    evdevDefaults,
+    NULL,
 #ifdef XI86_DRV_CAP_SERVER_FD
     XI86_DRV_CAP_SERVER_FD
 #endif
