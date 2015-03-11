@@ -1180,22 +1180,22 @@ EvdevAddFakeSingleTouchAxes(InputInfoPtr pInfo)
     {
         int mt_code = mt_axis_mappings[i].mt_code;
         int code = mt_axis_mappings[i].code;
+        const struct input_absinfo* abs;
 
-        if (libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_code) &&
-            !libevdev_has_event_code(pEvdev->dev, EV_ABS, code))
+        if (!libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_code) ||
+            libevdev_has_event_code(pEvdev->dev, EV_ABS, code))
+            continue;
+
+        abs = libevdev_get_abs_info(pEvdev->dev, mt_code);
+        if (libevdev_enable_event_code(pEvdev->dev, EV_ABS, code, abs))
         {
-            const struct input_absinfo* abs;
-            abs = libevdev_get_abs_info(pEvdev->dev, mt_code);
-            if (libevdev_enable_event_code(pEvdev->dev, EV_ABS, code, abs))
-            {
-                xf86IDrvMsg(pInfo, X_ERROR, "Failed to fake axis %s.\n",
-                            libevdev_event_code_get_name(EV_ABS, code));
-                return -1;
-            }
-            xf86IDrvMsg(pInfo, X_INFO, "Faking axis %s.\n",
+            xf86IDrvMsg(pInfo, X_ERROR, "Failed to fake axis %s.\n",
                         libevdev_event_code_get_name(EV_ABS, code));
-            num_axes++;
+            return -1;
         }
+        xf86IDrvMsg(pInfo, X_INFO, "Faking axis %s.\n",
+                    libevdev_event_code_get_name(EV_ABS, code));
+        num_axes++;
     }
 
     return num_axes;
@@ -1210,30 +1210,30 @@ EvdevCountMTAxes(EvdevPtr pEvdev, int *num_mt_axes_total,
     /* Absolute multitouch axes: adjust mapping and axes counts. */
     for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
     {
-        if (libevdev_has_event_code(pEvdev->dev, EV_ABS, axis))
+        int j;
+        Bool skip = FALSE;
+
+        if (!libevdev_has_event_code(pEvdev->dev, EV_ABS, axis))
+            continue;
+
+        /* Setup mapping if axis is in MT->legacy axis table. */
+        for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
         {
-            int j;
-            Bool skip = FALSE;
-
-            /* Setup mapping if axis is in MT->legacy axis table. */
-            for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+            if (mt_axis_mappings[j].mt_code == axis &&
+                libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_axis_mappings[j].code))
             {
-                if (mt_axis_mappings[j].mt_code == axis &&
-                    libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_axis_mappings[j].code))
-                {
-                    mt_axis_mappings[j].needs_mapping = TRUE;
-                    skip = TRUE;
-                }
+                mt_axis_mappings[j].needs_mapping = TRUE;
+                skip = TRUE;
             }
-
-            if (!is_blacklisted_axis(axis))
-            {
-                (*num_mt_axes_total)++;
-                if (!skip)
-                    (*num_mt_axes)++;
-            }
-            (*num_axes)--;
         }
+
+        if (!is_blacklisted_axis(axis))
+        {
+            (*num_mt_axes_total)++;
+            if (!skip)
+                (*num_mt_axes)++;
+        }
+        (*num_axes)--;
     }
 }
 
