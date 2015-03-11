@@ -43,9 +43,7 @@
 #include <xf86_OSproc.h>
 #include <xkbstr.h>
 
-#ifdef MULTITOUCH
 #include <mtdev.h>
-#endif
 
 #include <libevdev/libevdev.h>
 
@@ -63,10 +61,6 @@
 #endif
 #ifndef LED_CNT
 #define LED_CNT (LED_MAX+1)
-#endif
-
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 14
-#define HAVE_SMOOTH_SCROLLING 1
 #endif
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 18
@@ -135,20 +129,14 @@ typedef struct {
         EV_QUEUE_KEY,	/* xf86PostKeyboardEvent() */
         EV_QUEUE_BTN,	/* xf86PostButtonEvent() */
         EV_QUEUE_PROXIMITY, /* xf86PostProximityEvent() */
-#ifdef MULTITOUCH
         EV_QUEUE_TOUCH,	/*xf86PostTouchEvent() */
-#endif
     } type;
     union {
         int key;	/* May be either a key code or button number. */
-#ifdef MULTITOUCH
         unsigned int touch; /* Touch ID */
-#endif
     } detail;
     int val;	/* State of the key/button/touch; pressed or released. */
-#ifdef MULTITOUCH
     ValuatorMask *touchMask;
-#endif
 } EventQueueRec, *EventQueuePtr;
 
 typedef struct {
@@ -172,9 +160,7 @@ typedef struct {
         int dirty;
         enum SlotState state;
     } *slots;
-#ifdef MULTITOUCH
     struct mtdev *mtdev;
-#endif
 
     int flags;
     int in_proximity;           /* device in proximity */
@@ -259,10 +245,8 @@ typedef struct {
 void EvdevQueueKbdEvent(InputInfoPtr pInfo, struct input_event *ev, int value);
 void EvdevQueueButtonEvent(InputInfoPtr pInfo, int button, int value);
 void EvdevQueueProximityEvent(InputInfoPtr pInfo, int value);
-#ifdef MULTITOUCH
 void EvdevQueueTouchEvent(InputInfoPtr pInfo, unsigned int touch,
                           ValuatorMask *mask, uint16_t type);
-#endif
 void EvdevPostButtonEvent(InputInfoPtr pInfo, int button, enum ButtonAction act);
 void EvdevQueueButtonClicks(InputInfoPtr pInfo, int button, int count);
 void EvdevPostRelativeMotionEvents(InputInfoPtr pInfo);
