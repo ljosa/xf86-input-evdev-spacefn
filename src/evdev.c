@@ -1201,6 +1201,42 @@ EvdevAddFakeSingleTouchAxes(InputInfoPtr pInfo)
     return num_axes;
 }
 
+static void
+EvdevCountMTAxes(EvdevPtr pEvdev, int *num_mt_axes_total,
+                 int *num_mt_axes, int *num_axes)
+{
+    int axis;
+
+    /* Absolute multitouch axes: adjust mapping and axes counts. */
+    for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
+    {
+        if (libevdev_has_event_code(pEvdev->dev, EV_ABS, axis))
+        {
+            int j;
+            Bool skip = FALSE;
+
+            /* Setup mapping if axis is in MT->legacy axis table. */
+            for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+            {
+                if (mt_axis_mappings[j].mt_code == axis &&
+                    libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_axis_mappings[j].code))
+                {
+                    mt_axis_mappings[j].needs_mapping = TRUE;
+                    skip = TRUE;
+                }
+            }
+
+            if (!is_blacklisted_axis(axis))
+            {
+                (*num_mt_axes_total)++;
+                if (!skip)
+                    (*num_mt_axes)++;
+            }
+            (*num_axes)--;
+        }
+    }
+}
+
 static int
 EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 {
@@ -1235,34 +1271,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
 
     num_axes += num_faked_axes;
 
-    /* Absolute multitouch axes: adjust mapping and axes counts. */
-    for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
-    {
-        if (libevdev_has_event_code(pEvdev->dev, EV_ABS, axis))
-        {
-            int j;
-            Bool skip = FALSE;
-
-            /* Setup mapping if axis is in MT->legacy axis table. */
-            for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
-            {
-                if (mt_axis_mappings[j].mt_code == axis &&
-                    libevdev_has_event_code(pEvdev->dev, EV_ABS, mt_axis_mappings[j].code))
-                {
-                    mt_axis_mappings[j].needs_mapping = TRUE;
-                    skip = TRUE;
-                }
-            }
-
-            if (!is_blacklisted_axis(axis))
-            {
-                num_mt_axes_total++;
-                if (!skip)
-                    num_mt_axes++;
-            }
-            num_axes--;
-        }
-    }
+    EvdevCountMTAxes(pEvdev, &num_mt_axes_total, &num_mt_axes, &num_axes);
 
     /* Panic if, after faking ABS_X etc, we still only have mt-axes. */
     if (num_axes == 0 && num_mt_axes > 0) {
