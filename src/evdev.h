@@ -161,6 +161,7 @@ typedef struct {
         enum SlotState state;
     } *slots;
     struct mtdev *mtdev;
+    BOOL fake_mt;
 
     int flags;
     int in_proximity;           /* device in proximity */

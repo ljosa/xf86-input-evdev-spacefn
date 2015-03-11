@@ -696,6 +696,9 @@ EvdevProcessTouchEvent(InputInfoPtr pInfo, struct input_event *ev)
         !libevdev_has_event_code(pEvdev->dev, EV_ABS, ABS_MT_SLOT))
         return;
 
+    if (pEvdev->fake_mt)
+        return;
+
     if (ev->code == ABS_MT_SLOT) {
         EvdevProcessTouch(pInfo);
         if (ev->value >= num_slots(pEvdev) ) {
@@ -1174,6 +1177,9 @@ EvdevAddFakeSingleTouchAxes(InputInfoPtr pInfo)
     int num_axes = 0;
     int i;
 
+    if (pEvdev->fake_mt)
+        return 0;
+
     /* Android drivers often have ABS_MT_POSITION_X but not ABS_X.
        Loop over the MT->legacy axis table and add fake axes. */
     for (i = 0; i < ArrayLength(mt_axis_mappings); i++)
@@ -1206,6 +1212,9 @@ EvdevCountMTAxes(EvdevPtr pEvdev, int *num_mt_axes_total,
                  int *num_mt_axes, int *num_axes)
 {
     int axis;
+
+    if (pEvdev->fake_mt)
+        return;
 
     /* Absolute multitouch axes: adjust mapping and axes counts. */
     for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
@@ -2199,6 +2208,10 @@ EvdevProbe(InputInfoPtr pInfo)
         }
     }
 
+    if (libevdev_has_event_code(pEvdev->dev, EV_ABS, ABS_MT_SLOT) &&
+        libevdev_get_num_slots(pEvdev->dev) == -1)
+        pEvdev->fake_mt = TRUE;
+
     if (ignore_abs && has_abs_axes)
     {
         xf86IDrvMsg(pInfo, X_INFO, "Absolute axes present but ignored.\n");
@@ -2220,6 +2233,8 @@ EvdevProbe(InputInfoPtr pInfo)
                     pEvdev->flags |= EVDEV_BUTTON_EVENTS;
                 }
             }
+            if (pEvdev->fake_mt)
+                xf86IDrvMsg(pInfo, X_PROBED, "Fake MT device detected\n");
         }
 
         if ((libevdev_has_event_code(pEvdev->dev, EV_ABS, ABS_X) &&
