@@ -2828,6 +2828,9 @@ EvdevInitProperty(DeviceIntPtr dev)
                                 strlen(XI_PROP_VIRTUAL_DEVICE), TRUE);
         rc = XIChangeDeviceProperty(dev, prop_virtual, XA_INTEGER, 8,
                                     PropModeReplace, 1, &virtual, FALSE);
+        if (rc != Success)
+            return;
+
         XISetDevicePropertyDeletable(dev, prop_virtual, FALSE);
     }
 
@@ -2900,8 +2903,11 @@ EvdevInitProperty(DeviceIntPtr dev)
             }
 
             EvdevInitAxesLabels(pEvdev, mode, num_axes, atoms);
-            XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
-                                   PropModeReplace, num_axes, atoms, FALSE);
+            rc = XIChangeDeviceProperty(dev, prop_axis_label, XA_ATOM, 32,
+                                        PropModeReplace, num_axes, atoms, FALSE);
+            if (rc != Success)
+                return;
+
             XISetDevicePropertyDeletable(dev, prop_axis_label, FALSE);
         }
         /* Button labelling */
@@ -2909,8 +2915,11 @@ EvdevInitProperty(DeviceIntPtr dev)
         {
             Atom atoms[EVDEV_MAXBUTTONS];
             EvdevInitButtonLabels(pEvdev, EVDEV_MAXBUTTONS, atoms);
-            XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
-                                   PropModeReplace, pEvdev->num_buttons, atoms, FALSE);
+            rc = XIChangeDeviceProperty(dev, prop_btn_label, XA_ATOM, 32,
+                                        PropModeReplace, pEvdev->num_buttons, atoms, FALSE);
+            if (rc != Success)
+                return;
+
             XISetDevicePropertyDeletable(dev, prop_btn_label, FALSE);
         }
 
@@ -2922,8 +2931,11 @@ EvdevInitProperty(DeviceIntPtr dev)
             };
             prop_scroll_dist = MakeAtom(EVDEV_PROP_SCROLL_DISTANCE,
                                         strlen(EVDEV_PROP_SCROLL_DISTANCE), TRUE);
-            XIChangeDeviceProperty(dev, prop_scroll_dist, XA_INTEGER, 32,
-                                   PropModeReplace, 3, smooth_scroll_values, FALSE);
+            rc = XIChangeDeviceProperty(dev, prop_scroll_dist, XA_INTEGER, 32,
+                                        PropModeReplace, 3, smooth_scroll_values, FALSE);
+            if (rc != Success)
+                return;
+
             XISetDevicePropertyDeletable(dev, prop_scroll_dist, FALSE);
         }
 
