@@ -2759,22 +2759,22 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
 
     for (button = BTN_MISC; button < BTN_JOYSTICK; button++)
     {
-        if (libevdev_has_event_code(pEvdev->dev, EV_KEY, button))
-        {
-            int group = (button % 0x100)/16;
-            int idx = button - ((button/16) * 16);
+        int group = (button % 0x100)/16;
+        int idx = button - ((button/16) * 16);
 
-            if (!btn_labels[group][idx])
-                continue;
+        if (!libevdev_has_event_code(pEvdev->dev, EV_KEY, button))
+            continue;
 
-            atom = XIGetKnownProperty(btn_labels[group][idx]);
-            if (!atom)
-                continue;
+        if (!btn_labels[group][idx])
+            continue;
 
-            /* Props are 0-indexed, button numbers start with 1 */
-            bmap = EvdevUtilButtonEventToButtonNumber(pEvdev, button) - 1;
-            atoms[bmap] = atom;
-        }
+        atom = XIGetKnownProperty(btn_labels[group][idx]);
+        if (!atom)
+            continue;
+
+        /* Props are 0-indexed, button numbers start with 1 */
+        bmap = EvdevUtilButtonEventToButtonNumber(pEvdev, button) - 1;
+        atoms[bmap] = atom;
     }
 
     /* wheel buttons, hardcoded anyway */
