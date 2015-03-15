@@ -48,7 +48,7 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.12] xproto [inputproto >= 2.1.99.3])
 PKG_CHECK_MODULES(UDEV, libudev)
 
 PKG_CHECK_MODULES(LIBEVDEV, [libevdev >= 0.4])
-PKG_CHECK_MODULES(MTDEV, mtdev, HAVE_MTDEV="yes", HAVE_MTDEV="no")
+PKG_CHECK_MODULES(MTDEV, mtdev)
 
 # Define a configure option for an alternate input module directory
 AC_ARG_WITH(xorg-module-dir,
