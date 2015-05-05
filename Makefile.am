@@ -28,6 +28,7 @@ MAINTAINERCLEANFILES = ChangeLog INSTALL
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xorg-evdev.pc
 
+dist_xorgconf_DATA = 10-evdev.conf
 
 .PHONY: ChangeLog INSTALL
 
