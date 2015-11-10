@@ -1377,7 +1377,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
     }
     atoms = malloc((pEvdev->num_vals + num_mt_axes) * sizeof(Atom));
 
-    i = 0;
+    i = 2;
     for (axis = ABS_X; i < MAX_VALUATORS && axis <= ABS_MAX; axis++) {
         int j;
         pEvdev->abs_axis_map[axis] = -1;
@@ -1385,9 +1385,14 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
             is_blacklisted_axis(axis))
             continue;
 
-        mapping = i;
+        if (axis == ABS_X)
+            mapping = 0;
+        else if (axis == ABS_Y)
+            mapping = 1;
+        else
+            mapping = i;
 
-        for (j = 0; j < ArrayLength(mt_axis_mappings); j++)
+        for (j = 0; !pEvdev->fake_mt && j < ArrayLength(mt_axis_mappings); j++)
         {
             if (mt_axis_mappings[j].code == axis)
                 mt_axis_mappings[j].mapping = mapping;
