@@ -125,6 +125,19 @@ Property: "Evdev Wheel Emulation Button".
 Specifies how far (in pixels) the pointer must move to generate button
 press/release events in wheel emulation mode.  Default: 10. Property: "Evdev
 Wheel Emulation Inertia".
+.IP
+This value must be set for any device does not resemble a standard mouse.
+Specifically, on absolute devices such as tablets the value should be set to
+a reasonable fraction of the expected movement to avoid excess scroll events.
+.IP
+.B WARNING:
+the name \*qinertia\*q is a misnomer. This option defines the distance
+required to generate one scroll event similar to the
+.B VertScrollDelta
+and
+.B HorizScrollDelta
+options. It does not enable inertia in the
+physical sense, scrolling stops immediately once the movement has stopped.
 .TP 7
 .BI "Option \*qEmulateWheelTimeout\*q \*q" integer \*q
 Specifies the time in milliseconds the
