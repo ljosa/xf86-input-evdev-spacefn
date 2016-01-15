@@ -95,7 +95,7 @@ BOOL
 EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
-    WheelAxisPtr pAxis = NULL, pOtherAxis = NULL;
+    WheelAxisPtr pAxis = NULL;
     int value = pEv->value;
 
     /* Has wheel emulation been configured to be enabled? */
@@ -130,13 +130,11 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 	/* ABS_X has the same value as REL_X, so this case catches both */
 	case REL_X:
 	    pAxis = &(pEvdev->emulateWheel.X);
-	    pOtherAxis = &(pEvdev->emulateWheel.Y);
 	    break;
 
 	/* ABS_Y has the same value as REL_Y, so this case catches both */
 	case REL_Y:
 	    pAxis = &(pEvdev->emulateWheel.Y);
-	    pOtherAxis = &(pEvdev->emulateWheel.X);
 	    break;
 
 	default:
@@ -144,15 +142,10 @@ EvdevWheelEmuFilterMotion(InputInfoPtr pInfo, struct input_event *pEv)
 	}
 
 	/* If we found REL_X, REL_Y, ABS_X or ABS_Y then emulate a mouse
-	   wheel.  Reset the inertia of the other axis when a scroll event
-	   was sent to avoid the buildup of erroneous scroll events if the
-	   user doesn't move in a perfectly straight line.
+	   wheel.
 	 */
 	if (pAxis)
-	{
-	    if (EvdevWheelEmuInertia(pInfo, pAxis, value))
-		pOtherAxis->traveled_distance = 0;
-	}
+	    EvdevWheelEmuInertia(pInfo, pAxis, value);
 
 	/* Eat motion events while emulateWheel button pressed. */
 	return TRUE;
