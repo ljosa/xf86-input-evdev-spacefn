@@ -2790,6 +2790,9 @@ static void EvdevInitButtonLabels(EvdevPtr pEvdev, int natoms, Atom *atoms)
         int group = (button % 0x100)/16;
         int idx = button - ((button/16) * 16);
 
+        if (group >= ArrayLength(btn_labels))
+            break;
+
         if (!libevdev_has_event_code(pEvdev->dev, EV_KEY, button))
             continue;
 
