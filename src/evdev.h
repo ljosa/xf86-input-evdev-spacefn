@@ -67,6 +67,10 @@
 #define LogMessageVerbSigSafe xf86MsgVerb
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 23
+#define HAVE_THREADED_INPUT	1
+#endif
+
 #define EVDEV_MAXBUTTONS 32
 #define EVDEV_MAXQUEUE 32
 

@@ -89,12 +89,19 @@ Evdev3BEmuTimer(OsTimerPtr timer, CARD32 time, pointer arg)
     InputInfoPtr      pInfo    = (InputInfoPtr)arg;
     EvdevPtr          pEvdev   = pInfo->private;
     struct emulate3B *emu3B    = &pEvdev->emulate3B;
-    int               sigstate = 0;
 
-    sigstate = xf86BlockSIGIO ();
+#if HAVE_THREADED_INPUT
+    input_lock();
+#else
+    int sigstate = xf86BlockSIGIO();
+#endif
     emu3B->state = EM3B_EMULATING;
     Evdev3BEmuPostButtonEvent(pInfo, emu3B->button, BUTTON_PRESS);
-    xf86UnblockSIGIO (sigstate);
+#if HAVE_THREADED_INPUT
+    input_unlock();
+#else
+    xf86UnblockSIGIO(sigstate);
+#endif
     return 0;
 }
 
