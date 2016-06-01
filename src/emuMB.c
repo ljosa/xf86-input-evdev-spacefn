@@ -268,9 +268,7 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
 }
 
 
-void EvdevMBEmuWakeupHandler(pointer data,
-                             int i,
-                             pointer LastSelectMask)
+void EvdevMBEmuWakeupHandler(WAKEUP_HANDLER_ARGS)
 {
     InputInfoPtr pInfo = (InputInfoPtr)data;
     EvdevPtr     pEvdev = (EvdevPtr)pInfo->private;
@@ -284,9 +282,7 @@ void EvdevMBEmuWakeupHandler(pointer data,
     }
 }
 
-void EvdevMBEmuBlockHandler(pointer data,
-                            struct timeval **waitTime,
-                            pointer LastSelectMask)
+void EvdevMBEmuBlockHandler(BLOCK_HANDLER_ARGS)
 {
     InputInfoPtr    pInfo = (InputInfoPtr) data;
     EvdevPtr        pEvdev= (EvdevPtr) pInfo->private;
