@@ -1108,6 +1108,7 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
     InputInfoPtr pInfo;
     struct input_event ev[ArrayLength(bits) + 1];
     int i;
+    int rc;
 
     memset(ev, 0, sizeof(ev));
 
@@ -1122,7 +1123,9 @@ EvdevKbdCtrl(DeviceIntPtr device, KeybdCtrl *ctrl)
     ev[i].code = SYN_REPORT;
     ev[i].value = 0;
 
-    write(pInfo->fd, ev, sizeof ev);
+    rc = write(pInfo->fd, ev, sizeof ev);
+    if (rc != sizeof ev)
+	    xf86IDrvMsg(pInfo, X_ERROR, "Failed to set keyboard controls: %s\n", strerror(errno));
 }
 
 static int
