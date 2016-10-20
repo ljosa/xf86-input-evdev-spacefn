@@ -1238,7 +1238,7 @@ EvdevCountMTAxes(EvdevPtr pEvdev, int *num_mt_axes_total,
         return;
 
     /* Absolute multitouch axes: adjust mapping and axes counts. */
-    for (axis = ABS_MT_SLOT; axis < ABS_MAX; axis++)
+    for (axis = ABS_MT_SLOT; axis <= ABS_MAX; axis++)
     {
         int j;
         Bool skip = FALSE;
@@ -1288,7 +1288,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
         goto out;
 
     /* Find number of absolute axis, including MT ones, will decrease later. */
-    for (i = 0; i < ABS_MAX; i++)
+    for (i = 0; i <= ABS_MAX; i++)
         if (libevdev_has_event_code(pEvdev->dev, EV_ABS, i))
             num_axes++;
 
@@ -1456,7 +1456,7 @@ EvdevAddAbsValuatorClass(DeviceIntPtr device, int num_scroll_axes)
         }
 
         for (i = 0; i < num_touches; i++) {
-            for (axis = ABS_MT_TOUCH_MAJOR; axis < ABS_MAX; axis++) {
+            for (axis = ABS_MT_TOUCH_MAJOR; axis <= ABS_MAX; axis++) {
                 if (pEvdev->abs_axis_map[axis] >= 0) {
                     int val = pEvdev->mtdev ? 0 : libevdev_get_current_slot(pEvdev->dev);
                     /* XXX: read initial values from mtdev when it adds support
@@ -1669,7 +1669,7 @@ EvdevAddRelValuatorClass(DeviceIntPtr device, int num_scroll_axes)
     if (!libevdev_has_event_type(pEvdev->dev, EV_REL))
         goto out;
 
-    for (i = 0; i < REL_MAX; i++) {
+    for (i = 0; i <= REL_MAX; i++) {
         if (i == REL_WHEEL || i == REL_HWHEEL || i == REL_DIAL)
             continue;
 
