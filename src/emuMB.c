@@ -45,6 +45,7 @@
 
 static Atom prop_mbemu     = 0; /* Middle button emulation on/off property */
 static Atom prop_mbtimeout = 0; /* Middle button timeout property */
+static Atom prop_mbbuton   = 0; /* Middle button target button property */
 /*
  * Lets create a simple finite-state machine for 3 button emulation:
  *
@@ -185,6 +186,7 @@ EvdevMBEmuTimer(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = pInfo->private;
     int id;
+    int mapped_id;
 
 #if HAVE_THREADED_INPUT
     input_lock();
@@ -194,7 +196,10 @@ EvdevMBEmuTimer(InputInfoPtr pInfo)
 
     pEvdev->emulateMB.pending = FALSE;
     if ((id = stateTab[pEvdev->emulateMB.state][4][0]) != 0) {
-        EvdevPostButtonEvent(pInfo, abs(id),
+        mapped_id = abs(id);
+        if (mapped_id == 2)
+            mapped_id = pEvdev->emulateMB.button;
+        EvdevPostButtonEvent(pInfo, mapped_id,
                              (id >= 0) ? BUTTON_PRESS : BUTTON_RELEASE);
         pEvdev->emulateMB.state =
             stateTab[pEvdev->emulateMB.state][4][2];
@@ -226,6 +231,7 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
 {
     EvdevPtr pEvdev = pInfo->private;
     int id;
+    int mapped_id;
     int *btstate;
     int ret = FALSE;
 
@@ -244,7 +250,10 @@ EvdevMBEmuFilterEvent(InputInfoPtr pInfo, int button, BOOL press)
 
     if ((id = stateTab[pEvdev->emulateMB.state][*btstate][0]) != 0)
     {
-        EvdevQueueButtonEvent(pInfo, abs(id), (id >= 0));
+        mapped_id = abs(id);
+        if (mapped_id == 2)
+            mapped_id = pEvdev->emulateMB.button;
+        EvdevQueueButtonEvent(pInfo, mapped_id, (id >= 0));
         ret = TRUE;
     }
     if ((id = stateTab[pEvdev->emulateMB.state][*btstate][1]) != 0)
@@ -301,12 +310,23 @@ void
 EvdevMBEmuPreInit(InputInfoPtr pInfo)
 {
     EvdevPtr pEvdev = (EvdevPtr)pInfo->private;
+    int bt;
 
     pEvdev->emulateMB.enabled = xf86SetBoolOption(pInfo->options,
                                                   "Emulate3Buttons",
                                                   FALSE);
     pEvdev->emulateMB.timeout = xf86SetIntOption(pInfo->options,
                                                  "Emulate3Timeout", 50);
+    bt = xf86SetIntOption(pInfo->options, "Emulate3Button", 2);
+    if (bt < 0 || bt > EVDEV_MAXBUTTONS) {
+        xf86IDrvMsg(pInfo, X_WARNING, "Invalid Emulate3Button value: %d\n",
+                    bt);
+        xf86IDrvMsg(pInfo, X_WARNING, "Middle button emulation disabled.\n");
+
+        pEvdev->emulateMB.enabled = FALSE;
+    }
+
+    pEvdev->emulateMB.button = bt;
 }
 
 void
@@ -338,6 +358,7 @@ EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 {
     InputInfoPtr pInfo  = dev->public.devicePrivate;
     EvdevPtr     pEvdev = pInfo->private;
+    int bt;
 
     if (atom == prop_mbemu)
     {
@@ -353,6 +374,18 @@ EvdevMBEmuSetProperty(DeviceIntPtr dev, Atom atom, XIPropertyValuePtr val,
 
         if (!checkonly)
             pEvdev->emulateMB.timeout = *((CARD32*)val->data);
+    } else if (atom == prop_mbbuton)
+    {
+        if (val->format != 8 || val->size != 1 || val->type != XA_INTEGER)
+            return BadMatch;
+
+        bt = *((CARD8*)val->data);
+
+        if (bt < 0 || bt > EVDEV_MAXBUTTONS)
+            return BadValue;
+
+        if (!checkonly)
+            pEvdev->emulateMB.button = bt;
     }
 
     return Success;
@@ -389,6 +422,16 @@ EvdevMBEmuInitProperty(DeviceIntPtr dev)
     if (rc != Success)
         return;
     XISetDevicePropertyDeletable(dev, prop_mbtimeout, FALSE);
+
+    prop_mbbuton = MakeAtom(EVDEV_PROP_MIDBUTTON_BUTTON,
+                              strlen(EVDEV_PROP_MIDBUTTON_BUTTON),
+                              TRUE);
+    rc = XIChangeDeviceProperty(dev, prop_mbbuton, XA_INTEGER, 8, PropModeReplace, 1,
+                                &pEvdev->emulateMB.button, FALSE);
+
+    if (rc != Success)
+        return;
+    XISetDevicePropertyDeletable(dev, prop_mbbuton, FALSE);
 
     XIRegisterPropertyHandler(dev, EvdevMBEmuSetProperty, NULL, NULL);
 }

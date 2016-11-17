@@ -33,6 +33,8 @@
 #define EVDEV_PROP_MIDBUTTON "Evdev Middle Button Emulation"
 /* CARD32 */
 #define EVDEV_PROP_MIDBUTTON_TIMEOUT "Evdev Middle Button Timeout"
+/* CARD8 */
+#define EVDEV_PROP_MIDBUTTON_BUTTON "Evdev Middle Button Button"
 
 /* Wheel emulation */
 /* BOOL */

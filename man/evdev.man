@@ -94,6 +94,11 @@ Sets the timeout (in milliseconds) that the driver waits before deciding
 if two buttons where pressed "simultaneously" when 3 button emulation is
 enabled.  Default: 50. Property: "Evdev Middle Button Timeout".
 .TP 7
+.BI "Option \*qEmulate3Button\*q \*q" integer \*q
+Specifies the physical button number to be emitted if middle button emulation
+is triggered.
+Default: 2.  Property: "Evdev Middle Button Button".
+.TP 7
 .BI "Option \*qEmulateWheel\*q \*q" boolean \*q
 Enable/disable "wheel" emulation.  Wheel emulation means emulating button
 press/release events when the mouse is moved while a specific real button
@@ -282,6 +287,9 @@ value.
 .TP 7
 .BI "Evdev Middle Button Timeout"
 1 16-bit positive value.
+.TP 7
+.BI "Evdev Middle Button Button"
+1 8-bit value, allowed range 0-32, 0 disables the button.
 .TP 7
 .BI "Evdev Wheel Emulation"
 1 boolean value (8 bit, 0 or 1).

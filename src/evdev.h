@@ -196,6 +196,7 @@ typedef struct {
         int                 state;       /* state machine (see bt3emu.c) */
         Time                expires;     /* time of expiry */
         Time                timeout;
+        uint8_t             button;      /* phys button to emit */
     } emulateMB;
     /* Third mouse button emulation */
     struct emulate3B {
