@@ -784,7 +784,6 @@ EvdevProcessAbsoluteMotionEvent(InputInfoPtr pInfo, struct input_event *ev)
 
     if (ev->code >= ABS_MT_SLOT) {
         EvdevProcessTouchEvent(pInfo, ev);
-        pEvdev->abs_queued = 1;
     } else if (!pEvdev->mt_mask) {
         map = pEvdev->abs_axis_map[ev->code];
 
