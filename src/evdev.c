@@ -911,6 +911,107 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which)
     }
 }
 
+#define BUF_SIZE 10
+#define KEY_CODE_SPACE 0x41
+#define KEY_CODE_MODIFIER 0x87 /* Menu */
+
+static void emit_press(InputInfoPtr pInfo, int key_code)
+{
+     xf86PostKeyboardEvent(pInfo->dev, key_code, 1);
+}
+
+static void emit_release(InputInfoPtr pInfo, int key_code)
+{
+     xf86PostKeyboardEvent(pInfo->dev, key_code, 0);
+}
+
+static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
+{
+     static int modified;
+     static int used;
+     static int buf[BUF_SIZE];
+     static int buf_fill = 0;
+     int i;
+
+     if (pressed) {
+          if (key_code == KEY_CODE_SPACE) {
+               if (modified) {
+                    /* Ignore auto repeat for space */
+               } else {
+                    /* Space pressed for the first time */
+                    modified = 1;
+                    used = 0;
+               }
+          } else {
+               if (modified) {
+                    /* Letter key pressed while space is held. We
+                     * don't yet know whether this is a rollover
+                     * (first space, then letter) or a modification,
+                     * so save the key in a buffer. */
+                    if (buf_fill == BUF_SIZE) {
+                         LogMessageVerbSigSafe(X_WARNING, 0, "spacefn buffer full, ignoring key!\n");
+                    } else {
+                         LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn buffering key 0x%x!\n", key_code);
+                         buf[buf_fill++] = key_code;
+                    }
+               } else {
+                    /* Key pressed while space is not held. Just emit
+                     * the keypress. */
+                    emit_press(pInfo, key_code);
+               }
+          }
+     } else {
+          if (key_code == KEY_CODE_SPACE) {
+               modified = 0;
+               if (!used || buf_fill > 0) {
+                    /* If no modified letters were emitted while space
+                     * was held, then a space should be emitted. If
+                     * the buffer is non-empty, then the keys in the
+                     * buffer were pressed before but not
+                     * released. That means that we are rolling over
+                     * from space to those keys, so we should emit a
+                     * space (even if modified letters were previously
+                     * emitted) and then emit the unmodified keys in
+                     * the buffer. */
+                    emit_press(pInfo, KEY_CODE_SPACE);
+                    emit_release(pInfo, KEY_CODE_SPACE);
+                    for (i = 0; i < buf_fill; i++) {
+                         emit_press(pInfo, buf[i]);
+                         emit_release(pInfo, buf[i]);
+                    }
+                    buf_fill = 0;
+               }
+          } else {
+               if (modified) {
+                    /* A letter key was released while space is
+                     * held. This could be a rollover (first letter,
+                     * then space) or a modification. If it's a
+                     * modification, then the buffer will be non-empty
+                     * (because the letter was pressed after space was
+                     * pressed) and should be emitted in modified
+                     * form. If it's a rollover, then we just have to
+                     * emit the release because the press was emitted
+                     * when the key was actually pressed. */
+                    if (buf_fill) {
+                         emit_press(pInfo, KEY_CODE_MODIFIER);
+                         for (i = 0; i < buf_fill; i++) {
+                              emit_press(pInfo, buf[i]);
+                              emit_release(pInfo, buf[i]);
+                              used = 1;
+                         }
+                         buf_fill = 0;
+                         emit_release(pInfo, KEY_CODE_MODIFIER);
+                    } else
+                         emit_release(pInfo, key_code);
+               } else {
+                    /* Key released while space is not held. Just emit
+                     * the release. */
+                    emit_release(pInfo, key_code);
+               }
+          }
+     }
+}
+
 /**
  * Post the queued key/button events.
  */
@@ -922,8 +1023,7 @@ static void EvdevPostQueuedEvents(InputInfoPtr pInfo)
     for (i = 0; i < pEvdev->num_queue; i++) {
         switch (pEvdev->queue[i].type) {
         case EV_QUEUE_KEY:
-            xf86PostKeyboardEvent(pInfo->dev, pEvdev->queue[i].detail.key,
-                                  pEvdev->queue[i].val);
+            handle_key(pInfo, pEvdev->queue[i].detail.key, pEvdev->queue[i].val);
             break;
         case EV_QUEUE_BTN:
             if (Evdev3BEmuFilterEvent(pInfo,
