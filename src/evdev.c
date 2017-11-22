@@ -914,6 +914,7 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which)
 #define BUF_SIZE 10
 #define KEY_CODE_SPACE 0x41
 #define KEY_CODE_MODIFIER 0x87 /* Menu */
+int enable_spacefn = 1;
 
 static void emit_press(InputInfoPtr pInfo, int key_code)
 {
@@ -932,6 +933,9 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
      static int buf[BUF_SIZE];
      static int buf_fill = 0;
      int i;
+
+     if (!enable_spacefn)
+          xf86PostKeyboardEvent(pInfo->dev, key_code, pressed);
 
      if (pressed) {
           if (key_code == KEY_CODE_SPACE) {
