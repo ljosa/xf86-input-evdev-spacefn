@@ -975,13 +975,12 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                      * released. That means that we are rolling over
                      * from space to those keys, so we should emit a
                      * space (even if modified letters were previously
-                     * emitted) and then emit the unmodified keys in
-                     * the buffer. */
+                     * emitted) and then emit presses for the
+                     * unmodified keys in the buffer. */
                     emit_press(pInfo, KEY_CODE_SPACE);
                     emit_release(pInfo, KEY_CODE_SPACE);
                     for (i = 0; i < buf_fill; i++) {
                          emit_press(pInfo, buf[i]);
-                         emit_release(pInfo, buf[i]);
                     }
                     buf_fill = 0;
                }
