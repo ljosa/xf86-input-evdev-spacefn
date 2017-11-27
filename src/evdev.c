@@ -1001,18 +1001,13 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                          emit_press(pInfo, KEY_CODE_MODIFIER);
                          for (i = 0; i < buf_fill; i++) {
                               emit_press(pInfo, buf[i]);
-                              emit_release(pInfo, buf[i]);
                               used = 1;
                          }
                          buf_fill = 0;
                          emit_release(pInfo, KEY_CODE_MODIFIER);
-                    } else
-                         emit_release(pInfo, key_code);
-               } else {
-                    /* Key released while space is not held. Just emit
-                     * the release. */
-                    emit_release(pInfo, key_code);
+                    }
                }
+               emit_release(pInfo, key_code);
           }
      }
 }
