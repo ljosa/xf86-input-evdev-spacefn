@@ -926,12 +926,54 @@ static void emit_release(InputInfoPtr pInfo, int key_code)
      xf86PostKeyboardEvent(pInfo->dev, key_code, 0);
 }
 
+int EvdevSpaceFnBuffer[BUF_SIZE];
+int EvdevSpaceFnBufferFill = 0;
+int EvdevSpaceFnUsed = 0;
+int EvdevSpaceFnModifierPressed = 0;
+
+static void emit_buffer_modified(InputInfoPtr pInfo)
+{
+     int i;
+     if (EvdevSpaceFnBufferFill) {
+          if (!EvdevSpaceFnModifierPressed) {
+               emit_press(pInfo, KEY_CODE_MODIFIER);
+               EvdevSpaceFnModifierPressed = 1;
+          }
+          for (i = 0; i < EvdevSpaceFnBufferFill; i++) {
+               emit_press(pInfo, EvdevSpaceFnBuffer[i]);
+               EvdevSpaceFnUsed = 1;
+          }
+          EvdevSpaceFnBufferFill = 0;
+          /* We don't release the modifier key here so that
+           * autorepeating keys will also be modified. We'll
+           * eventually release the modifier key elsewhere when we
+           * need to emit something unmodified. */
+     }
+}
+
+static CARD32
+spacefn_buffer_timer(OsTimerPtr timer, CARD32 time, pointer arg)
+{
+     InputInfoPtr pInfo = (InputInfoPtr)arg;
+     /* It's been some time since a keypress was buffered (because
+      * space was held when the key was pressed). If there are still
+      * keys in the buffer (because the key has not been released yet)
+      * then assume that this is not a rollover and emit the buffer in
+      * modified form. There is a theoretical potential for a race
+      * condition here if a modified use is followed by a rollover
+      * (e.g., hold space, press and release L to move to the right,
+      * then press L to type "l", release space, and finally release
+      * L), but this doesn't seem to happen in practice, maybe becuase
+      * the user does a mental context switch and does not roll over
+      * this situation. */
+     LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn timer\n");
+     emit_buffer_modified(pInfo);
+     return 0;
+}
+
 static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
 {
      static int modified;
-     static int used;
-     static int buf[BUF_SIZE];
-     static int buf_fill = 0;
      int i;
 
      if (!enable_spacefn) {
@@ -946,7 +988,7 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                } else {
                     /* Space pressed for the first time */
                     modified = 1;
-                    used = 0;
+                    EvdevSpaceFnUsed = 0;
                }
           } else {
                if (modified) {
@@ -954,22 +996,27 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                      * don't yet know whether this is a rollover
                      * (first space, then letter) or a modification,
                      * so save the key in a buffer. */
-                    if (buf_fill == BUF_SIZE) {
+                    if (EvdevSpaceFnBufferFill == BUF_SIZE) {
                          LogMessageVerbSigSafe(X_WARNING, 0, "spacefn buffer full, ignoring key!\n");
                     } else {
                          LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn buffering key 0x%x!\n", key_code);
-                         buf[buf_fill++] = key_code;
+                         EvdevSpaceFnBuffer[EvdevSpaceFnBufferFill++] = key_code;
+                         TimerSet(NULL, 0, 200, spacefn_buffer_timer, pInfo);
                     }
                } else {
                     /* Key pressed while space is not held. Just emit
                      * the keypress. */
+                     if (EvdevSpaceFnModifierPressed) {
+                         emit_release(pInfo, KEY_CODE_MODIFIER);
+                         EvdevSpaceFnModifierPressed = 0;
+                    }
                     emit_press(pInfo, key_code);
                }
           }
      } else {
           if (key_code == KEY_CODE_SPACE) {
                modified = 0;
-               if (!used || buf_fill > 0) {
+               if (!EvdevSpaceFnUsed || EvdevSpaceFnBufferFill > 0) {
                     /* If no modified letters were emitted while space
                      * was held, then a space should be emitted. If
                      * the buffer is non-empty, then the keys in the
@@ -979,12 +1026,16 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                      * space (even if modified letters were previously
                      * emitted) and then emit presses for the
                      * unmodified keys in the buffer. */
+                     if (EvdevSpaceFnModifierPressed) {
+                         emit_release(pInfo, KEY_CODE_MODIFIER);
+                         EvdevSpaceFnModifierPressed = 0;
+                    }
                     emit_press(pInfo, KEY_CODE_SPACE);
                     emit_release(pInfo, KEY_CODE_SPACE);
-                    for (i = 0; i < buf_fill; i++) {
-                         emit_press(pInfo, buf[i]);
+                    for (i = 0; i < EvdevSpaceFnBufferFill; i++) {
+                         emit_press(pInfo, EvdevSpaceFnBuffer[i]);
                     }
-                    buf_fill = 0;
+                    EvdevSpaceFnBufferFill = 0;
                }
           } else {
                if (modified) {
@@ -997,15 +1048,7 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                      * form. If it's a rollover, then we just have to
                      * emit the release because the press was emitted
                      * when the key was actually pressed. */
-                    if (buf_fill) {
-                         emit_press(pInfo, KEY_CODE_MODIFIER);
-                         for (i = 0; i < buf_fill; i++) {
-                              emit_press(pInfo, buf[i]);
-                              used = 1;
-                         }
-                         buf_fill = 0;
-                         emit_release(pInfo, KEY_CODE_MODIFIER);
-                    }
+                    emit_buffer_modified(pInfo);
                }
                emit_release(pInfo, key_code);
           }
