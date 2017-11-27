@@ -934,8 +934,10 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
      static int buf_fill = 0;
      int i;
 
-     if (!enable_spacefn)
+     if (!enable_spacefn) {
           xf86PostKeyboardEvent(pInfo->dev, key_code, pressed);
+          return;
+     }
 
      if (pressed) {
           if (key_code == KEY_CODE_SPACE) {
