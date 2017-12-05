@@ -931,14 +931,25 @@ int EvdevSpaceFnBufferFill = 0;
 int EvdevSpaceFnUsed = 0;
 int EvdevSpaceFnModifierPressed = 0;
 
+static void ensure_modifier_pressed(InputInfoPtr pInfo) {
+     if (!EvdevSpaceFnModifierPressed) {
+          emit_press(pInfo, KEY_CODE_MODIFIER);
+          EvdevSpaceFnModifierPressed = 1;
+     }
+}
+
+static void ensure_modifier_not_pressed(InputInfoPtr pInfo) {
+     if (EvdevSpaceFnModifierPressed) {
+          emit_release(pInfo, KEY_CODE_MODIFIER);
+          EvdevSpaceFnModifierPressed = 0;
+     }
+}
+
 static void emit_buffer_modified(InputInfoPtr pInfo)
 {
      int i;
      if (EvdevSpaceFnBufferFill) {
-          if (!EvdevSpaceFnModifierPressed) {
-               emit_press(pInfo, KEY_CODE_MODIFIER);
-               EvdevSpaceFnModifierPressed = 1;
-          }
+          ensure_modifier_pressed(pInfo);
           for (i = 0; i < EvdevSpaceFnBufferFill; i++) {
                emit_press(pInfo, EvdevSpaceFnBuffer[i]);
                EvdevSpaceFnUsed = 1;
@@ -1006,17 +1017,14 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                } else {
                     /* Key pressed while space is not held. Just emit
                      * the keypress. */
-                     if (EvdevSpaceFnModifierPressed) {
-                         emit_release(pInfo, KEY_CODE_MODIFIER);
-                         EvdevSpaceFnModifierPressed = 0;
-                    }
+                    ensure_modifier_not_pressed(pInfo);
                     emit_press(pInfo, key_code);
                }
           }
      } else {
           if (key_code == KEY_CODE_SPACE) {
                modified = 0;
-               if (!EvdevSpaceFnUsed || EvdevSpaceFnBufferFill > 0) {
+               if (!EvdevSpaceFnUsed) {
                     /* If no modified letters were emitted while space
                      * was held, then a space should be emitted. If
                      * the buffer is non-empty, then the keys in the
@@ -1026,12 +1034,12 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                      * space (even if modified letters were previously
                      * emitted) and then emit presses for the
                      * unmodified keys in the buffer. */
-                     if (EvdevSpaceFnModifierPressed) {
-                         emit_release(pInfo, KEY_CODE_MODIFIER);
-                         EvdevSpaceFnModifierPressed = 0;
-                    }
+                    ensure_modifier_not_pressed(pInfo);
                     emit_press(pInfo, KEY_CODE_SPACE);
                     emit_release(pInfo, KEY_CODE_SPACE);
+               }
+               if (EvdevSpaceFnBufferFill > 0) {
+                    ensure_modifier_not_pressed(pInfo);
                     for (i = 0; i < EvdevSpaceFnBufferFill; i++) {
                          emit_press(pInfo, EvdevSpaceFnBuffer[i]);
                     }
