@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright © 2004-2008 Red Hat, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software
@@ -930,6 +930,7 @@ int EvdevSpaceFnBuffer[BUF_SIZE];
 int EvdevSpaceFnBufferFill = 0;
 int EvdevSpaceFnUsed = 0;
 int EvdevSpaceFnModifierPressed = 0;
+int EvdevSpaceFnModified = 0;
 
 static void ensure_modifier_pressed(InputInfoPtr pInfo) {
      if (!EvdevSpaceFnModifierPressed) {
@@ -977,14 +978,13 @@ spacefn_buffer_timer(OsTimerPtr timer, CARD32 time, pointer arg)
       * L), but this doesn't seem to happen in practice, maybe becuase
       * the user does a mental context switch and does not roll over
       * this situation. */
-     LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn timer\n");
      emit_buffer_modified(pInfo);
      return 0;
 }
 
 static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
 {
-     static int modified;
+     static int modified = 0;
      int i;
 
      if (!enable_spacefn) {
@@ -998,21 +998,33 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                     /* Ignore auto repeat for space */
                } else {
                     /* Space pressed for the first time */
-                    modified = 1;
+                    modified = GetTimeInMillis();
                     EvdevSpaceFnUsed = 0;
                }
           } else {
                if (modified) {
-                    /* Letter key pressed while space is held. We
-                     * don't yet know whether this is a rollover
-                     * (first space, then letter) or a modification,
-                     * so save the key in a buffer. */
-                    if (EvdevSpaceFnBufferFill == BUF_SIZE) {
-                         LogMessageVerbSigSafe(X_WARNING, 0, "spacefn buffer full, ignoring key!\n");
+                    if (GetTimeInMillis() - modified >= 200) {
+                         /* Letter key pressed after space has been held
+                          * for a while. Assume that space is being used as
+                          * a modifier, so ensure that the modifier key has
+                          * been pressed, emit any keypresses in the
+                          * buffer, and then the current key. */
+                         ensure_modifier_pressed(pInfo);
+                         emit_buffer_modified(pInfo);
+                         emit_press(pInfo, key_code);
+                         EvdevSpaceFnUsed = 1;
                     } else {
-                         LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn buffering key 0x%x!\n", key_code);
-                         EvdevSpaceFnBuffer[EvdevSpaceFnBufferFill++] = key_code;
-                         TimerSet(NULL, 0, 200, spacefn_buffer_timer, pInfo);
+                         /* Letter key pressed while space is held. We
+                          * don't yet know whether this is a rollover
+                          * (first space, then letter) or a modification,
+                          * so save the key in a buffer. */
+                         if (EvdevSpaceFnBufferFill == BUF_SIZE) {
+                              LogMessageVerbSigSafe(X_WARNING, 0, "spacefn buffer full, ignoring key!\n");
+                         } else {
+                              LogMessageVerbSigSafe(X_DEBUG, 0, "spacefn buffering key 0x%x!\n", key_code);
+                              EvdevSpaceFnBuffer[EvdevSpaceFnBufferFill++] = key_code;
+                              TimerSet(NULL, 0, 200, spacefn_buffer_timer, pInfo);
+                         }
                     }
                } else {
                     /* Key pressed while space is not held. Just emit
