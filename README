@@ -4,26 +4,9 @@ This fork provides an implementation of SpaceFn in xf86-input-evdev.
     https://geekhack.org/index.php?topic=51069.0
 
 The idea of SpaceFn is to let the space key work as both a regular
-space and a modifier. The implementation needs to sometimes store away
-keypresses, and then emit keypresses and releases once it's clear
-whether space is being used as space or as a modifier. The logic is
-quite complex and not perfect yet.
-
-Generally, when space is held, the implementation emits a keypress for
-the menu key (keycode 0x87) before other keys and a release of the
-menu key after. It's up to you to make the menu key a modifier in your
-xmodmap and make modified keys do something useful. I have this:
-
-    keycode 135 = Mode_switch Mode_switch Mode_switch Mode_switch
-    keycode  43 = h H Left Left
-    keycode  44 = j J Down Down
-    keycode  45 = k K Up Up
-    keycode  46 = l L Right Right
-    keycode  56 = b B space space
-    keycode  57 = n N Next Next
-    keycode  58 = m M Prior Prior
-    keycode  30 = u U Home Home
-    keycode  32 = o O End End
+space and a modifier. For more information about the implementation
+and how to build, install, and configure it, see
+http://www.ljosa.com/~ljosa/software/spacefn-xorg/.
 
 ------------------------------------------------------------------------
 
