@@ -914,7 +914,6 @@ EvdevPostProximityEvents(InputInfoPtr pInfo, int which)
 #define BUF_SIZE 10
 #define KEY_CODE_SPACE 0x41
 #define KEY_CODE_MODIFIER 0x87 /* Menu */
-int enable_spacefn = 1;
 
 static void emit_press(InputInfoPtr pInfo, int key_code)
 {
@@ -987,11 +986,6 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
      static int modified = 0;
      int i;
 
-     if (!enable_spacefn) {
-          xf86PostKeyboardEvent(pInfo->dev, key_code, pressed);
-          return;
-     }
-
      if (pressed) {
           if (key_code == KEY_CODE_SPACE) {
                if (modified) {
@@ -1003,7 +997,7 @@ static void handle_key(InputInfoPtr pInfo, int key_code, int pressed)
                }
           } else {
                if (modified) {
-                    if (GetTimeInMillis() - modified >= 200) {
+                    if (GetTimeInMillis() - modified >= 150) {
                          /* Letter key pressed after space has been held
                           * for a while. Assume that space is being used as
                           * a modifier, so ensure that the modifier key has
